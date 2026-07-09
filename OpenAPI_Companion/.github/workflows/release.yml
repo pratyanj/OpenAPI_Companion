@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -32,6 +32,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           ZIP_NAME="openapi-companion-${VERSION}.zip"
+          cd OpenAPI_Companion
           cd dist
           zip -r "../${ZIP_NAME}" .
           echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
