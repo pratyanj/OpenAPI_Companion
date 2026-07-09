@@ -1,0 +1,16 @@
+# Code owners — required reviewers per area (planning/14_GIT_STRATEGY.md §7).
+# TODO(maintainer): replace @OWNER with real GitHub usernames/teams before enabling.
+
+# Default owner for everything
+* @OWNER
+
+# Core & build
+/src/core/            @OWNER
+/src/adapters/        @OWNER
+/manifest.config.ts   @OWNER
+/vite.config.ts       @OWNER
+/.github/             @OWNER
+
+# Docs & planning
+/docs/                @OWNER
+/planning/            @OWNER

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+share/
+*.crx
+*.zip
+
+# Test / coverage artifacts
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# Vite
+.vite/
+
+# Logs
+log/
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.*
+!.env.example
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens (planning/09_UI_PLAN.md §0). Light is the default; a `.dark`
+ * ancestor flips to dark (ThemeManager toggles the class). Colors are referenced
+ * by name in tailwind.config.ts (e.g. bg-bg, text-text).
+ *
+ * `:host` is included so the tokens also apply when this stylesheet is injected
+ * into the content-script Shadow DOM (where `:root` would not match).
+ */
+:root,
+:host {
+  --oac-bg: #ffffff;
+  --oac-surface: #f3f4f6;
+  --oac-border: #e5e7eb;
+  --oac-text: #111827;
+  --oac-muted: #6b7280;
+  --oac-primary: #2563eb;
+  --oac-success: #16a34a;
+  --oac-warning: #d97706;
+  --oac-danger: #dc2626;
+}
+
+.dark {
+  --oac-bg: #111827;
+  --oac-surface: #1f2937;
+  --oac-border: #374151;
+  --oac-text: #e5e7eb;
+  --oac-muted: #9ca3af;
+  --oac-primary: #3b82f6;
+  --oac-success: #22c55e;
+  --oac-warning: #f59e0b;
+  --oac-danger: #ef4444;
+}
