@@ -1,0 +1,100 @@
+name: Release
+
+# Trigger on any version tag: v0.1.0, v1.2.3-beta.1, etc.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write   # needed to create a GitHub Release
+
+jobs:
+  # ── 1. Quality gate (lint / typecheck / tests / build) ──────────────────────
+  quality:
+    name: Lint · Type-check · Test · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit + component tests
+        run: npm run test:coverage
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  # ── 2. Package & publish release ────────────────────────────────────────────
+  release:
+    name: Package & Publish Release
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # `npm run package` = vite build + scripts/package.mjs → share/<name>.zip
+      - name: Build & package extension
+        run: npm run package
+
+      # Derive human-readable tag name (strip leading "v" for the zip lookup)
+      - name: Resolve zip path
+        id: zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP="share/openapi-companion-${VERSION}.zip"
+          echo "path=${ZIP}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      # Create the GitHub Release and upload the zip as a release asset
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.zip.outputs.tag }}
+          name: OpenAPI Companion ${{ steps.zip.outputs.tag }}
+          body: |
+            ## What's new
+
+            _Fill in your changelog here before publishing, or edit the release on GitHub after it's created._
+
+            ## Installation
+
+            1. Download `openapi-companion-${{ steps.zip.outputs.version }}.zip` below.
+            2. Unzip it — you'll get a folder named `openapi-companion-${{ steps.zip.outputs.version }}`.
+               Keep it somewhere permanent (e.g. Documents).
+            3. Open your browser's extensions page:
+               - **Chrome** → `chrome://extensions`
+               - **Edge** → `edge://extensions`
+               - **Brave** → `brave://extensions`
+            4. Enable **Developer mode** (top-right toggle).
+            5. Click **Load unpacked** and select the unzipped folder.
+            6. *(Optional)* Pin the OpenAPI Companion icon from the toolbar's puzzle menu.
+
+            > **Note:** This is an unpacked developer build. The browser may occasionally
+            > prompt you to disable developer-mode extensions — just dismiss it.
+          draft: true          # opens as a draft so you can review/edit before publishing
+          prerelease: ${{ contains(steps.zip.outputs.tag, '-') }}
+          files: ${{ steps.zip.outputs.path }}
+          fail_on_unmatched_files: true
