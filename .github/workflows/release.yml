@@ -1,0 +1,82 @@
+name: Release on Push
+
+# Trigger on every push to main branch
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write   # needed to create/update a GitHub Release
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: OpenAPI_Companion/package-lock.json
+
+      # Install dependencies inside the OpenAPI_Companion folder
+      - name: Install dependencies
+        working-directory: OpenAPI_Companion
+        run: npm ci
+
+      # Build the extension into OpenAPI_Companion/dist/
+      - name: Build extension
+        working-directory: OpenAPI_Companion
+        run: npm run build
+
+      # Zip the dist/ folder as openapi-companion-latest.zip
+      - name: Zip dist folder
+        working-directory: OpenAPI_Companion
+        run: |
+          # Get version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          # Get short commit SHA for uniqueness
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          ZIP_NAME="openapi-companion-${VERSION}-${SHA}.zip"
+          
+          cd dist
+          zip -r "../../${ZIP_NAME}" .
+          
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+        id: package
+
+      # Create/Update the "latest" release and upload the zip
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Dev Build
+          body: |
+            ## Latest Development Build
+
+            This release is automatically updated on every push to the `main` branch.
+
+            - **Version:** `${{ steps.package.outputs.version }}`
+            - **Commit:** `${{ steps.package.outputs.sha }}`
+            - **Built At:** `${{ github.event.head_commit.timestamp }}`
+
+            ### Installation Instructions
+
+            1. Download the zip file below: `${{ steps.package.outputs.zip_name }}`.
+            2. Unzip it — you'll get a folder containing the extension files.
+               Keep it somewhere permanent (e.g. Documents).
+            3. Open your browser's extensions page:
+               - **Chrome** → `chrome://extensions`
+               - **Edge** → `edge://extensions`
+               - **Brave** → `brave://extensions`
+            4. Enable **Developer mode** (top-right toggle).
+            5. Click **Load unpacked** and select the unzipped folder.
+          prerelease: true
+          files: ${{ steps.package.outputs.zip_name }}
+          # This will overwrite the existing asset with the same name if it exists,
+          # and we use tag "latest" so it's a rolling release.
