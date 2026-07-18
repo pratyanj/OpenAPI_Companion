@@ -12,6 +12,8 @@
  */
 :root,
 :host {
+  display: block;
+  height: 100%;
   --oac-bg: #ffffff;
   --oac-surface: #f3f4f6;
   --oac-border: #e5e7eb;

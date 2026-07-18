@@ -9,6 +9,8 @@ import {
   ThemeLightIcon,
   ThemeDarkIcon,
   ThemeSystemIcon,
+  CollapseIcon,
+  ExpandIcon,
 } from '@/components'
 import { useEventBus, useTheme } from '@/hooks'
 import { settingsKey, type StorageService } from '@/core/storage'
@@ -26,6 +28,10 @@ import { PanelOutlet } from './PanelOutlet'
 import { TABS, DEFAULT_TAB } from './tabs'
 
 export const SIDEBAR_COLLAPSED_KEY = settingsKey('sidebar-collapsed')
+
+/** Width values that mirror the CSS variable set in index.tsx. */
+const OPEN_W = '320px'
+const MINI_W = '40px'
 
 const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
   light: 'dark',
@@ -94,6 +100,12 @@ export function SidebarShell({
     return () => window.removeEventListener('keydown', onKey)
   }, [productivityService])
 
+  // Keep the page-level CSS variable in sync so the host width + body
+  // margin-right animate together whenever the collapse state changes.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--oac-w', collapsed ? MINI_W : OPEN_W)
+  }, [collapsed])
+
   const toggleCollapsed = () => {
     const next = !collapsed
     setCollapsed(next)
@@ -107,28 +119,87 @@ export function SidebarShell({
       <CommandPalette service={productivityService} onClose={() => setPaletteOpen(false)} />
     ) : null
 
+  // ── Collapsed: narrow icon strip ─────────────────────────────────────────
   if (collapsed) {
     return (
       <>
-        <IconButton
-          label="Open OpenAPI Companion"
-          onClick={toggleCollapsed}
-          className="fixed right-3 top-3 z-[2147483647] h-9 w-9 rounded-full border border-border bg-bg text-base shadow-xl"
+        <aside
+          role="complementary"
+          aria-label="OpenAPI Companion (collapsed)"
+          className="flex h-full w-full flex-col items-center overflow-hidden rounded-xl border border-border bg-bg text-text shadow-xl"
         >
-          <BrandIcon className="h-5 w-5" />
-        </IconButton>
+          {/* Top: brand icon + search + tab shortcuts */}
+          <div className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-2">
+            <IconButton
+              label="Open OpenAPI Companion"
+              onClick={toggleCollapsed}
+              className="h-8 w-8 text-primary"
+            >
+              <BrandIcon className="h-5 w-5" />
+            </IconButton>
+
+            {/* Search — opens the API palette without expanding the sidebar */}
+            {productivityService ? (
+              <IconButton
+                label="Search endpoints (⌘K)"
+                onClick={() => setPaletteOpen(true)}
+                className="h-8 w-8 text-muted hover:text-text"
+              >
+                <SearchIcon className="h-4 w-4" />
+              </IconButton>
+            ) : null}
+
+            <div className="my-1 h-px w-6 bg-border" />
+
+            {/* Click a tab icon to jump directly to that panel and expand */}
+            {TABS.map((tab) => (
+              <IconButton
+                key={tab.id}
+                label={tab.label}
+                onClick={() => {
+                  setActiveTab(tab.id)
+                  toggleCollapsed()
+                }}
+                className={`h-8 w-8 ${
+                  activeTab === tab.id ? 'text-primary' : 'text-muted'
+                }`}
+              >
+                {tab.icon}
+              </IconButton>
+            ))}
+          </div>
+
+          {/* Bottom: theme toggle + expand arrow */}
+          <div className="flex w-full flex-col items-center gap-1 border-t border-border py-2">
+            <IconButton
+              label={`Theme: ${preference}. Click to change.`}
+              onClick={cycleTheme}
+              className="h-8 w-8 text-muted"
+            >
+              <PreferenceIcon className="h-4 w-4" />
+            </IconButton>
+            <IconButton
+              label="Expand sidebar"
+              onClick={toggleCollapsed}
+              className="h-8 w-8 text-muted hover:text-text"
+            >
+              <ExpandIcon className="h-4 w-4" />
+            </IconButton>
+          </div>
+        </aside>
         {palette}
         <ToastLayer bus={bus} />
       </>
     )
   }
 
+  // ── Expanded: full sidebar panel ──────────────────────────────────────────
   return (
     <>
       <aside
         role="complementary"
         aria-label="OpenAPI Companion"
-        className="fixed right-3 top-3 z-[2147483647] flex max-h-[85vh] w-80 flex-col overflow-hidden rounded-xl border border-border bg-bg text-text shadow-2xl"
+        className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-bg text-text shadow-xl"
       >
         <header className="flex items-center justify-between border-b border-border px-3 py-2">
           <strong className="text-sm">OpenAPI Companion</strong>
@@ -174,6 +245,17 @@ export function SidebarShell({
         </div>
 
         <ToastLayer bus={bus} />
+
+        {/* Collapse to icon strip — up arrow at the bottom */}
+        <div className="flex items-center justify-center border-t border-border py-1">
+          <IconButton
+            label="Collapse to icon strip"
+            onClick={toggleCollapsed}
+            className="h-7 w-7 text-muted hover:text-text"
+          >
+            <CollapseIcon className="h-4 w-4" />
+          </IconButton>
+        </div>
       </aside>
       {palette}
     </>

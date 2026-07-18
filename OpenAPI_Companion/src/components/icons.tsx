@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Star,
   Code,
+  ChevronRight,
+  ChevronLeft,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -82,6 +84,8 @@ export const GenerateIcon = make(Sparkles)
 export const RegenerateIcon = make(RefreshCw)
 export const FavoriteIcon = make(Star)
 export const CodeIcon = make(Code)
+export const CollapseIcon = make(ChevronRight)  // collapse sidebar to icon strip  (>)
+export const ExpandIcon = make(ChevronLeft)    // expand sidebar from icon strip  (<)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)

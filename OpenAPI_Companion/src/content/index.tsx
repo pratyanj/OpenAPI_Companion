@@ -113,16 +113,40 @@ async function boot(): Promise<void> {
   const collapsedResult = await storage.getData<boolean>(COLLAPSED_KEY)
   const initialCollapsed = collapsedResult.ok && collapsedResult.value === true
 
+  // ── Layout injection ────────────────────────────────────────────────────────
+  // The sidebar is position:fixed on the right. A CSS variable --oac-w drives
+  // both the host width and the body margin-right, so changing one value in
+  // SidebarShell animates the page reflow and the panel together.
+  const OPEN_W = '320px'
+  const MINI_W = '40px'
+  const initW = initialCollapsed ? MINI_W : OPEN_W
+  document.documentElement.style.setProperty('--oac-w', initW)
+
+  const layoutStyle = document.createElement('style')
+  layoutStyle.id = 'oac-layout-styles'
+  layoutStyle.textContent =
+    // Push page content left so the sidebar never overlaps it.
+    // calc(var + 8px) accounts for the 8px inset gap on the right.
+    `body{margin-right:calc(var(--oac-w) + 8px)!important;transition:margin-right 200ms ease}` +
+    // The host sits fixed in the viewport, slightly inset so rounded corners show.
+    `#${CONTAINER_ID}{position:fixed!important;right:8px;top:8px;` +
+    `height:calc(100vh - 16px);width:var(--oac-w);` +
+    `transition:width 200ms ease;z-index:2147483647}`
+  document.head.appendChild(layoutStyle)
+
   const host = document.createElement('div')
   host.id = CONTAINER_ID
   document.body.appendChild(host)
+
   const shadow = host.attachShadow({ mode: 'open' })
 
   const style = document.createElement('style')
   style.textContent = shadowCss
   shadow.appendChild(style)
 
+  // Mount point fills the fixed host so the sidebar reaches full height.
   const mountPoint = document.createElement('div')
+  mountPoint.style.cssText = 'height:100%'
   shadow.appendChild(mountPoint)
 
   const theme = new ThemeManager({ storage, root: mountPoint, bus })
