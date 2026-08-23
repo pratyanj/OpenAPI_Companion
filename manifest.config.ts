@@ -25,7 +25,7 @@ export default defineManifest({
   // Side Panel API needs Chrome 114+; programmatic `sidePanel.open()` (used by
   // the keyboard shortcut + in-page launcher) needs 116+.
   minimum_chrome_version: '116',
-  permissions: ['storage', 'activeTab', 'scripting', 'unlimitedStorage', 'downloads', 'sidePanel'],
+  permissions: ['storage', 'activeTab', 'unlimitedStorage', 'sidePanel'],
   host_permissions: ['http://*/*', 'https://*/*'],
   // Keyboard shortcut to open the side panel (rebindable at
   // chrome://extensions/shortcuts). Handled in the background worker.

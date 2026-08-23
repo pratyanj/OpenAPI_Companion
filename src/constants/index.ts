@@ -9,14 +9,7 @@ export const APP_NAME = 'OpenAPI Companion'
 export const APP_VERSION: string = pkg.version
 
 /** Fixed permission set (DD-035; `sidePanel` added for the native Side Panel). */
-export const PERMISSIONS = [
-  'storage',
-  'activeTab',
-  'scripting',
-  'unlimitedStorage',
-  'downloads',
-  'sidePanel',
-] as const
+export const PERMISSIONS = ['storage', 'activeTab', 'unlimitedStorage', 'sidePanel'] as const
 
 /** Current storage schema version (bumped via MigrationService, planning/08 §7). */
 export const SCHEMA_VERSION = 1

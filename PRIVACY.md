@@ -22,9 +22,8 @@ OpenAPI Companion operates with a **strict offline, local-first architecture**:
 The Extension requests specific browser permissions solely to provide its core developer functionality:
 
 - **`storage` & `unlimitedStorage`:** Used exclusively to save your request templates, authentication tokens, environment variables, and history logs locally on your device.
-- **`activeTab` & `scripting`:** Used strictly to detect Swagger UI / OpenAPI documentation pages and fill request parameters or authentication headers in the active browser tab when initiated by you.
+- **`activeTab`:** Used strictly to detect active Swagger UI / OpenAPI documentation pages and enable the side panel companion when initiated by you.
 - **`sidePanel`:** Used to display the companion interface alongside your Swagger UI documentation page.
-- **`downloads`:** Used only when you explicitly click to export generated mock dataset files (JSON or CSV) to your local downloads folder.
 - **Host Permissions (`http://*/*`, `https://*/*`):** Required to allow the extension to interact with self-hosted and cloud-hosted OpenAPI/Swagger documentation pages on localhost or any remote developer domain.
 
 ---
