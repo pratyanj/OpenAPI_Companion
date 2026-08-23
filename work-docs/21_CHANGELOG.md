@@ -111,6 +111,13 @@ Known Issues
 
 ---
 
+# [1.1.1] - 2026-08-23
+
+## Changed
+* **Permission footprint**: Removed unused `scripting` and `downloads` permissions from manifest and privacy policy to comply with Chrome Web Store least-privilege review guidelines.
+
+---
+
 # [1.1.0] - 2026-08-18
 
 ## Added
