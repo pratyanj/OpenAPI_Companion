@@ -254,4 +254,84 @@ describe('RequestService — templates', () => {
       expect.objectContaining({ body: '{"t":1}' }),
     )
   })
+
+  it('resolves {{VAR}} and dynamic system variables when applying a template (DD-032)', async () => {
+    const replay = vi.fn((): Result<void> => ok(undefined))
+    const storage = new StorageService({ area: createFakeArea(), now: () => NOW })
+    const bus = new EventBus()
+    const service = new RequestService({
+      storage,
+      adapter: mockAdapter({ replay }),
+      projectId: PROJECT,
+      bus,
+      now: () => NOW,
+      resolveVariables: (text, envId) => {
+        if (envId === 'qa') {
+          return ok({ text: text.replace('{{USER_ID}}', 'qa_usr_456'), missing: [] })
+        }
+        return ok({ text: text.replace('{{USER_ID}}', 'usr_123'), missing: [] })
+      },
+    })
+
+    const tpl = await service.saveTemplate('User Create', {
+      endpointId: 'post /users',
+      method: 'post',
+      environmentId: 'default',
+      body: '{"id":"{{USER_ID}}","trace":"{{$timestamp}}"}',
+      updatedAt: NOW,
+    })
+    expect(tpl.ok).toBe(true)
+    if (!tpl.ok) return
+
+    // Apply with default environment
+    await service.applyTemplate(tpl.value.templateId)
+    expect(replay).toHaveBeenCalledWith(
+      'post /users',
+      `{"id":"usr_123","trace":"${Math.floor(NOW / 1000)}"}`,
+    )
+
+    // Apply with QA environment override
+    await service.applyTemplate(tpl.value.templateId, undefined, 'qa')
+    expect(replay).toHaveBeenCalledWith(
+      'post /users',
+      `{"id":"qa_usr_456","trace":"${Math.floor(NOW / 1000)}"}`,
+    )
+  })
+
+  it('resolves {{VAR}} and dynamic variables when locating and filling a template', async () => {
+    const openEndpoint = vi.fn((): Result<void> => ok(undefined))
+    const writeRequest = vi.fn((): Result<void> => ok(undefined))
+    const storage = new StorageService({ area: createFakeArea(), now: () => NOW })
+    const bus = new EventBus()
+    const service = new RequestService({
+      storage,
+      adapter: mockAdapter({ openEndpoint, writeRequest }),
+      projectId: PROJECT,
+      bus,
+      now: () => NOW,
+      resolveVariables: (text) =>
+        ok({ text: text.replace('{{TOKEN}}', 'secret-jwt'), missing: [] }),
+    })
+
+    const tpl = await service.saveTemplate('Auth Request', {
+      endpointId: 'post /items',
+      method: 'post',
+      environmentId: 'default',
+      body: '{"token":"{{TOKEN}}","time":"{{$timestamp}}"}',
+      headers: { Authorization: 'Bearer {{TOKEN}}' },
+      updatedAt: NOW,
+    })
+    expect(tpl.ok).toBe(true)
+    if (!tpl.ok) return
+
+    await service.locateAndFill(tpl.value.templateId)
+    expect(openEndpoint).toHaveBeenCalledWith('post /items')
+    expect(writeRequest).toHaveBeenCalledWith(
+      'post /items',
+      expect.objectContaining({
+        body: `{"token":"secret-jwt","time":"${Math.floor(NOW / 1000)}"}`,
+        headers: { Authorization: 'Bearer secret-jwt' },
+      }),
+    )
+  })
 })

@@ -75,8 +75,14 @@ async function boot(): Promise<void> {
   mountLauncher() // floating button to open the panel from the page
 
   const auth = new AuthenticationService({ storage, adapter, projectId: meta.id, bus })
-  const requests = new RequestService({ storage, adapter, projectId: meta.id, bus })
   const environments = new EnvironmentService({ storage, projectId: meta.id, bus })
+  const requests = new RequestService({
+    storage,
+    adapter,
+    projectId: meta.id,
+    bus,
+    resolveVariables: (text, envId) => environments.resolve(text, envId),
+  })
   const history = new HistoryService({ storage, adapter, projectId: meta.id, bus })
   const collections = new CollectionsService({ storage, projectId: meta.id, bus })
 
@@ -287,8 +293,10 @@ async function boot(): Promise<void> {
         id as string,
         updates as Parameters<typeof requests.updateTemplate>[1],
       ),
-    'requests.locateAndFill': ([id]) => requests.locateAndFill(id as string),
-    'requests.applyTemplate': ([id]) => requests.applyTemplate(id as string),
+    'requests.locateAndFill': ([id, env]) =>
+      requests.locateAndFill(id as string, (env as string) || currentEnv),
+    'requests.applyTemplate': ([id, env]) =>
+      requests.applyTemplate(id as string, undefined, (env as string) || currentEnv),
     'requests.deleteTemplate': ([id]) => requests.deleteTemplate(id as string),
     'environments.list': () => environments.list(),
     'environments.getActiveId': () => environments.getActiveId(),

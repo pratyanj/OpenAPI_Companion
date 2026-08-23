@@ -27,7 +27,14 @@ export const BUILTIN_ENVIRONMENTS: ReadonlyArray<{ id: string; name: string }> =
   { id: 'production', name: 'Production' },
 ]
 
-const VAR_PATTERN = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g
+import { GENERATORS, type Rng } from '@/modules/fake-data/generators'
+
+export interface SubstituteOptions {
+  now?: () => number
+  rng?: Rng
+}
+
+const VAR_PATTERN = /\{\{\s*([$A-Za-z0-9_]+)\s*\}\}/g
 
 const errors = {
   duplicateName: (name: string): AppError => ({
@@ -47,14 +54,112 @@ const errors = {
   }),
 }
 
+function resolveDynamicVariable(key: string, nowFn: () => number, rngFn: Rng): string | null {
+  const norm = key.toLowerCase()
+  switch (norm) {
+    case '$uuid':
+    case '$guid':
+      return String(GENERATORS.uuid(rngFn))
+    case '$timestamp':
+      return String(Math.floor(nowFn() / 1000))
+    case '$timestampms':
+    case '$timestamp_ms':
+      return String(nowFn())
+    case '$isodate':
+    case '$iso_date':
+    case '$isotimestamp':
+    case '$iso_timestamp':
+      return new Date(nowFn()).toISOString()
+    case '$date':
+      return String(GENERATORS.date(rngFn))
+    case '$datetime':
+      return String(GENERATORS.datetime(rngFn))
+    case '$randomemail':
+    case '$random_email':
+      return String(GENERATORS.email(rngFn))
+    case '$randomname':
+    case '$random_name':
+    case '$randomfullname':
+    case '$random_fullname':
+      return String(GENERATORS.fullName(rngFn))
+    case '$randomfirstname':
+    case '$random_firstname':
+      return String(GENERATORS.firstName(rngFn))
+    case '$randomlastname':
+    case '$random_lastname':
+      return String(GENERATORS.lastName(rngFn))
+    case '$randomusername':
+    case '$random_username':
+      return String(GENERATORS.username(rngFn))
+    case '$randompassword':
+    case '$random_password':
+      return String(GENERATORS.password(rngFn))
+    case '$randomphone':
+    case '$random_phone':
+      return String(GENERATORS.phone(rngFn))
+    case '$randomint':
+    case '$random_int':
+    case '$randominteger':
+    case '$random_integer':
+      return String(GENERATORS.integer(rngFn))
+    case '$randomfloat':
+    case '$random_float':
+    case '$randomdecimal':
+    case '$random_decimal':
+      return String(GENERATORS.float(rngFn))
+    case '$randomboolean':
+    case '$random_boolean':
+    case '$randombool':
+    case '$random_bool':
+      return String(GENERATORS.boolean(rngFn))
+    case '$randomurl':
+    case '$random_url':
+      return String(GENERATORS.url(rngFn))
+    case '$randomcity':
+    case '$random_city':
+      return String(GENERATORS.city(rngFn))
+    case '$randomcountry':
+    case '$random_country':
+      return String(GENERATORS.country(rngFn))
+    case '$randomaddress':
+    case '$random_address':
+      return String(GENERATORS.address(rngFn))
+    case '$randomcompany':
+    case '$random_company':
+      return String(GENERATORS.company(rngFn))
+    case '$randomipv4':
+    case '$random_ipv4':
+    case '$randomip':
+    case '$random_ip':
+      return String(GENERATORS.ipv4(rngFn))
+    case '$randomword':
+    case '$random_word':
+    case '$randomslug':
+    case '$random_slug':
+      return String(GENERATORS.slug(rngFn))
+    case '$randomlorem':
+    case '$random_lorem':
+      return String(GENERATORS.loremSentence(rngFn))
+    default:
+      return null
+  }
+}
+
 /** Pure `{{VAR}}` substitution used by DD-032 (Companion-scoped resolution). */
 export function substitute(
   text: string,
   variables: Record<string, string>,
+  options?: SubstituteOptions,
 ): { text: string; missing: string[] } {
   const missing = new Set<string>()
+  const nowFn = options?.now ?? (() => Date.now())
+  const rngFn = options?.rng ?? Math.random
   const resolved = text.replace(VAR_PATTERN, (_match, key: string) => {
     if (key in variables) return variables[key] ?? ''
+    if (key.startsWith('$')) {
+      const dynamic = resolveDynamicVariable(key, nowFn, rngFn)
+      if (dynamic !== null) return dynamic
+    }
     missing.add(key)
     return `{{${key}}}`
   })
@@ -206,7 +311,7 @@ export class EnvironmentService {
   async resolve(text: string, id: string): Promise<Result<{ text: string; missing: string[] }>> {
     const env = await this.get(id)
     if (!env.ok) return env
-    return ok(substitute(text, env.value?.variables ?? {}))
+    return ok(substitute(text, env.value?.variables ?? {}, { now: this.now }))
   }
 
   /** Persist the active environment for this project WITHOUT emitting. */

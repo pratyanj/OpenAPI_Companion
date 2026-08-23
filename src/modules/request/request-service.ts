@@ -3,8 +3,15 @@ import { projectKey, type StorageService } from '@/core/storage'
 import { MAX_SAVED_BODY_BYTES } from '@/constants'
 import type { EventBus } from '@/core/events'
 import type { EndpointInfo, RequestSnapshot, SwaggerAdapter } from '@/adapters'
+import { substitute } from '@/modules/environment'
 import { stableId } from '@/utils'
 import type { CustomTemplateInput, RequestRecord, RequestTemplate } from './types'
+
+export type VariableResolver = (
+  text: string,
+  environmentId: string,
+) =>
+  Promise<Result<{ text: string; missing: string[] }>> | Result<{ text: string; missing: string[] }>
 
 export interface RequestServiceOptions {
   storage: StorageService
@@ -13,6 +20,7 @@ export interface RequestServiceOptions {
   bus?: EventBus
   now?: () => number
   debounceMs?: number
+  resolveVariables?: VariableResolver
 }
 
 const notFound = (endpointId: string): AppError => ({
@@ -42,6 +50,7 @@ export class RequestService {
   private readonly bus: EventBus | undefined
   private readonly now: () => number
   private readonly debounceMs: number
+  private readonly resolveVariables?: VariableResolver
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(options: RequestServiceOptions) {
@@ -51,6 +60,7 @@ export class RequestService {
     this.bus = options.bus
     this.now = options.now ?? (() => Date.now())
     this.debounceMs = options.debounceMs ?? 300
+    this.resolveVariables = options.resolveVariables
   }
 
   private draftKey(environmentId: string, endpointId: string): string {
@@ -107,7 +117,8 @@ export class RequestService {
     const got = await this.getDraft(environmentId, endpointId)
     if (!got.ok) return got
     if (!got.value) return ok(null)
-    const injected = this.adapter.writeRequest(endpointId, this.toSnapshot(got.value))
+    const snapshot = await this.toResolvedSnapshot(got.value, environmentId)
+    const injected = this.adapter.writeRequest(endpointId, snapshot)
     if (!injected.ok) return injected
     this.bus?.publish('REQUEST_RESTORED', { endpointId, environmentId })
     return ok(got.value)
@@ -260,20 +271,28 @@ export class RequestService {
   /**
    * Apply = navigate to the operation, fill the saved body, and EXECUTE it (an
    * explicit user action, unlike auto-restore which only fills empty fields).
+   * Resolves environment variables and dynamic system variables before running.
    */
-  async applyTemplate(templateId: string, endpointId?: string): Promise<Result<void>> {
+  async applyTemplate(
+    templateId: string,
+    endpointId?: string,
+    environmentId?: string,
+  ): Promise<Result<void>> {
     const got = await this.readData<RequestTemplate>(this.templateKey(templateId))
     if (!got.ok) return got
     if (!got.value) return err(notFound(templateId))
     const target = endpointId ?? got.value.endpointId
-    return this.adapter.replay(target, got.value.body)
+    const envId = environmentId ?? got.value.environmentId
+    const resolvedBody =
+      got.value.body != null ? await this.resolveText(got.value.body, envId) : undefined
+    return this.adapter.replay(target, resolvedBody)
   }
 
   /**
    * Locate & fill = navigate to the operation in Swagger and populate the saved
-   * body/parameters WITHOUT executing it.
+   * body/parameters WITHOUT executing it. Resolves environment variables and dynamic system variables.
    */
-  async locateAndFill(templateId: string): Promise<Result<void>> {
+  async locateAndFill(templateId: string, environmentId?: string): Promise<Result<void>> {
     const got = await this.readData<RequestTemplate>(this.templateKey(templateId))
     if (!got.ok) return got
     if (!got.value) return err(notFound(templateId))
@@ -281,12 +300,57 @@ export class RequestService {
     const opened = this.adapter.openEndpoint(endpointId)
     if (!opened.ok) return opened
     if (body != null) {
-      this.adapter.writeRequest(endpointId, this.toSnapshot(got.value))
+      const snapshot = await this.toResolvedSnapshot(
+        got.value,
+        environmentId ?? got.value.environmentId,
+      )
+      this.adapter.writeRequest(endpointId, snapshot)
     }
     return ok(undefined)
   }
 
   // --- helpers ---
+
+  async resolveText(text: string, environmentId: string): Promise<string> {
+    let current = text
+    if (this.resolveVariables) {
+      const res = await this.resolveVariables(text, environmentId)
+      if (res.ok) current = res.value.text
+    }
+    return substitute(current, {}, { now: this.now }).text
+  }
+
+  private async resolveRecord(
+    record: Record<string, string> | undefined,
+    environmentId: string,
+  ): Promise<Record<string, string> | undefined> {
+    if (!record) return undefined
+    const resolved: Record<string, string> = {}
+    for (const [k, v] of Object.entries(record)) {
+      resolved[k] = await this.resolveText(v, environmentId)
+    }
+    return resolved
+  }
+
+  private async toResolvedSnapshot(
+    record: RequestRecord,
+    environmentId?: string,
+  ): Promise<RequestSnapshot> {
+    const envId = environmentId ?? record.environmentId
+    const body = record.body != null ? await this.resolveText(record.body, envId) : undefined
+    const query = await this.resolveRecord(record.query, envId)
+    const path = await this.resolveRecord(record.path, envId)
+    const headers = await this.resolveRecord(record.headers, envId)
+    return {
+      endpointId: record.endpointId,
+      method: record.method,
+      body,
+      query,
+      path,
+      headers,
+      contentType: record.contentType,
+    }
+  }
 
   private toRecord(snapshot: RequestSnapshot, environmentId: string): RequestRecord {
     return {

@@ -48,8 +48,8 @@ export interface RequestPanelService {
     >,
   ): Promise<Result<RequestTemplate>>
   deleteTemplate(templateId: string): Promise<Result<void>>
-  applyTemplate(templateId: string): Promise<Result<void>>
-  locateAndFill(templateId: string): Promise<Result<void>>
+  applyTemplate(templateId: string, environmentId?: string): Promise<Result<void>>
+  locateAndFill(templateId: string, environmentId?: string): Promise<Result<void>>
   listEndpoints(): EndpointInfo[]
   getOpenRequests(): RequestSnapshot[]
 }

@@ -42,10 +42,57 @@ describe('substitute', () => {
       missing: [],
     })
   })
+
   it('reports missing variables and leaves the placeholder', () => {
     const result = substitute('{{A}}-{{B}}', { A: 'x' })
     expect(result.text).toBe('x-{{B}}')
     expect(result.missing).toEqual(['B'])
+  })
+
+  it('generates dynamic system variables (e.g. {{$uuid}}, {{$timestamp}}, {{$isoDate}})', () => {
+    const fixedNow = 1_700_000_000_000 // 1700000000 seconds
+    const result = substitute(
+      'id={{$uuid}}&time={{$timestamp}}&iso={{$isoDate}}',
+      {},
+      { now: () => fixedNow },
+    )
+    expect(result.missing).toEqual([])
+    expect(result.text).toContain('time=1700000000')
+    expect(result.text).toContain(`iso=${new Date(fixedNow).toISOString()}`)
+    expect(result.text).toMatch(
+      /id=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i,
+    )
+  })
+
+  it('generates fake-data dynamic variables (e.g. {{$randomEmail}}, {{$randomName}}, {{$randomInt}})', () => {
+    const result = substitute(
+      'email={{$randomEmail}}&name={{$randomName}}&count={{$randomInt}}&active={{$randomBoolean}}',
+      {},
+    )
+    expect(result.missing).toEqual([])
+    expect(result.text).toMatch(/email=[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i)
+    expect(result.text).toMatch(/name=[A-Za-z]+ [A-Za-z]+/i)
+    expect(result.text).toMatch(/count=\d+/)
+    expect(result.text).toMatch(/active=(true|false)/)
+  })
+
+  it('allows user-defined environment variables to override dynamic system variables', () => {
+    const result = substitute('{{$timestamp}}', { $timestamp: 'custom-time' })
+    expect(result.text).toBe('custom-time')
+    expect(result.missing).toEqual([])
+  })
+
+  it('handles case-insensitive dynamic system variable names', () => {
+    const fixedNow = 1_700_000_000_000
+    const result = substitute('{{$TIMESTAMP}}-{{$UUID}}', {}, { now: () => fixedNow })
+    expect(result.text).toContain('1700000000-')
+    expect(result.missing).toEqual([])
+  })
+
+  it('reports unconfigured dynamic variables as missing', () => {
+    const result = substitute('{{$unknownVar}}', {})
+    expect(result.text).toBe('{{$unknownVar}}')
+    expect(result.missing).toEqual(['$unknownVar'])
   })
 })
 
