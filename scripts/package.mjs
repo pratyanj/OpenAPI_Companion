@@ -5,7 +5,7 @@
  * and writes share/openapi-companion-<version>.zip.
  */
 import { execSync } from 'node:child_process'
-import { mkdirSync, rmSync, writeFileSync, statSync, readFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync, statSync, readFileSync, cpSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -58,11 +58,20 @@ rmSync(shareDir, { recursive: true, force: true })
 mkdirSync(stageDir, { recursive: true })
 
 // Stage the built extension, excluding source maps (smaller, cleaner share).
-execSync(`rsync -a --exclude='*.map' "${path.join(root, 'dist')}/" "${stageDir}/"`)
+cpSync(path.join(root, 'dist'), stageDir, {
+  recursive: true,
+  filter: (src) => !src.endsWith('.map'),
+})
 writeFileSync(path.join(stageDir, 'INSTALL.md'), INSTALL)
 
 // Zip so unzipping yields the "${folderName}" folder.
-execSync(`cd "${shareDir}" && zip -r -q "${folderName}.zip" "${folderName}"`)
+if (process.platform === 'win32') {
+  execSync(
+    `powershell -Command "Compress-Archive -Path '${stageDir}' -DestinationPath '${zipPath}' -Force"`
+  )
+} else {
+  execSync(`cd "${shareDir}" && zip -r -q "${folderName}.zip" "${folderName}"`)
+}
 
 const mb = (statSync(zipPath).size / 1024 / 1024).toFixed(2)
 console.log(`\n✓ ${path.relative(root, zipPath)}  (${mb} MB)`)
