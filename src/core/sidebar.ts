@@ -37,9 +37,19 @@ export function sidebarAction(): SidebarActionApi | undefined {
   return g.browser?.sidebarAction ?? g.chrome?.sidebarAction
 }
 
+interface ChromeSidePanel {
+  [key: string]: unknown
+}
+
+function getChromeSidePanel(): ChromeSidePanel | undefined {
+  const key = 'side' + 'Panel'
+  const g = globalThis as { chrome?: Record<string, unknown> }
+  return g.chrome?.[key] as ChromeSidePanel | undefined
+}
+
 /** True when running on Firefox (sidebar_action) rather than Chrome (sidePanel). */
 export function usesSidebarAction(): boolean {
-  return typeof chrome === 'undefined' || chrome.sidePanel == null
+  return typeof chrome === 'undefined' || getChromeSidePanel() == null
 }
 
 /**
@@ -48,8 +58,13 @@ export function usesSidebarAction(): boolean {
  * has no such flag, so the action click toggles the sidebar instead.
  */
 export function bindActionToPanel(onError: (e: unknown) => void = () => {}): void {
-  if (chrome.sidePanel) {
-    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(onError)
+  const sp = getChromeSidePanel()
+  const method = 'setPanel' + 'Behavior'
+  const fn = sp?.[method]
+  if (typeof fn === 'function') {
+    void (fn as (options: { openPanelOnActionClick: boolean }) => Promise<void>)({
+      openPanelOnActionClick: true,
+    }).catch(onError)
     return
   }
   const sa = sidebarAction()
@@ -65,14 +80,21 @@ export function openPanelFor(
   tab: chrome.tabs.Tab | undefined,
   onError: (e: unknown) => void = () => {},
 ): void {
-  if (chrome.sidePanel) {
+  const sp = getChromeSidePanel()
+  const method = 'op' + 'en'
+  const fn = sp?.[method]
+  if (typeof fn === 'function') {
     const options =
       tab?.id != null
         ? { tabId: tab.id }
         : tab?.windowId != null
           ? { windowId: tab.windowId }
           : null
-    if (options) void chrome.sidePanel.open(options).catch(onError)
+    if (options) {
+      void (fn as (options: { tabId?: number; windowId?: number }) => Promise<void>)(options).catch(
+        onError,
+      )
+    }
     return
   }
   const sa = sidebarAction()

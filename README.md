@@ -27,18 +27,14 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ## Supported Browsers
 
-| Browser | Supported |
-|---|---|
-| Google Chrome 116+ | ✅ |
-| Microsoft Edge | ✅ |
-| Brave | ✅ |
-| Arc | ✅ |
-| Opera | ✅ |
-| Firefox (128+) | ✅ |
-
-> **Chrome & Chromium:** Requires Chrome 116+ — the extension uses the native `chrome.sidePanel` API introduced in Chrome 114, and `sidePanel.open()` (used by keyboard shortcuts and the in-page launcher) requires 116+.
->
-> **Firefox (128+):** Uses Firefox's native `sidebar_action` API. Build with `npm run build:firefox` and load via `about:debugging`.
+| Browser | Supported | Notes |
+|---|---|---|
+| Google Chrome 116+ | ✅ | Native `chrome.sidePanel` |
+| Microsoft Edge | ✅ | Native `chrome.sidePanel` |
+| Brave | ✅ | Native `chrome.sidePanel` |
+| Arc | ✅ | Native `chrome.sidePanel` |
+| Opera | ✅ | Native `chrome.sidePanel` |
+| Mozilla Firefox (140+) | ✅ | Native `sidebar_action` |
 
 ---
 
@@ -55,19 +51,34 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ## Installation
 
-### Option A — Load from Release ZIP (Recommended for users)
+### For Google Chrome, Edge, Brave, Arc, Opera
 
-1. Download `openapi-companion-1.1.2.zip` from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.1.2).
+1. Download **`openapi-companion-1.1.2.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.1.2).
 2. Unzip the file anywhere on your machine.
-3. Open `chrome://extensions` (or `edge://extensions`, `about:debugging` on Firefox).
-4. Enable **Developer mode** (toggle, top-right in Chrome/Edge).
-5. Click **Load unpacked** (or **Load Temporary Add-on** in Firefox) and select the unzipped folder (`manifest.json` is at the root).
-6. The **OpenAPI Companion** card appears. Pin it to the toolbar for easy access.
-7. Open any **Swagger UI** page — the side panel opens automatically.
+3. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
+4. Enable **Developer mode** (top-right toggle).
+5. Click **Load unpacked** and select the unzipped folder (`manifest.json` is at the root).
+6. Pin **OpenAPI Companion** to your toolbar for quick access.
 
-### Option B — Build from Source (For developers)
+### For Mozilla Firefox
 
-See the [Developer Setup](#developer-setup) section below.
+#### Option 1 — Install via Mozilla Add-ons (AMO)
+*(Available once published)* — Visit the addons.mozilla.org listing and click **Add to Firefox**.
+
+#### Option 2 — Load Release ZIP in Firefox (Testing / Unpacked)
+1. Download **`openapi-companion-1.1.2-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.1.2).
+2. Open Firefox and navigate to **`about:debugging#/runtime/this-firefox`** (or menu: *Tools* → *Browser Tools* → *about:debugging*).
+3. Click **Load Temporary Add-on…**.
+4. Select the downloaded `openapi-companion-1.1.2-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
+5. OpenAPI Companion will appear in your toolbar and extensions list.
+
+#### Option 3 — Build from Source
+```bash
+npm install
+npm run build:firefox
+```
+* Generates the unzipped Firefox extension in `dist-firefox/`.
+* Packages the AMO-ready archive in `share/openapi-companion-1.1.2-firefox.zip`.
 
 ---
 

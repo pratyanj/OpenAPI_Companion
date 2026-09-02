@@ -123,7 +123,7 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 // because sidebarAction.close() requires a direct user gesture and is blocked
 // inside background event listeners.
 if (usesSidebarAction()) {
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
     if (changeInfo.status !== 'complete' || !tab.active) return
     const windowId = tab.windowId ?? 0
     const panel = openPanels.get(windowId)

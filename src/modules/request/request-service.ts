@@ -366,18 +366,6 @@ export class RequestService {
     }
   }
 
-  private toSnapshot(record: RequestRecord): RequestSnapshot {
-    return {
-      endpointId: record.endpointId,
-      method: record.method,
-      body: record.body,
-      query: record.query,
-      path: record.path,
-      headers: record.headers,
-      contentType: record.contentType,
-    }
-  }
-
   private async readData<T>(key: string): Promise<Result<T | null>> {
     const got = await this.storage.getData<T>(key)
     if (!got.ok) return got.error.code === 'STORAGE_CORRUPT' ? ok(null) : got

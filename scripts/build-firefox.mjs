@@ -84,12 +84,12 @@ if (manifest.background?.service_worker) {
   }
 }
 
-// 4. Firefox add-on identity + minimum version (world:"MAIN" needs 128+)
+// 4. Firefox add-on identity + minimum version (140.0+ required by data_collection_permissions)
 //    + data_collection_permissions required for AMO submission.
 manifest.browser_specific_settings = {
   gecko: {
     id: 'openapi-companion@pratyanj',
-    strict_min_version: '128.0',
+    strict_min_version: '140.0',
     data_collection_permissions: {
       required: ['none'],
     },
@@ -129,7 +129,7 @@ createZip(out, firefoxZip, (rel) => !rel.endsWith('.map'))
 
 console.log(`\n✓ Firefox AMO release zip: ${firefoxZip}`)
 console.log(
-  '  Upload this zip file to https://addons.mozilla.org/developers/addon/submit/upload-listed'
+  '  Upload this zip file to https://addons.mozilla.org/developers/addon/submit/upload-listed',
 )
 console.log(
   '\nLoad: Firefox → about:debugging → Load Temporary Add-on → dist-firefox/manifest.json',
