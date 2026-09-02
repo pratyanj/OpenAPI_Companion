@@ -34,9 +34,11 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 | Brave | ✅ |
 | Arc | ✅ |
 | Opera | ✅ |
-| Firefox | 🔜 Planned |
+| Firefox (128+) | ✅ |
 
-> **Requires Chrome 116+** — the extension uses the native `chrome.sidePanel` API introduced in Chrome 114, and `sidePanel.open()` (used by keyboard shortcut and in-page launcher) requires 116+.
+> **Chrome & Chromium:** Requires Chrome 116+ — the extension uses the native `chrome.sidePanel` API introduced in Chrome 114, and `sidePanel.open()` (used by keyboard shortcuts and the in-page launcher) requires 116+.
+>
+> **Firefox (128+):** Uses Firefox's native `sidebar_action` API. Build with `npm run build:firefox` and load via `about:debugging`.
 
 ---
 
@@ -55,11 +57,11 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ### Option A — Load from Release ZIP (Recommended for users)
 
-1. Download `openapi-companion-1.0.0.zip` from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.0.0).
+1. Download `openapi-companion-1.1.2.zip` from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.1.2).
 2. Unzip the file anywhere on your machine.
-3. Open `chrome://extensions` (or `edge://extensions`).
-4. Enable **Developer mode** (toggle, top-right).
-5. Click **Load unpacked** and select the unzipped folder (`manifest.json` is at the root).
+3. Open `chrome://extensions` (or `edge://extensions`, `about:debugging` on Firefox).
+4. Enable **Developer mode** (toggle, top-right in Chrome/Edge).
+5. Click **Load unpacked** (or **Load Temporary Add-on** in Firefox) and select the unzipped folder (`manifest.json` is at the root).
 6. The **OpenAPI Companion** card appears. Pin it to the toolbar for easy access.
 7. Open any **Swagger UI** page — the side panel opens automatically.
 
@@ -76,9 +78,14 @@ See the [Developer Setup](#developer-setup) section below.
 3. Use the tabs to access each feature module.
 4. Everything is saved automatically. Refresh the page — your auth and requests are still there.
 
-**Keyboard shortcut:** `Ctrl+Shift+O` / `Cmd+Shift+O` opens or closes the panel from anywhere.
+**Keyboard shortcut:**
+* **Chrome / Edge / Brave / Arc:** `Ctrl+Shift+O` / `Cmd+Shift+O`
+* **Firefox:** `Ctrl+Alt+O` / `Cmd+Alt+O` (avoids Firefox's built-in bookmark sidebar shortcut)
 
-> The side panel automatically **closes when you switch browser tabs** and reconnects when you return to a Swagger page.
+> [!NOTE]
+> **🦊 Firefox Specifics:**
+> 1. **No in-page floating launcher button:** Due to Firefox's security model (`sidebarAction.open()` requires a direct user gesture and cannot be triggered from a content-script message), the floating bottom-right icon is hidden on Firefox. Open the sidebar via the toolbar icon, right-click context menu (**"Open OpenAPI Companion"**), or `Ctrl+Alt+O` (`Cmd+Alt+O`).
+> 2. **Auto-close when leaving Swagger:** On Firefox, the sidebar automatically closes whenever you switch browser tabs or navigate away from the Swagger documentation page.
 
 ---
 
