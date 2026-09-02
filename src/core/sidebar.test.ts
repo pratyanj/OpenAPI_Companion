@@ -64,12 +64,14 @@ describe('sidebar shim — Firefox (sidebarAction)', () => {
     expect(sidebarAction.open).toHaveBeenCalledTimes(1)
   })
 
-  it('closeSelf uses sidebarAction.close on Firefox', () => {
+  it('closeSelf uses window.close on Firefox (not sidebarAction.close which requires user gesture)', () => {
     const { sidebarAction } = firefoxWithSidebarAction()
     const winClose = vi.spyOn(window, 'close').mockImplementation(() => {})
     closeSelf()
-    expect(sidebarAction.close).toHaveBeenCalledTimes(1)
-    expect(winClose).not.toHaveBeenCalled()
+    // Must use window.close() — sidebarAction.close() is blocked by Firefox
+    // when called from a background message handler (no user gesture).
+    expect(winClose).toHaveBeenCalledTimes(1)
+    expect(sidebarAction.close).not.toHaveBeenCalled()
     winClose.mockRestore()
   })
 })

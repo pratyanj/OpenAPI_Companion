@@ -59,6 +59,11 @@ for (const cs of manifest.content_scripts ?? []) {
 // 1. Chrome-only keys.
 delete manifest.minimum_chrome_version
 manifest.permissions = (manifest.permissions ?? []).filter((p) => p !== 'sidePanel')
+// contextMenus is needed on Firefox so the right-click menu can open the sidebar
+// (sidebarAction.open() requires a direct user gesture; contextMenus.onClicked qualifies).
+if (!manifest.permissions.includes('contextMenus')) {
+  manifest.permissions.push('contextMenus')
+}
 
 // 2. side_panel → sidebar_action (Firefox's docked panel).
 if (manifest.side_panel?.default_path) {
@@ -84,6 +89,23 @@ manifest.browser_specific_settings = {
     id: 'openapi-companion@pratyanj',
     strict_min_version: '128.0',
   },
+}
+
+// 5. Keyboard shortcut — Chrome's Ctrl+Shift+O conflicts with Firefox's
+//    built-in "Bookmarks sidebar" shortcut. Replace it with Firefox's native
+//    _execute_sidebar_action command, which the browser handles automatically
+//    to toggle the sidebar_action without any background-script handler needed.
+//    Ctrl+Alt+O is safe in Firefox (not reserved by any default browser action).
+delete manifest.commands?.['open-side-panel']
+manifest.commands = manifest.commands ?? {}
+manifest.commands['_execute_sidebar_action'] = {
+  suggested_key: { default: 'Ctrl+Alt+O', mac: 'Command+Alt+O' },
+  description: 'Toggle OpenAPI Companion sidebar',
+}
+
+// 6. Remove Chrome-specific properties from web_accessible_resources.
+for (const war of manifest.web_accessible_resources ?? []) {
+  delete war.use_dynamic_url
 }
 
 writeFileSync(resolve(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')

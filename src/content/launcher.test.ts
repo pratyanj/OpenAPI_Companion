@@ -45,22 +45,21 @@ describe('mountLauncher', () => {
     expect(document.getElementById('oac-launcher-host')).toBeNull()
   })
 
-  // Firefox can't open its sidebar from a page click, so the button shows a hint
-  // pointing to the toolbar / shortcut instead of messaging the background.
-  it('shows a hint (and does not message) on Firefox', () => {
+  // Firefox: the floating launcher is not mounted at all because the button cannot
+  // open Firefox's sidebar (sidebarAction.open() requires a user gesture, which is
+  // lost in the content-script → background message hop). Firefox users use the
+  // toolbar icon or Ctrl+Alt+O keyboard shortcut instead.
+  it('does not inject anything on Firefox', () => {
     const original = navigator.userAgent
     Object.defineProperty(navigator, 'userAgent', {
       value: 'Mozilla/5.0 (Macintosh) Gecko/20100101 Firefox/128.0',
       configurable: true,
     })
     try {
-      mountLauncher()
-      const hint = document.getElementById('oac-launcher-host')?.shadowRoot?.querySelector('.hint')
-      expect(hint?.classList.contains('show')).toBe(false)
-
-      button()?.click()
-      expect(sendMessage).not.toHaveBeenCalled()
-      expect(hint?.classList.contains('show')).toBe(true)
+      const remove = mountLauncher()
+      expect(document.getElementById('oac-launcher-host')).toBeNull()
+      remove() // disposer must be a no-op
+      expect(document.getElementById('oac-launcher-host')).toBeNull()
     } finally {
       Object.defineProperty(navigator, 'userAgent', { value: original, configurable: true })
     }
