@@ -89,7 +89,7 @@ async function render(root: Root): Promise<void> {
   // rather than letting the user conclude the feature is broken.
   const staleTab = ctx.buildId !== __BUILD_ID__
   if (staleTab) {
-    console.warn(
+    console.info(
       `[OpenAPI Companion] this tab runs build ${ctx.buildId}, the panel is ${__BUILD_ID__}.`,
     )
   }

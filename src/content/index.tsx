@@ -208,11 +208,28 @@ async function boot(): Promise<void> {
     return { context, adapter: adapterState }
   }
 
+  const safeSendMessage = (msg: unknown): void => {
+    try {
+      if (
+        typeof chrome !== 'undefined' &&
+        chrome?.runtime &&
+        typeof chrome.runtime.sendMessage === 'function'
+      ) {
+        const p = chrome.runtime.sendMessage(msg)
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {})
+        }
+      }
+    } catch {
+      // Extension context invalidated on reload; ignore silently
+    }
+  }
+
   let pushTimer: ReturnType<typeof setTimeout> | null = null
   const pushState = (): void => {
     if (pushTimer) clearTimeout(pushTimer)
     pushTimer = setTimeout(() => {
-      void chrome.runtime.sendMessage({ type: STATE_PUSH, state: buildState() }).catch(() => {})
+      safeSendMessage({ type: STATE_PUSH, state: buildState() })
     }, 250)
   }
 
@@ -220,7 +237,11 @@ async function boot(): Promise<void> {
   // response as a duplicate re-read (that silently lost repeat calls).
   adapter.onExecute((endpointId) => history.noticeExecution(endpointId))
 
-  adapter.observe(() => {
+  const unobserve = adapter.observe(() => {
+    if (typeof chrome === 'undefined' || !chrome?.runtime?.id) {
+      if (typeof unobserve === 'function') unobserve()
+      return
+    }
     requests.autosaveOpen(currentEnv)
     history.scheduleCapture(currentEnv)
     void tokenRefresh.noticeResponses(currentEnv) // 401/403 → auto-refresh (if enabled)
@@ -354,7 +375,7 @@ async function boot(): Promise<void> {
   // Forward selected bus events to the panel (best-effort; ignored if closed).
   for (const name of FORWARDED_EVENTS) {
     ;(bus.subscribe as (n: string, h: (p: unknown) => void) => void)(name, (payload) => {
-      void chrome.runtime.sendMessage({ type: EVENT_PUSH, name, payload }).catch(() => {})
+      safeSendMessage({ type: EVENT_PUSH, name, payload })
     })
   }
 
