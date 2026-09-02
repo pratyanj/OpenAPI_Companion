@@ -14,10 +14,11 @@
  * ⚠️ Runtime behaviour on Firefox is NOT verified in CI (no Firefox). See
  * FIREFOX.md for what to check and the known crxjs caveats.
  */
-import { readFileSync, writeFileSync, rmSync, cpSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync, cpSync, existsSync, mkdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import esbuild from 'esbuild'
+import { createZip } from './zip.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const src = resolve(root, 'dist')
@@ -83,11 +84,15 @@ if (manifest.background?.service_worker) {
   }
 }
 
-// 4. Firefox add-on identity + minimum version (world:"MAIN" needs 128+).
+// 4. Firefox add-on identity + minimum version (world:"MAIN" needs 128+)
+//    + data_collection_permissions required for AMO submission.
 manifest.browser_specific_settings = {
   gecko: {
     id: 'openapi-companion@pratyanj',
     strict_min_version: '128.0',
+    data_collection_permissions: {
+      required: ['none'],
+    },
   },
 }
 
@@ -115,6 +120,17 @@ console.log('  permissions   :', JSON.stringify(manifest.permissions))
 console.log('  sidebar_action:', JSON.stringify(manifest.sidebar_action?.default_panel))
 console.log('  background    :', JSON.stringify(manifest.background))
 console.log('  gecko         :', JSON.stringify(manifest.browser_specific_settings.gecko))
+
+// Package for AMO upload (zip files directly at the root of the archive with forward slashes).
+const shareDir = resolve(root, 'share')
+mkdirSync(shareDir, { recursive: true })
+const firefoxZip = resolve(shareDir, `openapi-companion-${manifest.version}-firefox.zip`)
+createZip(out, firefoxZip, (rel) => !rel.endsWith('.map'))
+
+console.log(`\n✓ Firefox AMO release zip: ${firefoxZip}`)
+console.log(
+  '  Upload this zip file to https://addons.mozilla.org/developers/addon/submit/upload-listed'
+)
 console.log(
   '\nLoad: Firefox → about:debugging → Load Temporary Add-on → dist-firefox/manifest.json',
 )

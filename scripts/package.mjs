@@ -4,10 +4,10 @@
  * first, stages dist/ (minus source maps), drops an INSTALL.md for recipients,
  * and writes share/openapi-companion-<version>.zip.
  */
-import { execSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync, statSync, readFileSync, cpSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { createZip } from './zip.mjs'
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
@@ -64,14 +64,8 @@ cpSync(path.join(root, 'dist'), stageDir, {
 })
 writeFileSync(path.join(stageDir, 'INSTALL.md'), INSTALL)
 
-// Zip so unzipping yields the "${folderName}" folder.
-if (process.platform === 'win32') {
-  execSync(
-    `powershell -Command "Compress-Archive -Path '${stageDir}' -DestinationPath '${zipPath}' -Force"`
-  )
-} else {
-  execSync(`cd "${shareDir}" && zip -r -q "${folderName}.zip" "${folderName}"`)
-}
+// Zip so unzipping yields the "${folderName}" folder with forward-slash paths.
+createZip(shareDir, zipPath, (rel) => rel.startsWith(`${folderName}/`))
 
 const mb = (statSync(zipPath).size / 1024 / 1024).toFixed(2)
 console.log(`\n✓ ${path.relative(root, zipPath)}  (${mb} MB)`)
