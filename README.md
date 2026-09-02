@@ -2,7 +2,7 @@
 
 > **A browser extension that turns Swagger UI into a persistent, productivity-focused API testing workspace.**
 
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.1.1)
+[![Version](https://img.shields.io/badge/version-1.1.2-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.1.2)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Chrome 116+](https://img.shields.io/badge/Chrome-116%2B-yellow.svg)](https://chromewebstore.google.com)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-orange.svg)](https://developer.chrome.com/docs/extensions/mv3/intro/)

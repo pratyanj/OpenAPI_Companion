@@ -111,6 +111,21 @@ Known Issues
 
 ---
 
+# [1.1.2] - 2026-09-02
+
+## Added
+* **Firefox Sidebar Enhancements**:
+  * **Dedicated Firefox Shortcut**: Bound `_execute_sidebar_action` to `Ctrl+Alt+O` (`Command+Alt+O` on macOS) to avoid collisions with Firefox's built-in bookmark sidebar shortcut (`Ctrl+Shift+O`).
+  * **Navigation Auto-Close**: Sidebar automatically closes when navigating away to a non-OpenAPI page via `tabs.onUpdated`.
+  * **Context Menu Access**: Added right-click context menu option (`Open OpenAPI Companion`) on Firefox.
+
+## Changed
+* **Content Script In-Page Launcher**: Suppressed floating launcher button injection on Firefox where page-initiated sidebar opening is disallowed by browser security policies.
+* **Extension Context Resiliency**: Wrapped content-to-background messaging in safe boundary checks and automatically disconnected DOM observers when the extension context is invalidated on reloads.
+* **Build Diagnostics**: Downgraded benign build-hash mismatch notification in sidepanel from a console warning to an informational log.
+
+---
+
 # [1.1.1] - 2026-08-23
 
 ## Changed
