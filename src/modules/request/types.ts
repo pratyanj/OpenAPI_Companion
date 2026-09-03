@@ -53,3 +53,14 @@ export interface RequestPanelService {
   listEndpoints(): EndpointInfo[]
   getOpenRequests(): RequestSnapshot[]
 }
+
+export const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+export type MethodFilter = (typeof METHODS)[number]
+
+export interface PresetEditorOpenOptions {
+  template?: RequestTemplate | null
+  initialEndpointId?: string
+  initialBody?: string
+  initialName?: string
+}
+

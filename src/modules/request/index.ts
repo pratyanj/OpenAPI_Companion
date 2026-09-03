@@ -7,4 +7,11 @@ export type {
   RequestRecord,
   RequestTemplate,
   CustomTemplateInput,
+  PresetEditorOpenOptions,
+  MethodFilter,
 } from './types'
+export { METHODS } from './types'
+export { PresetEditorModal } from './PresetEditorModal'
+export type { PresetEditorModalProps } from './PresetEditorModal'
+export { EndpointPicker, MethodTag } from './EndpointPicker'
+export type { EndpointPickerProps } from './EndpointPicker'
