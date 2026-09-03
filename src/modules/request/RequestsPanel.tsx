@@ -19,6 +19,7 @@ import {
   PlusIcon,
   ZapIcon,
   CloseIcon,
+  CopyIcon,
 } from '@/components'
 import type { EndpointInfo } from '@/adapters'
 import { substitute, type EnvironmentPanelService } from '@/modules/environment'
@@ -98,6 +99,9 @@ export function RequestsPanel({
   // Custom Preset Modal state (for local / fallback editing)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<RequestTemplate | null>(null)
+  const [createInitialEndpointId, setCreateInitialEndpointId] = useState<string | undefined>()
+  const [createInitialBody, setCreateInitialBody] = useState<string | undefined>()
+  const [createInitialName, setCreateInitialName] = useState<string | undefined>()
 
   const loadVariables = useCallback(async () => {
     if (!environmentService) return
@@ -261,6 +265,23 @@ export function RequestsPanel({
       return
     }
     setEditingTemplate(template)
+  }
+
+  // --- Duplicate Preset ---
+
+  const openDuplicateDialog = (template: RequestTemplate) => {
+    if (onOpenPresetEditor) {
+      onOpenPresetEditor({
+        initialEndpointId: template.endpointId,
+        initialBody: template.body,
+        initialName: `${template.name} (Copy)`,
+      })
+      return
+    }
+    setCreateInitialEndpointId(template.endpointId)
+    setCreateInitialBody(template.body)
+    setCreateInitialName(`${template.name} (Copy)`)
+    setIsCreateOpen(true)
   }
 
   return (
@@ -461,6 +482,14 @@ export function RequestsPanel({
                       <LocateIcon className="h-3.5 w-3.5" />
                     </IconButton>
 
+                    <IconButton
+                      label={`Duplicate ${t.name} with different values`}
+                      onClick={() => openDuplicateDialog(t)}
+                      className="text-muted hover:text-primary"
+                    >
+                      <CopyIcon className="h-3.5 w-3.5" />
+                    </IconButton>
+
                     <IconButton label={`Edit ${t.name}`} onClick={() => openEditDialog(t)}>
                       <EditIcon className="h-3.5 w-3.5" />
                     </IconButton>
@@ -558,12 +587,20 @@ export function RequestsPanel({
       {/* ── Create Custom Preset Dialog (Local / Fallback) ── */}
       {isCreateOpen && (
         <PresetEditorModal
+          key="fallback-create-preset-modal"
           service={service}
           environmentService={environmentService}
           bus={bus}
           environmentId={environmentId}
-          initialEndpointId={availableEndpoints[0]?.endpointId}
-          onClose={() => setIsCreateOpen(false)}
+          initialEndpointId={createInitialEndpointId ?? availableEndpoints[0]?.endpointId}
+          initialBody={createInitialBody}
+          initialName={createInitialName}
+          onClose={() => {
+            setIsCreateOpen(false)
+            setCreateInitialEndpointId(undefined)
+            setCreateInitialBody(undefined)
+            setCreateInitialName(undefined)
+          }}
           onSaved={() => void load()}
         />
       )}
@@ -571,6 +608,7 @@ export function RequestsPanel({
       {/* ── Edit Preset Dialog (Local / Fallback) ── */}
       {editingTemplate !== null && (
         <PresetEditorModal
+          key={`fallback-edit-preset-${editingTemplate.templateId}`}
           service={service}
           environmentService={environmentService}
           bus={bus}
