@@ -135,5 +135,30 @@
   - [ ] **⚠️ Verify in real browser:** every tab interactive in the native panel; nothing renders inside the Swagger page except the floating launcher + the ⌘K overlay; toolbar / `⌘⇧O` / launcher all toggle the panel; ⌘K opens the top-centered palette in the correct theme.
   - [ ] **Post-fix:** panel showed "No OpenAPI page connected" — root cause was missing `host_permissions` (panel→page `tabs.sendMessage` needs host access; `activeTab` doesn't survive tab switches). Added `host_permissions: http/https` + empty-state self-heal on the agent's first push. Boot diagnostics logged to the page/panel console.
   - [x] **Wire `{{VAR}}` substitution into request populate & dynamic system variables** (DD-032) — built-in dynamic variables (`{{$uuid}}`, `{{$timestamp}}`, `{{$isoDate}}`, `{{$randomEmail}}`, `{{$randomName}}`, etc.) + `resolveVariables` wired into `RequestService.restore`, `applyTemplate`, and `locateAndFill` for request bodies, path parameters, query parameters, and headers. **466 tests ✓.**
-- [ ] **Sprint B:** `.env` bulk import/export, raw text editor, secret masking (`••••••••`), and environment duplication.
-- [ ] **Sprint C:** 1-Click "Save to Environment" from History, Global Variable scope, and OpenAPI Spec Server Auto-Detection.
+- [x] **Project Variables Manager (Streamlined from legacy Environments):**
+  - [x] Removed redundant `Local`, `QA`, `Staging`, `UAT`, `Production` presets, cross-site jump confusion, and header switcher. Projects already map 1-to-1 with webpage origins/domains.
+  - [x] Direct **Project Variables** tab (`.env`): instantly view, add, edit, and save project variables without detached forms or "name already exists" errors.
+  - [x] Dual-mode editing: Table view + Raw `.env` editor (multi-line paste/edit: `KEY=value`).
+  - [x] Secret masking (`••••••••`) with one-click peek toggle and 1-click credential copy.
+  - [x] Exact `.env` file export (`application/octet-stream`, no `.txt` suffix) and Postman JSON export.
+  - [x] Import from `.env` and Postman JSON with auto-secret detection (**482 tests ✓**).
+- [x] **Project Variables Upgrades — Phase B: Workflow & Instant Chaining:**
+  - [x] **1-Click "Save to Variable" from API History & Response Inspector**:
+    - In `HistoryDetail` response viewer / headers viewer, click any JSON value or header to open a quick "Save to Variable" popover.
+    - Suggests target variable name (e.g. `access_token` -> `TOKEN` / `ACCESS_TOKEN`, `id` -> `USER_ID`, etc.) or custom variable name.
+    - Saves directly into active Project Variables with automatic secret detection (e.g. tokens/passwords marked as secret).
+    - Emits `ENVIRONMENT_CHANGED` to notify all panels and Swagger injectors immediately.
+  - [x] **Live Variable Autocomplete (`{{`) in Requests & Templates**:
+    - Interactive autocomplete popup triggered by typing `{{` in request body textareas, header values, path/query parameter inputs, and template editors.
+    - Lists both Project Variables (`{{TOKEN}}`, `{{API_KEY}}`, etc.) and built-in Dynamic Variables (`{{$uuid}}`, `{{$timestamp}}`, `{{$randomEmail}}`, etc.).
+    - Keyboard navigation (ArrowUp, ArrowDown, Enter/Tab, Escape) with variable value preview.
+  - [x] **Resolved Variable Preview & Missing Variable Alert**:
+    - Hover preview over any `{{VAR}}` showing its real-time resolved value.
+    - Warning badge when a request template references an undefined variable with 1-click "Add Variable" prompt (**495 tests ✓**).
+- [ ] **Project Variables Upgrades — Phase C: Automation & Cross-Project Power:**
+  - [ ] **Auto-Extraction Rules (Zero-Click Token Chaining)**:
+    - Rule builder to automatically capture response values (e.g., `POST /auth/login` -> extract `response.token` into `TOKEN`).
+  - [ ] **Global Variables Hierarchy (Cross-Project Shared Variables)**:
+    - Cross-project shared variables (`MY_EMAIL`, `DEFAULT_PAGE_SIZE`, etc.) accessible in every Swagger doc, overridden by Project Variables.
+  - [ ] **Variable Usage & Formatter Utilities**:
+    - cURL header copy with resolved variables and unused variable detector.
