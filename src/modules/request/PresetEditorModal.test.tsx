@@ -201,4 +201,34 @@ describe('PresetEditorModal', () => {
       expect(onClose).toHaveBeenCalled()
     })
   })
+
+  it('updates the selected endpoint when picking a different one from EndpointPicker', async () => {
+    const service = mockService()
+    render(
+      <PresetEditorModal
+        service={service}
+        environmentId="default"
+        initialEndpointId="post /auth/login"
+        onClose={vi.fn()}
+      />,
+    )
+
+    // Initial endpoint is /auth/login (POST)
+    expect(screen.getByText('/auth/login')).toBeInTheDocument()
+
+    // Open EndpointPicker
+    const trigger = screen.getByText('/auth/login').closest('button')
+    expect(trigger).toBeInTheDocument()
+    fireEvent.click(trigger!)
+
+    // Click on 'Get all users' (/users)
+    const userOption = screen.getByText('Get all users').closest('[role="button"]')
+    expect(userOption).toBeInTheDocument()
+    fireEvent.click(userOption!)
+
+    // Now trigger should display /users
+    expect(screen.getByText('/users')).toBeInTheDocument()
+    // And since it's GET, body notice should be displayed
+    expect(screen.getByText(/requests do not require a request body/i)).toBeInTheDocument()
+  })
 })

@@ -72,16 +72,19 @@ export function EndpointPicker({
     })
   }, [endpoints, query, methodFilter])
 
-  // Close on outside click
+  // Close on outside click (uses composedPath to pierce Shadow DOM)
   useEffect(() => {
     if (!isOpen) return
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
+      const path = e.composedPath ? e.composedPath() : []
+      const el = dropdownRef.current
+      if (el && (path.includes(el) || el.contains(e.target as Node))) {
+        return
       }
+      setIsOpen(false)
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    window.addEventListener('mousedown', handleClickOutside)
+    return () => window.removeEventListener('mousedown', handleClickOutside)
   }, [isOpen])
 
   const hasError = Boolean(error)
@@ -190,12 +193,17 @@ export function EndpointPicker({
                     key={ep.endpointId}
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       onSelect(ep.endpointId)
                       setIsOpen(false)
                     }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
                         onSelect(ep.endpointId)
                         setIsOpen(false)
                       }

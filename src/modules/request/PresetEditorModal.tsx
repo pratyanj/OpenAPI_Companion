@@ -93,12 +93,6 @@ export function PresetEditorModal({
   }, [template])
 
   useEffect(() => {
-    if (initialEndpointId) {
-      setEndpointId(initialEndpointId)
-    }
-  }, [initialEndpointId])
-
-  useEffect(() => {
     if (!endpointId && endpoints.length > 0) {
       setEndpointId(template?.endpointId ?? initialEndpointId ?? endpoints[0]?.endpointId ?? '')
     }
