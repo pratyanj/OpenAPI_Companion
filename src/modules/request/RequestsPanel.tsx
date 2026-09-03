@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { EventBus } from '@/core/events'
 import { useEventBus } from '@/hooks'
 import {
   Button,
   CopyButton,
-  Dialog,
   EmptyState,
   IconButton,
   Input,
   Spinner,
-  VariableTextarea,
   RequestsIcon,
   DeleteIcon,
   EditIcon,
@@ -21,40 +19,25 @@ import {
   PlusIcon,
   ZapIcon,
   CloseIcon,
-  CopiedIcon,
 } from '@/components'
 import type { EndpointInfo } from '@/adapters'
 import { substitute, type EnvironmentPanelService } from '@/modules/environment'
-import type { RequestPanelService, RequestTemplate } from './types'
+import {
+  METHODS,
+  type RequestPanelService,
+  type RequestTemplate,
+  type MethodFilter,
+  type PresetEditorOpenOptions,
+} from './types'
+import { MethodTag } from './EndpointPicker'
+import { PresetEditorModal } from './PresetEditorModal'
 
-interface RequestsPanelProps {
+export interface RequestsPanelProps {
   service: RequestPanelService
   bus: EventBus
   environmentId: string
   environmentService?: EnvironmentPanelService
-}
-
-const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
-type MethodFilter = (typeof METHODS)[number]
-
-const METHOD_STYLES: Record<string, { bg: string; text: string }> = {
-  get: { bg: 'bg-[#61affe]/15', text: 'text-[#61affe]' },
-  post: { bg: 'bg-[#49cc90]/15', text: 'text-[#49cc90]' },
-  put: { bg: 'bg-[#fca130]/15', text: 'text-[#fca130]' },
-  delete: { bg: 'bg-[#f93e3e]/15', text: 'text-[#f93e3e]' },
-  patch: { bg: 'bg-[#50e3c2]/15', text: 'text-[#50e3c2]' },
-}
-
-function MethodTag({ method }: { method: string }) {
-  const m = method.toLowerCase()
-  const style = METHOD_STYLES[m] ?? { bg: 'bg-surface', text: 'text-muted' }
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase ${style.bg} ${style.text}`}
-    >
-      {method}
-    </span>
-  )
+  onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
 }
 
 function formatJsonSafe(raw: string | undefined): string {
@@ -78,190 +61,12 @@ function formatDate(timestamp: number): string {
   })
 }
 
-// ── Searchable Endpoint Picker Component ──
-interface EndpointPickerProps {
-  endpoints: EndpointInfo[]
-  selectedEndpointId: string
-  onSelect: (endpointId: string) => void
-  disabled?: boolean
-}
-
-function EndpointPicker({
-  endpoints,
-  selectedEndpointId,
-  onSelect,
-  disabled = false,
-}: EndpointPickerProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [methodFilter, setMethodFilter] = useState<MethodFilter>('ALL')
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const selectedEndpoint = useMemo(
-    () => endpoints.find((ep) => ep.endpointId === selectedEndpointId),
-    [endpoints, selectedEndpointId],
-  )
-
-  const filteredEndpoints = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return endpoints.filter((ep) => {
-      if (methodFilter !== 'ALL' && ep.method.toUpperCase() !== methodFilter) {
-        return false
-      }
-      if (!q) return true
-      const matchesMethod = ep.method.toLowerCase().includes(q)
-      const matchesPath = ep.path.toLowerCase().includes(q)
-      const matchesSummary = (ep.summary || '').toLowerCase().includes(q)
-      return matchesMethod || matchesPath || matchesSummary
-    })
-  }, [endpoints, query, methodFilter])
-
-  // Close on outside click
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-
-  return (
-    <div className="relative flex flex-col gap-1" ref={dropdownRef}>
-      {/* ── Trigger Box ── */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-bg px-2.5 py-2 text-left text-xs transition hover:border-border/80 hover:bg-surface/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-      >
-        {selectedEndpoint ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <MethodTag method={selectedEndpoint.method} />
-            <span className="truncate font-mono font-medium text-text">
-              {selectedEndpoint.path}
-            </span>
-            {selectedEndpoint.summary && (
-              <span className="truncate text-muted">— {selectedEndpoint.summary}</span>
-            )}
-          </div>
-        ) : (
-          <span className="text-muted">Select an API endpoint…</span>
-        )}
-        <ChevronDownIcon
-          className={`h-4 w-4 shrink-0 text-muted transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {/* ── Custom Searchable Popover Dropdown (Fully Opaque) ── */}
-      {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 flex max-h-64 flex-col rounded-lg border border-border bg-surface shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-          {/* Search Header */}
-          <div className="flex flex-col gap-1.5 border-b border-border p-2 bg-surface">
-            <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
-              <input
-                type="text"
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter by path, method, or summary…"
-                className="w-full rounded-md border border-border bg-bg pl-8 pr-7 py-1.5 text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="absolute right-2 top-2 text-muted hover:text-text"
-                >
-                  <CloseIcon className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Quick Method Filters */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-              {METHODS.map((m) => {
-                const active = methodFilter === m
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMethodFilter(m)}
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors ${
-                      active
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-bg text-muted hover:bg-surface hover:text-text border border-border'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Endpoints List */}
-          <div className="flex flex-col gap-1.5 overflow-y-auto p-2 max-h-56 bg-surface">
-            {filteredEndpoints.length === 0 ? (
-              <div className="py-4 text-center text-xs text-muted">
-                {endpoints.length === 0
-                  ? 'No endpoints detected on this page.'
-                  : 'No matching endpoints.'}
-              </div>
-            ) : (
-              filteredEndpoints.map((ep) => {
-                const isSelected = ep.endpointId === selectedEndpointId
-                return (
-                  <div
-                    key={ep.endpointId}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      onSelect(ep.endpointId)
-                      setIsOpen(false)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        onSelect(ep.endpointId)
-                        setIsOpen(false)
-                      }
-                    }}
-                    className={`group flex flex-col gap-1 rounded-md border p-2 text-xs transition cursor-pointer select-none ${
-                      isSelected
-                        ? 'border-primary bg-primary/10 shadow-sm'
-                        : 'border-border bg-bg hover:border-muted hover:bg-surface/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <MethodTag method={ep.method} />
-                        <span className="font-mono text-[11px] font-medium text-text break-all">
-                          {ep.path}
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <span className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-primary">
-                          <CopiedIcon className="h-3 w-3" />
-                        </span>
-                      )}
-                    </div>
-                    {ep.summary ? (
-                      <div className="text-[11px] text-muted pl-0.5 group-hover:text-text/90">
-                        {ep.summary}
-                      </div>
-                    ) : null}
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
+const METHOD_BORDER_COLORS: Record<string, string> = {
+  get: 'border-l-[#61affe]',
+  post: 'border-l-[#49cc90]',
+  put: 'border-l-[#fca130]',
+  delete: 'border-l-[#f93e3e]',
+  patch: 'border-l-[#50e3c2]',
 }
 
 export function RequestsPanel({
@@ -269,13 +74,13 @@ export function RequestsPanel({
   bus,
   environmentId,
   environmentService,
+  onOpenPresetEditor,
 }: RequestsPanelProps) {
   const [templates, setTemplates] = useState<RequestTemplate[]>([])
   const [loading, setLoading] = useState(true)
 
   // Project variables state for live autocomplete and preview
   const [projectVars, setProjectVars] = useState<Record<string, string>>({})
-  const [projectSecrets, setProjectSecrets] = useState<string[]>([])
   const [previewIds, setPreviewIds] = useState<Set<string>>(new Set())
 
   // Search & Filter state
@@ -290,18 +95,9 @@ export function RequestsPanel({
   const [captureName, setCaptureName] = useState('')
   const [captureHint, setCaptureHint] = useState<string | null>(null)
 
-  // Custom Preset Create Modal state
+  // Custom Preset Modal state (for local / fallback editing)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [createName, setCreateName] = useState('')
-  const [createEndpointId, setCreateEndpointId] = useState('')
-  const [createBody, setCreateBody] = useState('')
-  const [createError, setCreateError] = useState<string | null>(null)
-
-  // Edit Preset Modal state
   const [editingTemplate, setEditingTemplate] = useState<RequestTemplate | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editBody, setEditBody] = useState('')
-  const [editError, setEditError] = useState<string | null>(null)
 
   const loadVariables = useCallback(async () => {
     if (!environmentService) return
@@ -313,7 +109,6 @@ export function RequestsPanel({
       const target = listRes.value.find((e) => e.id === activeRes) || listRes.value[0]
       if (target) {
         setProjectVars(target.variables ?? {})
-        setProjectSecrets(target.secrets ?? [])
       }
     }
   }, [environmentService])
@@ -451,129 +246,21 @@ export function RequestsPanel({
   // --- Create Custom Preset ---
 
   const openCreateDialog = () => {
+    if (onOpenPresetEditor) {
+      onOpenPresetEditor({ initialEndpointId: availableEndpoints[0]?.endpointId })
+      return
+    }
     setIsCreateOpen(true)
-    setCreateName('')
-    setCreateError(null)
-    const initialEndpoint = availableEndpoints[0]?.endpointId || ''
-    setCreateEndpointId(initialEndpoint)
-    setCreateBody('{\n  \n}')
-  }
-
-  const handleFormatCreateBody = () => {
-    try {
-      if (!createBody.trim()) return
-      const parsed = JSON.parse(createBody)
-      setCreateBody(JSON.stringify(parsed, null, 2))
-      setCreateError(null)
-    } catch {
-      setCreateError('Invalid JSON format. Please check syntax.')
-    }
-  }
-
-  const handleSaveCreate = async () => {
-    const trimmedName = createName.trim()
-    if (!trimmedName) {
-      setCreateError('Preset name is required.')
-      return
-    }
-    if (!createEndpointId) {
-      setCreateError('Please select an endpoint.')
-      return
-    }
-
-    const [method = 'get'] = createEndpointId.split(' ')
-    const supportsBody = ['post', 'put', 'patch'].includes(method.toLowerCase())
-
-    const trimmedBody = supportsBody ? createBody.trim() : ''
-    if (supportsBody && trimmedBody) {
-      try {
-        JSON.parse(trimmedBody)
-      } catch {
-        setCreateError('Invalid JSON body. Please fix or format JSON before saving.')
-        return
-      }
-    }
-
-    const result = await service.createCustomTemplate({
-      name: trimmedName,
-      endpointId: createEndpointId,
-      method: method.toLowerCase(),
-      environmentId,
-      body: supportsBody && trimmedBody ? trimmedBody : undefined,
-    })
-
-    if (!result.ok) {
-      setCreateError(result.error.message)
-      return
-    }
-
-    setIsCreateOpen(false)
-    setCreateName('')
-    setCreateBody('')
-    setCreateError(null)
-    bus.publish('NOTIFY', {
-      kind: 'success',
-      message: `Preset "${trimmedName}" created successfully!`,
-    })
   }
 
   // --- Edit Preset ---
 
   const openEditDialog = (template: RequestTemplate) => {
+    if (onOpenPresetEditor) {
+      onOpenPresetEditor({ template })
+      return
+    }
     setEditingTemplate(template)
-    setEditName(template.name)
-    setEditBody(formatJsonSafe(template.body))
-    setEditError(null)
-  }
-
-  const handleFormatEditBody = () => {
-    try {
-      if (!editBody.trim()) return
-      const parsed = JSON.parse(editBody)
-      setEditBody(JSON.stringify(parsed, null, 2))
-      setEditError(null)
-    } catch {
-      setEditError('Invalid JSON format. Please check syntax.')
-    }
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editingTemplate) return
-    const trimmedName = editName.trim()
-    if (!trimmedName) {
-      setEditError('Preset name cannot be empty.')
-      return
-    }
-
-    const editMethod = (
-      editingTemplate.method ||
-      editingTemplate.endpointId.split(' ')[0] ||
-      'get'
-    ).toLowerCase()
-    const supportsBody = ['post', 'put', 'patch'].includes(editMethod)
-
-    const trimmedBody = supportsBody ? editBody.trim() : ''
-    if (supportsBody && trimmedBody) {
-      try {
-        JSON.parse(trimmedBody)
-      } catch {
-        setEditError('Invalid JSON body. Please fix syntax before saving.')
-        return
-      }
-    }
-
-    const result = await service.updateTemplate(editingTemplate.templateId, {
-      name: trimmedName,
-      body: supportsBody && trimmedBody ? trimmedBody : undefined,
-    })
-
-    if (!result.ok) {
-      setEditError(result.error.message)
-      return
-    }
-
-    setEditingTemplate(null)
-    bus.publish('NOTIFY', { kind: 'success', message: `Preset "${trimmedName}" updated!` })
   }
 
   return (
@@ -732,7 +419,9 @@ export function RequestsPanel({
             return (
               <div
                 key={t.templateId}
-                className="flex flex-col rounded-lg border border-border bg-surface/30 transition-all hover:border-muted"
+                className={`flex flex-col rounded-lg border border-border border-l-4 ${
+                  METHOD_BORDER_COLORS[method.toLowerCase()] || 'border-l-primary'
+                } bg-surface/30 transition-all hover:border-muted hover:shadow-sm`}
               >
                 {/* ── Card Header ── */}
                 <div
@@ -866,195 +555,30 @@ export function RequestsPanel({
         </div>
       )}
 
-      {/* ── Create Custom Preset Dialog ── */}
+      {/* ── Create Custom Preset Dialog (Local / Fallback) ── */}
       {isCreateOpen && (
-        <Dialog onClose={() => setIsCreateOpen(false)} title="Create Request Preset">
-          <div className="flex flex-col gap-3">
-            <p className="text-xs text-muted">
-              Create a custom reusable request preset for any endpoint in this API.
-            </p>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-text" htmlFor="create-tpl-name">
-                Preset Name <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="create-tpl-name"
-                value={createName}
-                onChange={(e) => {
-                  setCreateName(e.target.value)
-                  setCreateError(null)
-                }}
-                placeholder="e.g. Valid Admin User, Empty Name 400..."
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-text">
-                Target Endpoint <span className="text-destructive">*</span>
-              </span>
-              <EndpointPicker
-                endpoints={availableEndpoints}
-                selectedEndpointId={createEndpointId}
-                onSelect={(id) => {
-                  setCreateEndpointId(id)
-                  setCreateError(null)
-                }}
-              />
-            </div>
-
-            {/* JSON Body (Only for POST, PUT, PATCH) */}
-            {(() => {
-              const [createMethod = 'get'] = createEndpointId.split(' ')
-              const createSupportsBody = ['post', 'put', 'patch'].includes(
-                createMethod.toLowerCase(),
-              )
-
-              if (!createSupportsBody) {
-                return (
-                  <div className="rounded-md border border-border bg-surface p-2.5 text-center text-xs text-muted">
-                    <span className="font-semibold uppercase text-text">{createMethod}</span>{' '}
-                    requests do not require a request body.
-                  </div>
-                )
-              }
-
-              return (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-text" htmlFor="create-tpl-body">
-                      JSON Request Body
-                    </label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-6 text-[11px] px-1.5 text-muted hover:text-text"
-                      onClick={handleFormatCreateBody}
-                    >
-                      {'{ } Format JSON'}
-                    </Button>
-                  </div>
-                  <VariableTextarea
-                    id="create-tpl-body"
-                    rows={6}
-                    value={createBody}
-                    onChange={(e) => {
-                      setCreateBody(e.target.value)
-                      setCreateError(null)
-                    }}
-                    projectVariables={projectVars}
-                    projectSecrets={projectSecrets}
-                    placeholder={'{\n  "name": "example"\n}'}
-                    className="w-full rounded-md border border-border bg-bg p-2 font-mono text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary leading-relaxed"
-                  />
-                </div>
-              )
-            })()}
-
-            {createError ? <p className="text-xs text-destructive">{createError}</p> : null}
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <Button variant="secondary" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={() => void handleSaveCreate()}>
-                Create Preset
-              </Button>
-            </div>
-          </div>
-        </Dialog>
+        <PresetEditorModal
+          service={service}
+          environmentService={environmentService}
+          bus={bus}
+          environmentId={environmentId}
+          initialEndpointId={availableEndpoints[0]?.endpointId}
+          onClose={() => setIsCreateOpen(false)}
+          onSaved={() => void load()}
+        />
       )}
 
-      {/* ── Edit Preset Dialog ── */}
+      {/* ── Edit Preset Dialog (Local / Fallback) ── */}
       {editingTemplate !== null && (
-        <Dialog onClose={() => setEditingTemplate(null)} title="Edit Request Preset">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-text" htmlFor="edit-tpl-name">
-                Preset Name <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="edit-tpl-name"
-                value={editName}
-                onChange={(e) => {
-                  setEditName(e.target.value)
-                  setEditError(null)
-                }}
-                placeholder="Preset Name..."
-              />
-            </div>
-
-            {editingTemplate && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-text">Endpoint</span>
-                <div className="rounded border border-border bg-surface/50 px-2.5 py-1.5 font-mono text-xs text-muted">
-                  {editingTemplate.endpointId}
-                </div>
-              </div>
-            )}
-
-            {/* JSON Body (Only for POST, PUT, PATCH) */}
-            {(() => {
-              const editMethod = (
-                editingTemplate?.method ||
-                editingTemplate?.endpointId.split(' ')[0] ||
-                'get'
-              ).toLowerCase()
-              const editSupportsBody = ['post', 'put', 'patch'].includes(editMethod)
-
-              if (!editSupportsBody) {
-                return (
-                  <div className="rounded-md border border-border bg-surface p-2.5 text-center text-xs text-muted">
-                    <span className="font-semibold uppercase text-text">{editMethod}</span> requests
-                    do not require a request body.
-                  </div>
-                )
-              }
-
-              return (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-text" htmlFor="edit-tpl-body">
-                      JSON Request Body
-                    </label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-6 text-[11px] px-1.5 text-muted hover:text-text"
-                      onClick={handleFormatEditBody}
-                    >
-                      {'{ } Format JSON'}
-                    </Button>
-                  </div>
-                  <VariableTextarea
-                    id="edit-tpl-body"
-                    rows={6}
-                    value={editBody}
-                    onChange={(e) => {
-                      setEditBody(e.target.value)
-                      setEditError(null)
-                    }}
-                    projectVariables={projectVars}
-                    projectSecrets={projectSecrets}
-                    placeholder={'{\n  \n}'}
-                    className="w-full rounded-md border border-border bg-bg p-2 font-mono text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary leading-relaxed"
-                  />
-                </div>
-              )
-            })()}
-
-            {editError ? <p className="text-xs text-destructive">{editError}</p> : null}
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <Button variant="secondary" onClick={() => setEditingTemplate(null)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={() => void handleSaveEdit()}>
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </Dialog>
+        <PresetEditorModal
+          service={service}
+          environmentService={environmentService}
+          bus={bus}
+          environmentId={environmentId}
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          onSaved={() => void load()}
+        />
       )}
     </div>
   )

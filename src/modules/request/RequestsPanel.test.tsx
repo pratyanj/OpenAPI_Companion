@@ -304,5 +304,32 @@ describe('RequestsPanel', () => {
     expect(screen.getByText(/Missing in project variables:/)).toBeInTheDocument()
     expect(screen.getAllByText(/\{\{NOT_SET\}\}/).length).toBe(2)
   })
+
+  it('delegates New preset and Edit clicks to onOpenPresetEditor when provided', async () => {
+    const onOpenPresetEditor = vi.fn()
+    const service = mockService({ listTemplates: vi.fn(async () => ok([template])) })
+    render(
+      <RequestsPanel
+        service={service}
+        bus={new EventBus()}
+        environmentId="default"
+        onOpenPresetEditor={onOpenPresetEditor}
+      />,
+    )
+
+    await screen.findByText('Create user')
+
+    // Click "New preset"
+    fireEvent.click(screen.getByRole('button', { name: /New preset/i }))
+    expect(onOpenPresetEditor).toHaveBeenCalledWith(
+      expect.objectContaining({ initialEndpointId: expect.any(String) }),
+    )
+
+    // Click "Edit"
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Create user' }))
+    expect(onOpenPresetEditor).toHaveBeenCalledWith(
+      expect.objectContaining({ template }),
+    )
+  })
 })
 

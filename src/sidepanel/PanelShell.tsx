@@ -13,7 +13,7 @@ import type { EventBus } from '@/core/events'
 import type { ProjectMeta } from '@/core/project'
 import type { ThemeManager, ThemePreference } from '@/services'
 import type { AuthPanelService } from '@/modules/authentication'
-import type { RequestPanelService } from '@/modules/request'
+import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/request'
 import type { EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { FakeDataPanelService } from '@/modules/fake-data'
@@ -41,6 +41,8 @@ export interface PanelShellProps {
   environmentId: string
   /** Opens the palette in the PAGE (see `openPagePalette`) — not in this column. */
   onOpenPalette: () => void
+  /** Opens the preset editor overlay in the PAGE (see `openPagePresetEditor`). */
+  onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
   /** The page is running an older build of the agent; it needs a refresh. */
   staleTab?: boolean
   authService: AuthPanelService
@@ -66,6 +68,7 @@ export function PanelShell({
   bus,
   environmentId,
   onOpenPalette,
+  onOpenPresetEditor,
   staleTab = false,
   authService,
   requestService,
@@ -147,6 +150,7 @@ export function PanelShell({
           theme={theme}
           environmentId={activeEnv}
           onOpenPalette={onOpenPalette}
+          onOpenPresetEditor={onOpenPresetEditor}
           onNavigate={setActiveTab}
           swagger={swagger}
         />

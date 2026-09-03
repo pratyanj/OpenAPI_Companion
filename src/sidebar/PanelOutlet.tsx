@@ -3,7 +3,7 @@ import type { ProjectMeta } from '@/core/project'
 import type { EventBus } from '@/core/events'
 import type { ThemeManager } from '@/services'
 import { AuthPanel, type AuthPanelService } from '@/modules/authentication'
-import { RequestsPanel, type RequestPanelService } from '@/modules/request'
+import { RequestsPanel, type RequestPanelService, type PresetEditorOpenOptions } from '@/modules/request'
 import { EnvironmentsPanel, type EnvironmentPanelService } from '@/modules/environment'
 import { HistoryPanel, type HistoryPanelService } from '@/modules/history'
 import { FakeDataPanel, type FakeDataPanelService } from '@/modules/fake-data'
@@ -50,6 +50,8 @@ interface PanelOutletProps {
   environmentId?: string
   /** Opens the in-page command palette; enables the dashboard's Search action. */
   onOpenPalette?: () => void
+  /** Opens the in-page preset editor overlay. */
+  onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
   /** Tab switcher, so the dashboard can link into the other panels. */
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
@@ -71,6 +73,7 @@ export function PanelOutlet({
   theme,
   environmentId,
   onOpenPalette,
+  onOpenPresetEditor,
   onNavigate,
   swagger,
 }: PanelOutletProps) {
@@ -124,6 +127,7 @@ export function PanelOutlet({
         bus={bus}
         environmentId={environmentId}
         environmentService={environmentService}
+        onOpenPresetEditor={onOpenPresetEditor}
       />
     )
   }
