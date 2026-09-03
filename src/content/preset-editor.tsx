@@ -56,6 +56,7 @@ export function mountPresetEditor(
 
   const root: Root = createRoot(mount)
   let open = false
+  let openCount = 0
   let currentOptions: PresetEditorOpenOptions = {}
 
   function paint(): void {
@@ -63,6 +64,7 @@ export function mountPresetEditor(
       open ? (
         <StrictMode>
           <PresetEditorModal
+            key={`preset-editor-${openCount}`}
             service={requestService}
             environmentService={envService}
             bus={bus}
@@ -89,6 +91,7 @@ export function mountPresetEditor(
 
   return {
     open: (options: PresetEditorOpenOptions = {}) => {
+      openCount++
       currentOptions = options
       open = true
       paint()
