@@ -14,6 +14,7 @@ export interface EnvironmentInput {
   name: string
   baseUrl?: string
   variables?: Record<string, string>
+  secrets?: string[]
   description?: string
 }
 
@@ -244,6 +245,7 @@ export class EnvironmentService {
       name,
       baseUrl: input.baseUrl ?? '',
       variables: input.variables ?? {},
+      secrets: input.secrets ?? [],
       description: input.description,
       updatedAt: this.now(),
     }
@@ -262,11 +264,13 @@ export class EnvironmentService {
       name: patch.name?.trim() ?? current.value.name,
       baseUrl: patch.baseUrl ?? current.value.baseUrl,
       variables: patch.variables ?? current.value.variables,
+      secrets: patch.secrets !== undefined ? patch.secrets : (current.value.secrets ?? []),
       description: patch.description ?? current.value.description,
       updatedAt: this.now(),
     }
     const written = await this.storage.set(this.envKey(id), updated, { immediate: true })
     if (!written.ok) return written
+    this.bus?.publish('ENVIRONMENT_CHANGED', { projectId: this.projectId, environmentId: id })
     return ok(updated)
   }
 
@@ -278,6 +282,7 @@ export class EnvironmentService {
       name: `${source.value.name} (copy)`,
       baseUrl: source.value.baseUrl,
       variables: { ...source.value.variables },
+      secrets: source.value.secrets ? [...source.value.secrets] : [],
       description: source.value.description,
     })
   }

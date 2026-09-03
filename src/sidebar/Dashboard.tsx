@@ -12,7 +12,7 @@ import {
 } from '@/components'
 import { useEventBus } from '@/hooks'
 import type { EventBus } from '@/core/events'
-import type { Environment, ProjectMeta } from '@/core/project'
+import type { ProjectMeta } from '@/core/project'
 import { authStatusOf, type AuthPanelService, type AuthRecord } from '@/modules/authentication'
 import type { EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryEntry, HistoryPanelService } from '@/modules/history'
@@ -106,7 +106,7 @@ export function Dashboard({
   bus,
   environmentId,
   authService,
-  environmentService,
+  environmentService: _envService,
   historyService,
   requestService,
   importExportService,
@@ -116,26 +116,23 @@ export function Dashboard({
 }: DashboardProps) {
   const [auth, setAuth] = useState<AuthRecord | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(false)
-  const [environments, setEnvironments] = useState<Environment[]>([])
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [templateCount, setTemplateCount] = useState(0)
   const [busy, setBusy] = useState(false)
   const now = Date.now()
 
   const load = useCallback(async () => {
-    const [current, refreshOn, envs, entries, templates] = await Promise.all([
+    const [current, refreshOn, entries, templates] = await Promise.all([
       authService.current(environmentId),
       authService.isAutoRefreshEnabled(),
-      environmentService.list(),
       historyService.list({}),
       requestService.listTemplates(),
     ])
     setAuth(current.ok ? current.value : null)
     setAutoRefresh(refreshOn)
-    if (envs.ok) setEnvironments(envs.value)
     if (entries.ok) setHistory(entries.value)
     setTemplateCount(templates.ok ? templates.value.length : 0)
-  }, [authService, environmentService, historyService, requestService, environmentId])
+  }, [authService, historyService, requestService, environmentId])
 
   useEffect(() => {
     void load()
@@ -183,25 +180,6 @@ export function Dashboard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge kind="info">{project.docType}</Badge>
-          <label className="flex items-center gap-1 text-[11px] text-muted">
-            <span className="sr-only">Active environment</span>
-            <select
-              aria-label="Active environment"
-              value={environmentId}
-              onChange={(e) => void environmentService.switch(e.target.value)}
-              className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-text"
-            >
-              {environments.length === 0 ? (
-                <option value={environmentId}>{environmentId}</option>
-              ) : (
-                environments.map((env) => (
-                  <option key={env.id} value={env.id}>
-                    {env.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
         </div>
       </div>
 

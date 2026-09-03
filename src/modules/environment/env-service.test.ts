@@ -180,4 +180,32 @@ describe('EnvironmentService', () => {
     const resolved = await service.resolve('{{BASE_URL}}/health', 'qa')
     expect(resolved.ok && resolved.value.text).toBe('https://qa.example.com/health')
   })
+
+  it('stores, updates, and duplicates secrets', async () => {
+    const { service } = await setup()
+    const created = await service.create({
+      name: 'Staging',
+      variables: { API_KEY: 'secret1', PUBLIC_VAR: 'hello' },
+      secrets: ['API_KEY'],
+    })
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+    expect(created.value.secrets).toEqual(['API_KEY'])
+
+    // Update with new secrets
+    const updated = await service.update('staging', {
+      secrets: ['API_KEY', 'PUBLIC_VAR'],
+    })
+    expect(updated.ok).toBe(true)
+    if (!updated.ok) return
+    expect(updated.value.secrets).toEqual(['API_KEY', 'PUBLIC_VAR'])
+
+    // Duplicate preserves secrets
+    const dup = await service.duplicate('staging')
+    expect(dup.ok).toBe(true)
+    if (!dup.ok) return
+    expect(dup.value.secrets).toEqual(['API_KEY', 'PUBLIC_VAR'])
+  })
 })
+
+

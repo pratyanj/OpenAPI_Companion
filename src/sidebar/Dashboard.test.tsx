@@ -180,14 +180,6 @@ describe('Dashboard (Home tab)', () => {
     expect(p.importExportService.backup).toHaveBeenCalledTimes(1)
   })
 
-  it('switches environment from the header', async () => {
-    const p = props()
-    render(<Dashboard {...p} />)
-    const select = await screen.findByLabelText('Active environment')
-    fireEvent.change(select, { target: { value: 'qa' } })
-    expect(p.environmentService.switch).toHaveBeenCalledWith('qa')
-  })
-
   it('refreshes when a call is recorded elsewhere', async () => {
     const p = props()
     render(<Dashboard {...p} />)
