@@ -9,7 +9,7 @@ import type {
   SwaggerChange,
 } from '@/adapters'
 import type { AuthPanelService } from '@/modules/authentication'
-import type { RequestPanelService } from '@/modules/request'
+import type { RequestPanelService, RequestTemplate } from '@/modules/request'
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { CollectionsPanelService } from '@/modules/collections'
@@ -237,6 +237,19 @@ export function createRemoteEnvironmentService(): EnvironmentPanelService {
  */
 export function openPagePalette(): void {
   void rpcResult('palette.open')
+}
+
+/**
+ * Ask the page to open its Request Preset Editor overlay.
+ * Lives in the page (top-centered, 672px+ wide) for ample space.
+ */
+export function openPagePresetEditor(options?: {
+  template?: RequestTemplate | null
+  initialEndpointId?: string
+  initialBody?: string
+  initialName?: string
+}): void {
+  void rpcResult('presetEditor.open', options)
 }
 
 export function createRemoteHistoryService(): HistoryPanelService {

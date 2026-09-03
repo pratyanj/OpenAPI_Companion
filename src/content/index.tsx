@@ -17,7 +17,7 @@ import { docIdentityUrl } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
-import { RequestService, type CustomTemplateInput } from '@/modules/request'
+import { RequestService, type CustomTemplateInput, type RequestPanelService } from '@/modules/request'
 import { EnvironmentService, type EnvironmentInput } from '@/modules/environment'
 import { HistoryService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
@@ -25,6 +25,7 @@ import { CollectionsService } from '@/modules/collections'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
+import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -145,6 +146,37 @@ async function boot(): Promise<void> {
         } Refresh the page (⌘⇧R) to pick up the current build.`,
         cause,
       )
+      return null
+    }
+  }
+
+  let presetEditor: PresetEditorHandle | null = null
+  const withPresetEditor = async (): Promise<PresetEditorHandle | null> => {
+    if (presetEditor) return presetEditor
+    try {
+      const { mountPresetEditor } = await import('./preset-editor')
+      const requestPanelService: RequestPanelService = {
+        listTemplates: () => requests.listTemplates(),
+        saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
+        createCustomTemplate: (input) => requests.createCustomTemplate(input),
+        updateTemplate: (id, updates) => requests.updateTemplate(id, updates),
+        deleteTemplate: (id) => requests.deleteTemplate(id),
+        applyTemplate: (id, envId) => requests.applyTemplate(id, envId),
+        locateAndFill: (id, envId) => requests.locateAndFill(id, envId),
+        listEndpoints: () => adapter.listEndpoints(),
+        getOpenRequests: () => adapter.readOpenRequests(),
+      }
+      presetEditor = mountPresetEditor(requestPanelService, environments, bus, currentEnv)
+      const editorTheme = new ThemeManager({ storage, root: presetEditor.themeRoot, bus })
+      await editorTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void editorTheme.init()
+        }
+      })
+      return presetEditor
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page preset editor.`, cause)
       return null
     }
   }
@@ -272,6 +304,11 @@ async function boot(): Promise<void> {
     // Panel's search button → open the in-page palette (top-centered on the doc).
     'palette.open': () => {
       void withPalette().then((p) => p?.open())
+      return ok(undefined)
+    },
+    // Panel's preset editor → open the in-page editor (spacious overlay on the doc).
+    'presetEditor.open': ([options]) => {
+      void withPresetEditor().then((p) => p?.open(options as PresetEditorOpenOptions))
       return ok(undefined)
     },
     'history.list': ([q]) => history.list((q as Parameters<typeof history.list>[0]) ?? {}),
