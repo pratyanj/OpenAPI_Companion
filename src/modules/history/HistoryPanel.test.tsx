@@ -270,4 +270,36 @@ describe('HistoryPanel', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Copy URL' }))
     expect(copied).toBe('https://api.example.com/users')
   })
+
+  it('opens Save to Variable dialog from response tab when environmentService is provided', async () => {
+    const envService = {
+      list: vi.fn(async () => ok([{ id: 'default', name: 'Default', baseUrl: '', variables: {}, secrets: [], updatedAt: 0 }])),
+      getActiveId: vi.fn(async () => 'default'),
+      update: vi.fn(async () => ok({ id: 'default', name: 'Default', baseUrl: '', variables: {}, secrets: [], updatedAt: 0 })),
+      create: vi.fn(),
+      delete: vi.fn(),
+    }
+
+    render(
+      <HistoryPanel
+        service={mockService()}
+        bus={new EventBus()}
+        baseUrl="https://api.example.com"
+        environmentService={envService}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View post /users details' }))
+    await screen.findByRole('dialog', { name: 'Request detail' })
+
+    // Switch to Response tab
+    fireEvent.click(screen.getByRole('tab', { name: /Response/ }))
+
+    // Save to variable button should be present
+    const saveVarBtn = screen.getByRole('button', { name: 'Save to variable' })
+    expect(saveVarBtn).toBeInTheDocument()
+
+    fireEvent.click(saveVarBtn)
+    expect(await screen.findByText('Save Response Value to Variable')).toBeInTheDocument()
+  })
 })

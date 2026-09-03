@@ -39,6 +39,10 @@ import {
   ChevronRight,
   Plus,
   Zap,
+  Lock,
+  Unlock,
+  Upload,
+  FileText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -62,6 +66,7 @@ function make(Cmp: LucideIcon, defaultClass = 'h-4 w-4') {
 // Tabs
 export const HomeIcon = make(House)
 export const AuthIcon = make(KeyRound)
+export const KeyIcon = make(KeyRound)
 export const RequestsIcon = make(Package)
 export const EnvIcon = make(Globe)
 export const HistoryIcon = make(History)
@@ -100,6 +105,10 @@ export const ChevronDownIcon = make(ChevronDown)
 export const ChevronRightIcon = make(ChevronRight)
 export const PlusIcon = make(Plus)
 export const ZapIcon = make(Zap)
+export const LockIcon = make(Lock)
+export const UnlockIcon = make(Unlock)
+export const UploadIcon = make(Upload)
+export const FileTextIcon = make(FileText)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)

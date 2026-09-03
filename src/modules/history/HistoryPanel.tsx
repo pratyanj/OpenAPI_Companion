@@ -14,6 +14,7 @@ import {
   ReplayIcon,
   LocateIcon,
 } from '@/components'
+import type { EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryEntry, HistoryQuery, HistoryRecord } from './types'
 import { statusKind, methodKind } from './status'
 import { HistoryDetail } from './HistoryDetail'
@@ -50,6 +51,8 @@ interface HistoryPanelProps {
   bus: EventBus
   /** Origin for building full URLs in the detail view's copy menu. */
   baseUrl?: string
+  /** Optional Environment service for saving response values to project variables. */
+  environmentService?: EnvironmentPanelService
 }
 
 const METHODS = ['', 'get', 'post', 'put', 'patch', 'delete']
@@ -86,7 +89,7 @@ function lastCalled(timestamp: number): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-export function HistoryPanel({ service, bus, baseUrl }: HistoryPanelProps) {
+export function HistoryPanel({ service, bus, baseUrl, environmentService }: HistoryPanelProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -252,6 +255,8 @@ export function HistoryPanel({ service, bus, baseUrl }: HistoryPanelProps) {
           <HistoryDetail
             record={detail}
             baseUrl={baseUrl}
+            environmentService={environmentService}
+            bus={bus}
             // Sibling calls come from the list already loaded here — no extra
             // service call needed, and it stays in sync with the filters above.
             calls={entries.filter((e) => e.endpointId === detail.endpointId)}
