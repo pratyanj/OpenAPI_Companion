@@ -84,6 +84,7 @@ export const CloseIcon = make(X)
 export const DeleteIcon = make(Trash2)
 export const EditIcon = make(Pencil)
 export const RevealIcon = make(Eye)
+export const EyeIcon = RevealIcon
 export const HideIcon = make(EyeOff)
 export const BrandIcon = make(Compass)
 export const SearchIcon = make(Search)

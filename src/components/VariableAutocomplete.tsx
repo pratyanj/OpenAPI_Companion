@@ -15,12 +15,14 @@ import {
 export interface VariableTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   projectVariables?: Record<string, string>
   projectSecrets?: string[]
+  placement?: 'top' | 'bottom' | 'auto'
   onInsertVariable?: (varName: string) => void
 }
 
 export function VariableTextarea({
   projectVariables = {},
   projectSecrets = [],
+  placement = 'auto',
   value,
   defaultValue,
   onChange,
@@ -29,23 +31,28 @@ export function VariableTextarea({
   ...rest
 }: VariableTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [triggerIndex, setTriggerIndex] = useState(-1)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [resolvedPlacement, setResolvedPlacement] = useState<'top' | 'bottom'>('bottom')
 
   // Build full list of suggestions
-  const allSuggestions: VariableSuggestion[] = [
-    ...Object.entries(projectVariables).map(([name, val]) => {
+  const projectSuggestions: VariableSuggestion[] = Object.entries(projectVariables).map(
+    ([name, val]) => {
       const isSecret = projectSecrets.includes(name)
       return {
         name,
         kind: 'project' as const,
         preview: isSecret ? '••••••••' : val,
-        description: isSecret ? 'Secret project variable' : 'Project variable',
         isSecret,
       }
-    }),
+    },
+  )
+
+  const allSuggestions: VariableSuggestion[] = [
+    ...projectSuggestions,
     ...DYNAMIC_VARIABLE_SUGGESTIONS,
   ]
 
@@ -53,30 +60,73 @@ export function VariableTextarea({
   const filteredSuggestions = allSuggestions.filter((s) => {
     if (!query) return true
     const q = query.toLowerCase()
-    return s.name.toLowerCase().includes(q) || (s.description && s.description.toLowerCase().includes(q))
+    return (
+      s.name.toLowerCase().includes(q) ||
+      (s.description && s.description.toLowerCase().includes(q))
+    )
   })
+
+  // Separate filtered items into project and dynamic
+  const filteredProject = filteredSuggestions.filter((s) => s.kind === 'project')
+  const filteredDynamic = filteredSuggestions.filter((s) => s.kind === 'dynamic')
+
+  // Calculate placement dynamically when opening
+  useEffect(() => {
+    if (!isOpen || !textareaRef.current) return
+    if (placement === 'top') {
+      setResolvedPlacement('top')
+      return
+    }
+    if (placement === 'bottom') {
+      setResolvedPlacement('bottom')
+      return
+    }
+    // auto: check available space below
+    const rect = textareaRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    if (spaceBelow < 220 && rect.top > 240) {
+      setResolvedPlacement('top')
+    } else {
+      setResolvedPlacement('bottom')
+    }
+  }, [isOpen, placement])
 
   // Keep selectedIndex within bounds
   useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
-
-  const checkTrigger = (text: string, cursorPos: number) => {
-    const textBefore = text.slice(0, cursorPos)
-    const match = textBefore.match(/(?:\{\{)([$A-Za-z0-9_]*)$/)
-    if (match && match.index !== undefined) {
-      setTriggerIndex(match.index)
-      setQuery(match[1] || '')
-      setIsOpen(true)
-    } else {
-      setIsOpen(false)
+    if (selectedIndex >= filteredSuggestions.length) {
+      setSelectedIndex(Math.max(0, filteredSuggestions.length - 1))
     }
-  }
+  }, [filteredSuggestions.length, selectedIndex])
+
+  // Scroll active option into view
+  useEffect(() => {
+    if (!isOpen || !popupRef.current) return
+    const activeEl = popupRef.current.querySelector('[aria-selected="true"]') as HTMLElement | null
+    if (typeof activeEl?.scrollIntoView === 'function') {
+      activeEl.scrollIntoView({ block: 'nearest' })
+    }
+  }, [isOpen, selectedIndex])
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     onChange?.(e)
-    const cursorPos = e.target.selectionStart ?? 0
-    checkTrigger(e.target.value, cursorPos)
+
+    const strVal = e.target.value
+    const cursorPos = e.target.selectionStart ?? strVal.length
+
+    // Find the last index of `{{` before cursor
+    const lastOpen = strVal.lastIndexOf('{{', cursorPos - 1)
+    if (lastOpen !== -1) {
+      // Check that there is no closing `}}` between `{{` and cursorPos
+      const textBetween = strVal.slice(lastOpen + 2, cursorPos)
+      if (!textBetween.includes('}}') && !textBetween.includes('\n')) {
+        setTriggerIndex(lastOpen)
+        setQuery(textBetween.trim())
+        setIsOpen(true)
+        return
+      }
+    }
+
+    setIsOpen(false)
   }
 
   const insertSuggestion = (suggestion: VariableSuggestion) => {
@@ -159,55 +209,112 @@ export function VariableTextarea({
       {/* Autocomplete Popup */}
       {isOpen && filteredSuggestions.length > 0 && (
         <div
+          ref={popupRef}
           role="listbox"
           aria-label="Variable suggestions"
-          className="absolute left-2 right-2 bottom-full mb-1 max-h-52 overflow-y-auto rounded-md border border-border bg-surface shadow-xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in duration-100"
+          className={`absolute left-0 right-0 z-50 max-h-60 overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl p-1.5 flex flex-col gap-1 animate-in fade-in duration-100 ${
+            resolvedPlacement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+          }`}
         >
-          <div className="px-2 py-1 text-[10px] font-semibold text-muted border-b border-border flex items-center justify-between">
-            <span>Insert Variable (Tab or Enter to apply)</span>
-            <span className="font-mono text-[9px]">{filteredSuggestions.length} found</span>
-          </div>
-          {filteredSuggestions.map((s, idx) => {
-            const isSelected = idx === selectedIndex
-            return (
-              <div
-                key={s.name}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => insertSuggestion(s)}
-                className={`flex items-center justify-between rounded px-2 py-1.5 cursor-pointer text-xs transition-colors ${
-                  isSelected ? 'bg-primary text-primary-contrast' : 'text-text hover:bg-bg'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  {s.isSecret ? (
-                    <LockIcon className="h-3 w-3 shrink-0 text-warning" />
-                  ) : null}
-                  <span className="font-mono font-medium truncate">
-                    {`{{${s.name}}}`}
-                  </span>
-                  {s.description ? (
-                    <span
-                      className={`text-[10px] truncate ${
-                        isSelected ? 'opacity-90 text-primary-contrast' : 'text-muted'
-                      }`}
-                    >
-                      • {s.description}
-                    </span>
-                  ) : null}
-                </div>
-                {s.preview ? (
-                  <span
-                    className={`font-mono text-[10px] shrink-0 max-w-[120px] truncate ml-2 ${
-                      isSelected ? 'opacity-80' : 'text-muted'
+          {/* Project Variables Section */}
+          {filteredProject.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                <span>Project Variables</span>
+                <span className="font-mono text-[9px] font-normal">{filteredProject.length}</span>
+              </div>
+              {filteredProject.map((s) => {
+                const globalIdx = filteredSuggestions.indexOf(s)
+                const isSelected = globalIdx === selectedIndex
+                return (
+                  <div
+                    key={s.name}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => insertSuggestion(s)}
+                    className={`group flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer text-xs transition-colors ${
+                      isSelected ? 'bg-primary text-primary-contrast' : 'text-text hover:bg-bg'
                     }`}
                   >
-                    {s.preview}
-                  </span>
-                ) : null}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {s.isSecret ? (
+                        <span title="Secret variable">
+                          <LockIcon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-primary-contrast' : 'text-warning'}`} />
+                        </span>
+                      ) : null}
+                      <span className="font-mono font-semibold tracking-tight text-[11px] truncate">
+                        {`{{${s.name}}}`}
+                      </span>
+                    </div>
+                    {s.preview ? (
+                      <span
+                        className={`font-mono text-[10px] shrink-0 max-w-[160px] truncate ${
+                          isSelected ? 'opacity-90' : 'text-muted'
+                        }`}
+                      >
+                        {s.preview}
+                      </span>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Dynamic System Variables Section */}
+          {filteredDynamic.length > 0 && (
+            <div className={`flex flex-col gap-0.5 ${filteredProject.length > 0 ? 'pt-1 border-t border-border/60' : ''}`}>
+              <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                <span>Dynamic Variables</span>
+                <span className="font-mono text-[9px] font-normal">{filteredDynamic.length}</span>
               </div>
-            )
-          })}
+              {filteredDynamic.map((s) => {
+                const globalIdx = filteredSuggestions.indexOf(s)
+                const isSelected = globalIdx === selectedIndex
+                return (
+                  <div
+                    key={s.name}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => insertSuggestion(s)}
+                    className={`group flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer text-xs transition-colors ${
+                      isSelected ? 'bg-primary text-primary-contrast' : 'text-text hover:bg-bg'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono font-semibold tracking-tight text-[11px] truncate">
+                        {`{{${s.name}}}`}
+                      </span>
+                      {s.description ? (
+                        <span
+                          className={`text-[10px] truncate ${
+                            isSelected ? 'opacity-85' : 'text-muted'
+                          }`}
+                        >
+                          {s.description}
+                        </span>
+                      ) : null}
+                    </div>
+                    {s.preview ? (
+                      <span
+                        className={`font-mono text-[10px] shrink-0 max-w-[140px] truncate ${
+                          isSelected ? 'opacity-90' : 'text-muted'
+                        }`}
+                      >
+                        {s.preview}
+                      </span>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Keyboard Navigation Footer */}
+          <div className="mt-0.5 flex items-center justify-between border-t border-border/80 px-2 py-1 text-[9px] text-muted">
+            <span>↑↓ navigate • ↵ or Tab insert</span>
+            <span>Esc dismiss</span>
+          </div>
         </div>
       )}
     </div>

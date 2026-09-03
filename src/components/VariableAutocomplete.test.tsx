@@ -32,6 +32,8 @@ describe('VariableTextarea', () => {
     fireEvent.change(textarea, { target: { value: '{"token": "{{' } })
 
     expect(screen.getByRole('listbox', { name: 'Variable suggestions' })).toBeInTheDocument()
+    expect(screen.getByText('Project Variables')).toBeInTheDocument()
+    expect(screen.getByText('Dynamic Variables')).toBeInTheDocument()
     expect(screen.getByText('{{API_KEY}}')).toBeInTheDocument()
     expect(screen.getByText('{{BASE_HOST}}')).toBeInTheDocument()
     expect(screen.getByText('{{$uuid}}')).toBeInTheDocument()
