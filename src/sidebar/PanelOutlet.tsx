@@ -18,7 +18,7 @@ import { Dashboard, type DocStats } from './Dashboard'
 const PLACEHOLDERS: Record<string, { title: string; message: string }> = {
   auth: { title: 'Authentication', message: 'Not connected to the page yet.' },
   requests: { title: 'Requests & Templates', message: 'Not connected to the page yet.' },
-  environments: { title: 'Environments', message: 'Not connected to the page yet.' },
+  environments: { title: 'Variables', message: 'Not connected to the page yet.' },
   history: { title: 'API History', message: 'Not connected to the page yet.' },
   collections: { title: 'Collections', message: 'Not connected to the page yet.' },
 }
@@ -118,7 +118,14 @@ export function PanelOutlet({
   }
 
   if (activeTab === 'requests' && requestService && bus && environmentId) {
-    return <RequestsPanel service={requestService} bus={bus} environmentId={environmentId} />
+    return (
+      <RequestsPanel
+        service={requestService}
+        bus={bus}
+        environmentId={environmentId}
+        environmentService={environmentService}
+      />
+    )
   }
 
   if (activeTab === 'environments' && environmentService && bus) {
@@ -126,7 +133,14 @@ export function PanelOutlet({
   }
 
   if (activeTab === 'history' && historyService && bus) {
-    return <HistoryPanel service={historyService} bus={bus} baseUrl={project?.originUrl} />
+    return (
+      <HistoryPanel
+        service={historyService}
+        bus={bus}
+        baseUrl={project?.originUrl}
+        environmentService={environmentService}
+      />
+    )
   }
 
   if (activeTab === 'fake-data' && fakeDataService && bus) {

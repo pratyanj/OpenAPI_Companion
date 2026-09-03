@@ -88,11 +88,14 @@ async function boot(): Promise<void> {
 
   let currentEnv = meta.lastActiveEnvId
 
-  // Active environment's Base URL, kept in sync for code generation (below).
+  // Active environment's Base URL (read from BASE_URL variable or legacy baseUrl), kept in sync for code generation (below).
   let envBaseUrl = ''
   const refreshEnvBaseUrl = async (): Promise<void> => {
     const env = await environments.get(currentEnv)
-    envBaseUrl = env.ok && env.value ? env.value.baseUrl.trim() : ''
+    envBaseUrl =
+      env.ok && env.value
+        ? (env.value.variables?.['BASE_URL'] || env.value.baseUrl || '').trim()
+        : ''
   }
   await refreshEnvBaseUrl()
 

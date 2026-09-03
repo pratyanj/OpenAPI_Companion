@@ -248,4 +248,61 @@ describe('RequestsPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Create user')).toBeInTheDocument())
   })
+
+  it('toggles Preview Resolved and warns about missing variables', async () => {
+    const templateWithVar: RequestTemplate = {
+      templateId: 'tpl_var',
+      name: 'Auth Preset',
+      endpointId: 'post /login',
+      method: 'post',
+      body: JSON.stringify({ token: '{{MY_TOKEN}}', missing: '{{NOT_SET}}' }),
+      environmentId: 'default',
+      updatedAt: 1_700_000_000_000,
+    }
+    const envService = {
+      list: vi.fn(async () =>
+        ok([
+          {
+            id: 'default',
+            name: 'Default',
+            baseUrl: '',
+            variables: { MY_TOKEN: 'resolved_secret_123' },
+            secrets: ['MY_TOKEN'],
+            updatedAt: 0,
+          },
+        ]),
+      ),
+      getActiveId: vi.fn(async () => 'default'),
+      update: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    }
+
+    const service = mockService({ listTemplates: vi.fn(async () => ok([templateWithVar])) })
+    render(
+      <RequestsPanel
+        service={service}
+        bus={new EventBus()}
+        environmentId="default"
+        environmentService={envService}
+      />,
+    )
+
+    const cardHeader = await screen.findByText('Auth Preset')
+
+    // Expand preset card by clicking header
+    fireEvent.click(cardHeader)
+    expect(screen.getByRole('button', { name: 'Preview resolved' })).toBeInTheDocument()
+
+    // Click Preview resolved
+    fireEvent.click(screen.getByRole('button', { name: 'Preview resolved' }))
+
+    // Should display substituted text
+    expect(screen.getByText(/resolved_secret_123/)).toBeInTheDocument()
+
+    // Should display missing variable warning
+    expect(screen.getByText(/Missing in project variables:/)).toBeInTheDocument()
+    expect(screen.getAllByText(/\{\{NOT_SET\}\}/).length).toBe(2)
+  })
 })
+

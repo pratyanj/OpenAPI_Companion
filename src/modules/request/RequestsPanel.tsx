@@ -9,6 +9,7 @@ import {
   IconButton,
   Input,
   Spinner,
+  VariableTextarea,
   RequestsIcon,
   DeleteIcon,
   EditIcon,
@@ -23,12 +24,14 @@ import {
   CopiedIcon,
 } from '@/components'
 import type { EndpointInfo } from '@/adapters'
+import { substitute, type EnvironmentPanelService } from '@/modules/environment'
 import type { RequestPanelService, RequestTemplate } from './types'
 
 interface RequestsPanelProps {
   service: RequestPanelService
   bus: EventBus
   environmentId: string
+  environmentService?: EnvironmentPanelService
 }
 
 const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
@@ -261,9 +264,19 @@ function EndpointPicker({
   )
 }
 
-export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProps) {
+export function RequestsPanel({
+  service,
+  bus,
+  environmentId,
+  environmentService,
+}: RequestsPanelProps) {
   const [templates, setTemplates] = useState<RequestTemplate[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Project variables state for live autocomplete and preview
+  const [projectVars, setProjectVars] = useState<Record<string, string>>({})
+  const [projectSecrets, setProjectSecrets] = useState<string[]>([])
+  const [previewIds, setPreviewIds] = useState<Set<string>>(new Set())
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('')
@@ -290,6 +303,21 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
   const [editBody, setEditBody] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
 
+  const loadVariables = useCallback(async () => {
+    if (!environmentService) return
+    const [listRes, activeRes] = await Promise.all([
+      environmentService.list(),
+      environmentService.getActiveId(),
+    ])
+    if (listRes.ok) {
+      const target = listRes.value.find((e) => e.id === activeRes) || listRes.value[0]
+      if (target) {
+        setProjectVars(target.variables ?? {})
+        setProjectSecrets(target.secrets ?? [])
+      }
+    }
+  }, [environmentService])
+
   const load = useCallback(async () => {
     const result = await service.listTemplates()
     setTemplates(result.ok ? result.value : [])
@@ -299,10 +327,24 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
   useEffect(() => {
     setLoading(true)
     void load()
-  }, [load])
+    void loadVariables()
+  }, [load, loadVariables])
 
   useEventBus(bus, 'TEMPLATE_SAVED', () => void load())
   useEventBus(bus, 'TEMPLATE_DELETED', () => void load())
+  useEventBus(bus, 'ENVIRONMENT_CHANGED', () => void loadVariables())
+
+  const togglePreview = (templateId: string) => {
+    setPreviewIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(templateId)) {
+        next.delete(templateId)
+      } else {
+        next.add(templateId)
+      }
+      return next
+    })
+  }
 
   // Available endpoints from Swagger spec
   const availableEndpoints = useMemo<EndpointInfo[]>(() => {
@@ -748,19 +790,43 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
                 {isExpanded && (
                   <div className="flex flex-col gap-2.5 border-t border-border bg-bg/40 p-3 text-xs animate-in fade-in duration-150">
                     {/* JSON Body Section */}
-                    {t.body ? (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
-                            Request Body (JSON)
-                          </span>
-                          <CopyButton text={t.body} label="Copy payload" />
+                    {t.body ? (() => {
+                      const isPreview = previewIds.has(t.templateId)
+                      const { text: resolvedText, missing } = substitute(t.body, projectVars)
+                      const displayBody = isPreview ? formatJsonSafe(resolvedText) : formattedBody
+                      return (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                              Request Body (JSON)
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => togglePreview(t.templateId)}
+                                className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
+                                  isPreview
+                                    ? 'bg-primary text-primary-contrast font-semibold'
+                                    : 'border border-border bg-surface text-muted hover:text-text'
+                                }`}
+                              >
+                                {isPreview ? 'Show template' : 'Preview resolved'}
+                              </button>
+                              <CopyButton text={isPreview ? resolvedText : t.body} label="Copy payload" />
+                            </div>
+                          </div>
+                          {isPreview && missing.length > 0 ? (
+                            <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-500 flex items-center gap-1.5">
+                              <span>⚠️ Missing in project variables:</span>
+                              <span className="font-mono font-medium">{missing.map((m) => `{{${m}}}`).join(', ')}</span>
+                            </div>
+                          ) : null}
+                          <pre className="max-h-48 overflow-auto rounded-md border border-border bg-bg/90 p-2.5 font-mono text-[11px] text-text leading-relaxed select-text">
+                            <code>{displayBody}</code>
+                          </pre>
                         </div>
-                        <pre className="max-h-48 overflow-auto rounded-md border border-border bg-bg/90 p-2.5 font-mono text-[11px] text-text leading-relaxed select-text">
-                          <code>{formattedBody}</code>
-                        </pre>
-                      </div>
-                    ) : (
+                      )
+                    })() : (
                       <div className="rounded-md border border-dashed border-border p-2.5 text-center text-[11px] text-muted italic">
                         No request body payload stored for this preset.
                       </div>
@@ -868,7 +934,7 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
                       {'{ } Format JSON'}
                     </Button>
                   </div>
-                  <textarea
+                  <VariableTextarea
                     id="create-tpl-body"
                     rows={6}
                     value={createBody}
@@ -876,6 +942,8 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
                       setCreateBody(e.target.value)
                       setCreateError(null)
                     }}
+                    projectVariables={projectVars}
+                    projectSecrets={projectSecrets}
                     placeholder={'{\n  "name": "example"\n}'}
                     className="w-full rounded-md border border-border bg-bg p-2 font-mono text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary leading-relaxed"
                   />
@@ -958,7 +1026,7 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
                       {'{ } Format JSON'}
                     </Button>
                   </div>
-                  <textarea
+                  <VariableTextarea
                     id="edit-tpl-body"
                     rows={6}
                     value={editBody}
@@ -966,6 +1034,8 @@ export function RequestsPanel({ service, bus, environmentId }: RequestsPanelProp
                       setEditBody(e.target.value)
                       setEditError(null)
                     }}
+                    projectVariables={projectVars}
+                    projectSecrets={projectSecrets}
                     placeholder={'{\n  \n}'}
                     className="w-full rounded-md border border-border bg-bg p-2 font-mono text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary leading-relaxed"
                   />
