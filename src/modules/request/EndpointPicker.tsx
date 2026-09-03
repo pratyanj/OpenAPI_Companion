@@ -33,6 +33,8 @@ export interface EndpointPickerProps {
   selectedEndpointId: string
   onSelect: (endpointId: string) => void
   disabled?: boolean
+  error?: string | boolean | null
+  existingPresetsCounts?: Record<string, number>
 }
 
 export function EndpointPicker({
@@ -40,6 +42,8 @@ export function EndpointPicker({
   selectedEndpointId,
   onSelect,
   disabled = false,
+  error,
+  existingPresetsCounts,
 }: EndpointPickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -47,7 +51,10 @@ export function EndpointPicker({
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const selectedEndpoint = useMemo(
-    () => endpoints.find((ep) => ep.endpointId === selectedEndpointId),
+    () =>
+      endpoints.find(
+        (ep) => ep.endpointId.toLowerCase() === (selectedEndpointId || '').toLowerCase(),
+      ),
     [endpoints, selectedEndpointId],
   )
 
@@ -77,14 +84,20 @@ export function EndpointPicker({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isOpen])
 
+  const hasError = Boolean(error)
+
   return (
-    <div className="relative flex flex-col gap-1" ref={dropdownRef}>
+    <div className="relative flex flex-col gap-1 w-full" ref={dropdownRef}>
       {/* Trigger Box */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-bg px-2.5 py-2 text-left text-xs transition hover:border-border/80 hover:bg-surface/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+        className={`flex w-full items-center justify-between gap-2 rounded-md border bg-bg px-2.5 py-2 text-left text-xs transition focus:outline-none focus-visible:ring-1 disabled:opacity-50 ${
+          hasError
+            ? 'border-destructive focus-visible:ring-destructive text-destructive'
+            : 'border-border hover:border-border/80 hover:bg-surface/30 focus-visible:ring-primary'
+        }`}
       >
         {selectedEndpoint ? (
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -97,12 +110,21 @@ export function EndpointPicker({
             )}
           </div>
         ) : (
-          <span className="text-muted">Select an API endpoint…</span>
+          <span className={hasError ? 'text-destructive' : 'text-muted'}>
+            Select an API endpoint…
+          </span>
         )}
         <ChevronDownIcon
           className={`h-4 w-4 shrink-0 text-muted transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
+
+      {typeof error === 'string' && error && (
+        <span className="text-[11px] text-destructive flex items-center gap-1 font-medium mt-0.5">
+          <span>⚠️</span>
+          <span>{error}</span>
+        </span>
+      )}
 
       {/* Custom Searchable Popover Dropdown */}
       {isOpen && (
@@ -191,11 +213,22 @@ export function EndpointPicker({
                           {ep.path}
                         </span>
                       </div>
-                      {isSelected && (
-                        <span className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-primary">
-                          <CopiedIcon className="h-3 w-3" />
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {(() => {
+                          const count = existingPresetsCounts?.[ep.endpointId.toLowerCase()]
+                          if (!count) return null
+                          return (
+                            <span className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted">
+                              {count} preset{count > 1 ? 's' : ''}
+                            </span>
+                          )
+                        })()}
+                        {isSelected && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-primary">
+                            <CopiedIcon className="h-3 w-3" />
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {ep.summary ? (
                       <div className="text-[11px] text-muted pl-0.5 group-hover:text-text/90">
