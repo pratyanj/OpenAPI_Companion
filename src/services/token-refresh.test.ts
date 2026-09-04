@@ -957,7 +957,7 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
         readOpenRequests: () => [],
         readExecutedResponses: () => [],
         replay: () => ok(undefined),
-      },
+      } as unknown as SwaggerAdapter,
       auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
       templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
       configuredLoginEndpoint: () => 'post /custom/auth',
@@ -976,7 +976,7 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
         readOpenRequests: () => [],
         readExecutedResponses: () => [],
         replay: () => ok(undefined),
-      },
+      } as unknown as SwaggerAdapter,
       auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
       templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
     })
@@ -991,7 +991,7 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
         readOpenRequests: () => [],
         readExecutedResponses: () => [],
         replay: () => ok(undefined),
-      },
+      } as unknown as SwaggerAdapter,
       auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
       templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
     })
@@ -1011,7 +1011,7 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
         readOpenRequests: () => [],
         readExecutedResponses: () => [],
         replay: () => ok(undefined),
-      },
+      } as unknown as SwaggerAdapter,
       auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
       templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
     })
@@ -1040,12 +1040,12 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
                 },
               ]
             : [],
-        replay: (id) => {
+        replay: (id: string) => {
           playedEndpoint = id
           executed = true
           return ok(undefined)
         },
-      },
+      } as unknown as SwaggerAdapter,
       auth: {
         current: async () => ok(null), // no token currently authorized in Swagger
         applyToken: async (_env, t) => ok({ token: t }),

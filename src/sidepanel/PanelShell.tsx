@@ -102,8 +102,8 @@ export function PanelShell({
   const PreferenceIcon = PREFERENCE_ICON[preference]
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg text-text">
-      <header className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="flex h-screen max-h-screen flex-col bg-bg text-text overscroll-none overflow-hidden">
+      <header className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg px-3 py-2">
         <strong className="text-sm">OpenAPI Companion</strong>
         <div className="flex items-center gap-1.5">
           <IconButton label="Search endpoints (⌘K)" onClick={onOpenPalette}>
@@ -118,14 +118,14 @@ export function PanelShell({
       {staleTab ? (
         <p
           role="status"
-          className="border-b border-warning bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning"
+          className="flex-shrink-0 border-b border-warning bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning"
         >
           This tab is running an older build of the extension, so newer actions won&apos;t work.
           Refresh the page (⌘⇧R / Ctrl+Shift+R).
         </p>
       ) : null}
 
-      <nav className="border-b border-border px-2 py-2">
+      <nav className="flex-shrink-0 border-b border-border bg-bg px-2 py-2">
         <Tabs tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
       </nav>
 
@@ -133,7 +133,7 @@ export function PanelShell({
         role="tabpanel"
         id={`panel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
-        className="flex-1 overflow-auto"
+        className="flex-1 overflow-y-auto overscroll-contain bg-bg"
       >
         <PanelOutlet
           activeTab={activeTab}

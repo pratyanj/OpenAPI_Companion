@@ -21,9 +21,11 @@
   --oac-success: #16a34a;
   --oac-warning: #d97706;
   --oac-danger: #dc2626;
+  color-scheme: light;
 }
 
-.dark {
+.dark,
+:host(.dark) {
   --oac-bg: #111827;
   --oac-surface: #1f2937;
   --oac-border: #374151;
@@ -33,6 +35,27 @@
   --oac-success: #22c55e;
   --oac-warning: #f59e0b;
   --oac-danger: #ef4444;
+  color-scheme: dark;
+}
+
+/* Prevent white bounce/rubber-band bars on overscroll at top and bottom */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--oac-bg);
+  color: var(--oac-text);
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  height: 100%;
+  min-height: 100%;
+  background-color: var(--oac-bg);
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
 }
 
 /* ── Custom Sleek Theme Scrollbars ── */
