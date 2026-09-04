@@ -98,7 +98,7 @@ export function EndpointPicker({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex w-full items-center justify-between gap-2 rounded-md border bg-bg px-2.5 py-2 text-left text-xs transition focus:outline-none focus-visible:ring-1 disabled:opacity-50 ${
           hasError
-            ? 'border-destructive focus-visible:ring-destructive text-destructive'
+            ? 'border-danger focus-visible:ring-danger text-danger'
             : 'border-border hover:border-border/80 hover:bg-surface/30 focus-visible:ring-primary'
         }`}
       >
@@ -113,7 +113,7 @@ export function EndpointPicker({
             )}
           </div>
         ) : (
-          <span className={hasError ? 'text-destructive' : 'text-muted'}>
+          <span className={hasError ? 'text-danger' : 'text-muted'}>
             Select an API endpoint…
           </span>
         )}
@@ -123,8 +123,8 @@ export function EndpointPicker({
       </button>
 
       {typeof error === 'string' && error && (
-        <span className="text-[11px] text-destructive flex items-center gap-1 font-medium mt-0.5">
-          <span>⚠️</span>
+        <span className="text-[11px] text-danger dark:text-red-300 bg-red-500/10 border border-red-500/30 px-2 py-1 rounded flex items-center gap-1.5 font-medium mt-0.5">
+          <span className="shrink-0">⚠️</span>
           <span>{error}</span>
         </span>
       )}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { PresetEditorModal } from './PresetEditorModal'
+import { validateJsonWithVariables } from './json-utils'
 import type { RequestPanelService, RequestTemplate } from './types'
 import { ok, type Result } from '@/types'
 
@@ -230,5 +231,47 @@ describe('PresetEditorModal', () => {
     expect(screen.getByText('/users')).toBeInTheDocument()
     // And since it's GET, body notice should be displayed
     expect(screen.getByText(/requests do not require a request body/i)).toBeInTheDocument()
+  })
+
+  describe('validateJsonWithVariables', () => {
+    it('accepts quoted variables without generating duplicate quotes (e.g. {{$randomName}})', () => {
+      const userPayload = `{\n  "name": "{{$randomName}}",\n  "description": "testing this new request page",\n  "color": "#6366F1",\n  "icon": "folder"\n}`
+      const res = validateJsonWithVariables(userPayload)
+      expect(res.isValid).toBe(true)
+      expect(res.error).toBeNull()
+    })
+
+    it('accepts unquoted variables for numeric/raw fields', () => {
+      const payload = `{\n  "id": {{USER_ID}},\n  "active": {{IS_ACTIVE}}\n}`
+      const res = validateJsonWithVariables(payload)
+      expect(res.isValid).toBe(true)
+      expect(res.error).toBeNull()
+    })
+
+    it('properly catches real JSON syntax errors', () => {
+      const brokenPayload = `{\n  "name": "unclosed\n}`
+      const res = validateJsonWithVariables(brokenPayload)
+      expect(res.isValid).toBe(false)
+      expect(res.error).toBeTruthy()
+    })
+  })
+
+  it('renders warning banners with yellow background styling', async () => {
+    const service = mockService()
+    render(
+      <PresetEditorModal
+        service={service}
+        environmentId="default"
+        initialEndpointId="post /auth/login"
+        initialBody='{"broken": '
+        onClose={vi.fn()}
+      />,
+    )
+
+    // Check that the syntax warning has yellow background and border
+    const warningEl = screen.getByText(/Invalid JSON syntax:/i).closest('div')
+    expect(warningEl).toBeInTheDocument()
+    expect(warningEl?.className).toContain('bg-yellow-500/20')
+    expect(warningEl?.className).toContain('border-yellow-500/50')
   })
 })

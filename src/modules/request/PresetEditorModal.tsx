@@ -11,6 +11,7 @@ import type { EventBus } from '@/core/events'
 import { substitute, type EnvironmentPanelService } from '@/modules/environment'
 import type { RequestPanelService, RequestTemplate } from './types'
 import { EndpointPicker } from './EndpointPicker'
+import { validateJsonWithVariables } from './json-utils'
 
 export interface PresetEditorModalProps {
   service: RequestPanelService
@@ -32,21 +33,6 @@ function formatJsonSafe(raw: string): { formatted: string; isValid: boolean } {
     return { formatted: JSON.stringify(parsed, null, 2), isValid: true }
   } catch {
     return { formatted: raw, isValid: false }
-  }
-}
-
-/**
- * Validates JSON structure while tolerating {{VARIABLE}} or {{VARIABLE:default}} syntax.
- */
-function validateJsonWithVariables(raw: string): { isValid: boolean; error: string | null } {
-  if (!raw.trim()) return { isValid: true, error: null }
-  // Replace {{VARIABLE}} occurrences with valid string placeholder for syntax validation
-  const normalized = raw.replace(/\{\{[^}]+\}\}/g, '"__VAR_PLACEHOLDER__"')
-  try {
-    JSON.parse(normalized)
-    return { isValid: true, error: null }
-  } catch (err) {
-    return { isValid: false, error: (err as Error).message }
   }
 }
 
@@ -286,10 +272,10 @@ export function PresetEditorModal({
       align="top"
     >
       <div className="flex flex-col gap-4">
-        {/* Error Alert */}
+        {/* Warning / Error Alert */}
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive flex items-center gap-2">
-            <span>⚠️</span>
+          <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/20 px-3 py-2 text-xs font-medium text-yellow-900 dark:text-yellow-100 dark:bg-yellow-500/25 dark:border-yellow-400/60 flex items-center gap-2">
+            <span className="shrink-0 text-sm">⚠️</span>
             <span>{error}</span>
           </div>
         )}
@@ -365,7 +351,11 @@ export function PresetEditorModal({
                   type="button"
                   onClick={handleFormatJson}
                   disabled={previewResolved}
-                  className="rounded border border-border px-2 py-0.5 text-[10px] font-medium text-muted hover:border-primary/40 hover:bg-surface hover:text-text disabled:opacity-40 transition-colors"
+                  className={`rounded border px-2 py-0.5 text-[10px] font-medium disabled:opacity-40 transition-colors ${
+                    formatFeedback
+                      ? 'border-yellow-500/50 bg-yellow-500/20 text-yellow-800 dark:text-yellow-200'
+                      : 'border-border text-muted hover:border-primary/40 hover:bg-surface hover:text-text'
+                  }`}
                   title="Format JSON with standard 2-space indentation"
                 >
                   {formatFeedback || '{ } Format'}
@@ -376,7 +366,7 @@ export function PresetEditorModal({
                   onClick={() => setPreviewResolved(!previewResolved)}
                   className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
                     previewResolved
-                      ? 'border-primary bg-primary/10 text-primary font-semibold'
+                      ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border text-muted hover:border-primary/40 hover:bg-surface hover:text-text'
                   }`}
                   title="Preview variables replaced with actual project and dynamic values"
@@ -389,8 +379,8 @@ export function PresetEditorModal({
 
             {/* Missing variables alert */}
             {previewResolved && resolved.missing.length > 0 && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-500 flex items-center gap-1.5">
-                <span>⚠️</span>
+              <div className="rounded-md border border-yellow-500/50 bg-yellow-500/20 px-2.5 py-1.5 text-[11px] text-yellow-900 dark:text-yellow-100 dark:bg-yellow-500/25 dark:border-yellow-400/60 flex items-center gap-1.5">
+                <span className="shrink-0">⚠️</span>
                 <span>
                   Missing in project variables:{' '}
                   <strong>{resolved.missing.map((m) => `{{${m}}}`).join(', ')}</strong>
@@ -420,13 +410,13 @@ export function PresetEditorModal({
                   placeholder={`{\n  "key": "value",\n  "token": "{{ACCESS_TOKEN}}"\n}`}
                   className={`w-full rounded-md border bg-bg p-2.5 font-mono text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-1 leading-relaxed transition-colors ${
                     (bodyTouched || error) && !jsonValidation.isValid && body.trim()
-                      ? 'border-destructive focus-visible:ring-destructive'
+                      ? 'border-yellow-500/80 bg-yellow-500/5 focus-visible:ring-yellow-500'
                       : 'border-border focus-visible:ring-primary'
                   }`}
                 />
                 {!jsonValidation.isValid && body.trim() && (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive flex items-start gap-1.5 font-mono">
-                    <span className="shrink-0">⚠️</span>
+                  <div className="rounded-md border border-yellow-500/50 bg-yellow-500/20 px-2.5 py-1.5 text-[11px] text-yellow-900 dark:text-yellow-100 dark:bg-yellow-500/25 dark:border-yellow-400/60 flex items-start gap-1.5 font-mono">
+                    <span className="shrink-0 text-sm">⚠️</span>
                     <span>Invalid JSON syntax: {jsonValidation.error}</span>
                   </div>
                 )}

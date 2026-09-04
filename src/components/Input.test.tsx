@@ -20,14 +20,14 @@ describe('Input component', () => {
   it('renders an error message and error border when error is passed', () => {
     render(<Input placeholder="Name" error="Name is required" />)
     const input = screen.getByPlaceholderText('Name')
-    expect(input.className).toContain('border-destructive')
+    expect(input.className).toContain('border-danger')
     expect(screen.getByText('Name is required')).toBeInTheDocument()
   })
 
   it('renders a warning message and warning border when warning is passed', () => {
     render(<Input placeholder="Name" warning="Name already exists" />)
     const input = screen.getByPlaceholderText('Name')
-    expect(input.className).toContain('border-amber-500/80')
+    expect(input.className).toContain('border-yellow-500/80')
     expect(screen.getByText('Name already exists')).toBeInTheDocument()
   })
 })
