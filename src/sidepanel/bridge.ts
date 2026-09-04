@@ -205,6 +205,9 @@ export function createRemoteAuthService(): AuthPanelService {
     activateSaved: (id, env) => rpcResult('auth.activateSaved', id, env),
     deleteSaved: (id) => rpcResult('auth.deleteSaved', id),
     setLogin: (id, login) => rpcResult('auth.setLogin', id, login),
+    configuredLoginEndpoint: () => rpcValue('auth.configuredLoginEndpoint', null),
+    setConfiguredLoginEndpoint: (id) => rpcResult('auth.setConfiguredLoginEndpoint', id),
+    listEndpoints: () => latestState.adapter.endpoints,
   }
 }
 

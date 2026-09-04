@@ -169,6 +169,17 @@
   - [x] **Full Execution & Locate Integration**:
     - Inject path parameters and query parameters into Swagger UI input rows during both "Replay" (autoExecute) and "Locate & Fill".
     - Badges on preset cards (`2 path`, `2 query`) and expanded details view (**526 tests ✓**).
+- [x] **Auto-Refresh with Saved Account Credentials & Warning Suppression:**
+  - [x] **Zero-Setup Token Auto-Renewal via Account Credentials**:
+    - When an account has saved credentials (`username`, `password`), auto-refresh automatically signs in using those credentials on 401/expiry or manual "Refresh now"—without requiring a separate preset saved in Requests.
+    - Suppressed misleading warning banner *"No saved login request found, so this can't run yet..."* whenever account credentials exist.
+    - Displayed green confirmation banner: `✓ Will sign in using saved account credentials for "{account.name}" ({username}) via {endpoint}`.
+  - [x] **Multi-Tier Endpoint Auto-Detection & Safe Exclusions**:
+    - Broadened auto-detection for `/oauth/token`, `/oauth2/token`, `/api/token`, `/auth/jwt/create`, `/session`, and endpoints tagged `Auth`/`Login` without falsely excluding them.
+    - Excluded dangerous operations (`/forgot-password`, `/reset-password`, `/register`, `/logout`, `/resend-otp`, `/verify`).
+  - [x] **Configurable Sign-in Endpoint Override**:
+    - Added endpoint picker dropdown to let developers explicitly override the login endpoint for non-standard APIs.
+    - Persisted configured login endpoint per project (**531 tests ✓**).
 - [ ] **Project Variables Upgrades — Phase C: Automation & Cross-Project Power:**
   - [ ] **Auto-Extraction Rules (Zero-Click Token Chaining)**:
     - Rule builder to automatically capture response values (e.g., `POST /auth/login` -> extract `response.token` into `TOKEN`).
@@ -176,4 +187,5 @@
     - Cross-project shared variables (`MY_EMAIL`, `DEFAULT_PAGE_SIZE`, etc.) accessible in every Swagger doc, overridden by Project Variables.
   - [ ] **Variable Usage & Formatter Utilities**:
     - cURL header copy with resolved variables and unused variable detector.
+
 

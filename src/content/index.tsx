@@ -198,6 +198,7 @@ async function boot(): Promise<void> {
 
   // Token auto-refresh (opt-in; toggled from the Auth panel via RPC → runs here).
   let autoRefreshEnabled = await auth.isAutoRefreshEnabled()
+  let configuredLoginEndpoint = await auth.getConfiguredLoginEndpoint()
   const tokenRefresh = new TokenRefreshService({
     adapter,
     auth,
@@ -205,6 +206,7 @@ async function boot(): Promise<void> {
     vault: auth, // its activeLogin() targets the account actually in use
     bus,
     enabled: () => autoRefreshEnabled,
+    configuredLoginEndpoint: () => configuredLoginEndpoint,
   })
   bus.subscribe(
     'AUTH_EXPIRED',
@@ -213,6 +215,9 @@ async function boot(): Promise<void> {
   bus.subscribe('SETTINGS_UPDATED', (payload) => {
     if (payload.keys.includes('auto-refresh-token')) {
       void auth.isAutoRefreshEnabled().then((on) => (autoRefreshEnabled = on))
+    }
+    if (payload.keys.includes('auth-login-endpoint')) {
+      void auth.getConfiguredLoginEndpoint().then((ep) => (configuredLoginEndpoint = ep))
     }
   })
 
@@ -326,6 +331,14 @@ async function boot(): Promise<void> {
     'auth.setBearerPrefixEnabled': ([env, on]) =>
       auth.setBearerPrefixEnabled(env as string, on as boolean),
     'auth.loginEndpoint': () => tokenRefresh.findLoginEndpoint(),
+    'auth.configuredLoginEndpoint': () => auth.getConfiguredLoginEndpoint(),
+    'auth.setConfiguredLoginEndpoint': async ([endpointId]) => {
+      const res = await auth.setConfiguredLoginEndpoint((endpointId as string) || null)
+      if (res.ok) {
+        configuredLoginEndpoint = (endpointId as string) || null
+      }
+      return res
+    },
     'auth.refreshActivity': () => tokenRefresh.recentActivity(),
     // Add an account: log in with the given credentials, then keep the issued
     // token under `name` with those credentials attached for later refreshes.

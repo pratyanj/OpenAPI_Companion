@@ -178,16 +178,39 @@ describe('AuthPanel', () => {
     await waitFor(() => expect(service.deleteSaved).toHaveBeenCalledWith('cred_admin'))
   })
 
-  // An enabled toggle with no saved login request does nothing at all — the panel
+  // An enabled toggle with no saved login credentials or request does nothing at all — the panel
   // has to say so instead of looking functional.
-  it('warns when auto-refresh is on but no login request is saved', async () => {
+  it('warns when auto-refresh is on but no login request or credentials are saved', async () => {
     const service = mockService({
       current: vi.fn(async () => ok(authorized)),
       isAutoRefreshEnabled: vi.fn(async () => true),
       loginTemplate: vi.fn(async () => null),
     })
     render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
-    expect(await screen.findByText(/No saved login request found/)).toBeInTheDocument()
+    expect(await screen.findByText(/No saved login credentials or request found/)).toBeInTheDocument()
+  })
+
+  it('suppresses warning and shows green confirmation when an account has saved credentials', async () => {
+    const credWithLogin: SavedCredential = {
+      ...credential,
+      token: authorized.token,
+      login: { username: 'admin@acme.io', password: 'secretpassword' },
+    }
+    const service = mockService({
+      current: vi.fn(async () => ok(authorized)),
+      listSaved: vi.fn(async () => ok([credWithLogin])),
+      isAutoRefreshEnabled: vi.fn(async () => true),
+      loginTemplate: vi.fn(async () => null),
+      loginEndpoint: vi.fn(async () => 'POST /api/v1/auth/login'),
+    })
+    render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+    // Should NOT display warning
+    expect(screen.queryByText(/No saved login credentials or request found/)).not.toBeInTheDocument()
+    // Should display green confirmation
+    expect(
+      await screen.findByText(/Will sign in using saved account credentials for “Admin” \(admin@acme\.io\)/),
+    ).toBeInTheDocument()
   })
 
   it('names the request it will re-run once one is saved', async () => {

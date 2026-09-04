@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Result } from '@/types'
+import type { EndpointInfo } from '@/adapters'
 import type { EventBus } from '@/core/events'
 import { useEventBus } from '@/hooks'
 import { cn } from '@/utils'
@@ -40,6 +41,10 @@ export interface AuthPanelService {
    * a request manually when the spec already declares a login path.
    */
   loginEndpoint(): Promise<string | null>
+  /** Optional custom configured login endpoint override */
+  configuredLoginEndpoint?(): Promise<string | null>
+  setConfiguredLoginEndpoint?(endpointId: string | null): Promise<Result<void>>
+  listEndpoints?(): EndpointInfo[]
   /** Creates a new saved credential by executing the login endpoint directly. */
   addByLogin(name: string, username: string, password: string): Promise<Result<SavedCredential>>
   listSaved(): Promise<Result<SavedCredential[]>>
@@ -147,6 +152,8 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const [saved, setSaved] = useState<SavedCredential[]>([])
   const [loginTemplate, setLoginTemplate] = useState<string | null>(null)
   const [loginEndpoint, setLoginEndpoint] = useState<string | null>(null)
+  const [configuredLoginEp, setConfiguredLoginEp] = useState<string | null>(null)
+  const [showEndpointPicker, setShowEndpointPicker] = useState(false)
   const [activity, setActivity] = useState<RefreshLogEntry[]>([])
   const [testing, setTesting] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -163,6 +170,27 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const [editingTouched, setEditingTouched] = useState({ username: false, password: false })
   const [newName, setNewName] = useState('')
   const [saveCurrentTouched, setSaveCurrentTouched] = useState(false)
+
+  const activeCred = useMemo(() => {
+    if (!record?.token) return null
+    const currentClean = record.token.replace(/^bearer\s+/i, '').trim()
+    return (
+      saved.find((cred) => cred.token.replace(/^bearer\s+/i, '').trim() === currentClean) ?? null
+    )
+  }, [record, saved])
+
+  const credWithLogin = useMemo(() => {
+    if (activeCred?.login?.username?.trim() && activeCred?.login?.password) {
+      return activeCred
+    }
+    return (
+      saved.find((cred) => Boolean(cred.login?.username?.trim() && cred.login?.password)) ?? null
+    )
+  }, [activeCred, saved])
+
+  const hasLoginCredentials = Boolean(
+    credWithLogin?.login?.username?.trim() && credWithLogin?.login?.password,
+  )
 
   const isCurrentTokenSaved = useMemo(() => {
     if (!record?.token) return false
@@ -257,8 +285,20 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
     void service.isBearerPrefixEnabled(environmentId).then(setBearerPrefix)
     void service.loginTemplate(environmentId).then(setLoginTemplate)
     void service.loginEndpoint().then(setLoginEndpoint)
+    if (service.configuredLoginEndpoint) {
+      void service.configuredLoginEndpoint().then(setConfiguredLoginEp)
+    }
     void service.refreshActivity().then(setActivity)
   }, [service, environmentId])
+
+  useEventBus(bus, 'SETTINGS_UPDATED', (payload) => {
+    if (payload.keys?.includes('auth-login-endpoint')) {
+      void service.loginEndpoint().then(setLoginEndpoint)
+      if (service.configuredLoginEndpoint) {
+        void service.configuredLoginEndpoint().then(setConfiguredLoginEp)
+      }
+    }
+  })
 
   useEventBus(bus, 'AUTH_UPDATED', () => void load())
   useEventBus(bus, 'AUTH_RESTORED', () => void load())
@@ -618,7 +658,9 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           Auto-refresh token on expiry
         </label>
         <p className="text-[11px] text-muted">
-          When a request returns 401, runs your saved login request and stores the new token.
+          {hasLoginCredentials
+            ? 'When a request returns 401, automatically signs in using your saved account credentials and updates the token.'
+            : 'When a request returns 401, runs your saved login request and stores the new token.'}
         </p>
         {/* Setup lives in the product, not just in a changelog: the feature has a
             prerequisite the user can't guess, so spell it out where it's enabled. */}
@@ -644,44 +686,102 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           </ul>
         ) : null}
 
+        {service.listEndpoints && (
+          <div className="flex flex-col gap-1 rounded-md border border-border bg-surface/50 p-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted">
+                Sign-in endpoint:{' '}
+                {loginEndpoint ? (
+                  <span className="font-mono font-medium text-text">{loginEndpoint}</span>
+                ) : (
+                  <span className="text-warning">None detected</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowEndpointPicker((v) => !v)}
+                className="text-[11px] text-primary hover:underline"
+              >
+                {showEndpointPicker ? 'Done' : 'Change'}
+              </button>
+            </div>
+            {showEndpointPicker && service.setConfiguredLoginEndpoint && (
+              <div className="mt-1 flex flex-col gap-1 text-[11px]">
+                <label className="text-muted">Select endpoint used for sign-in:</label>
+                <select
+                  className="rounded-md border border-border bg-bg px-2 py-1 text-xs font-mono text-text"
+                  value={configuredLoginEp ?? ''}
+                  onChange={async (e) => {
+                    const val = e.target.value || null
+                    setConfiguredLoginEp(val)
+                    await service.setConfiguredLoginEndpoint?.(val)
+                    const ep = await service.loginEndpoint()
+                    setLoginEndpoint(ep)
+                  }}
+                >
+                  <option value="">Auto-detect from Swagger (default)</option>
+                  {service
+                    .listEndpoints()
+                    .filter((ep) => ['post', 'put'].includes(ep.method.toLowerCase()))
+                    .map((ep) => (
+                      <option key={ep.endpointId} value={ep.endpointId}>
+                        {ep.method.toUpperCase()} {ep.path}
+                        {ep.summary ? ` (${ep.summary})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
         <details className="rounded-md border border-border px-2 py-1">
           <summary className="cursor-pointer text-[11px] text-primary">How to set this up</summary>
-          <ol className="mt-1 flex list-decimal flex-col gap-1 pl-4 text-[11px] text-muted">
-            <li>
-              In Swagger, open your login endpoint (e.g. POST /auth/login) and fill in the body.
-            </li>
-            <li>Click Execute once, so a real response is on screen.</li>
-            <li>
-              Open the <strong>Requests</strong> tab and save it as a template. Its name or path
-              must mention <span className="font-mono">login</span>,{' '}
-              <span className="font-mono">signin</span>, <span className="font-mono">auth</span> or{' '}
-              <span className="font-mono">token</span> — that&apos;s how it&apos;s recognised.
-            </li>
-            <li>
-              Done. When a call returns 401, that request is re-run, the token is read from its
-              response, and Swagger is re-authorized automatically.
-            </li>
-          </ol>
-          {onNavigate ? (
-            <Button variant="secondary" onClick={() => onNavigate('requests')} className="mt-2">
-              Open Requests tab
-            </Button>
-          ) : null}
+          <div className="mt-1.5 flex flex-col gap-2 text-[11px] text-muted">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-text">Option A — Saved account credentials (Recommended)</span>
+              <p>
+                Click <strong>+ Add account with email &amp; password</strong> above, or click the key icon on any saved token to enter login credentials. When a call returns 401, OpenAPI Companion signs in automatically and updates your token.
+              </p>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-text">Option B — Saved login request preset</span>
+              <p>
+                Execute your login endpoint once in Swagger, then open the <strong>Requests</strong> tab and save it as a template (with “login” or “auth” in the name).
+              </p>
+              {onNavigate ? (
+                <Button variant="secondary" onClick={() => onNavigate('requests')} className="mt-1 self-start">
+                  Open Requests tab
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </details>
 
-        {/* The prerequisite, stated where it's enabled — an enabled toggle with no
-            login request saved does nothing at all. */}
+        {/* When auto-refresh is enabled:
+            1. If account credentials exist: show green confirmation and suppress the warning.
+            2. If saved login template exists: show green confirmation for template.
+            3. If neither exists: show warning with clear instructions. */}
         {autoRefresh ? (
-          loginTemplate ? (
-            <p className="text-[11px] text-success">
-              Will re-run your saved request “{loginTemplate}”.
-            </p>
+          hasLoginCredentials && credWithLogin?.login ? (
+            <div className="flex flex-col gap-1 rounded-md border border-success/30 bg-success/5 p-2 animate-in fade-in duration-150">
+              <p className="text-[11px] font-medium text-success">
+                ✓ Will sign in using saved account credentials for “{credWithLogin.name}” ({credWithLogin.login.username})
+                {loginEndpoint ? ` via ${loginEndpoint}` : ''}.
+              </p>
+            </div>
+          ) : loginTemplate ? (
+            <div className="flex flex-col gap-1 rounded-md border border-success/30 bg-success/5 p-2 animate-in fade-in duration-150">
+              <p className="text-[11px] font-medium text-success">
+                ✓ Will re-run your saved request “{loginTemplate}”.
+              </p>
+            </div>
           ) : (
-            <p className="text-[11px] text-warning">
-              No saved login request found, so this can&apos;t run yet. Open your login endpoint in
-              Swagger, fill it in, then save it from the <strong>Requests</strong> tab — its name or
-              path needs to mention login / signin / auth / token.
-            </p>
+            <div className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/5 p-2 animate-in fade-in duration-150">
+              <p className="text-[11px] text-warning">
+                No saved login credentials or request found, so this can&apos;t run yet. Add an account with email &amp; password above, or save your login endpoint from the <strong>Requests</strong> tab.
+              </p>
+            </div>
           )
         ) : null}
       </div>

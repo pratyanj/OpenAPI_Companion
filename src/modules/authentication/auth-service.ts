@@ -497,9 +497,46 @@ export class AuthenticationService {
 
     // Fallback for credentials saved before the active id was tracked.
     const active = await this.current(environmentId)
-    if (!active.ok || !active.value) return null
-    const byToken = saved.value.find((c) => c.token === active.value?.token)
-    return byToken?.login ? { ...byToken.login, credentialId: byToken.id } : null
+    if (active.ok && active.value?.token) {
+      const cleanActive = active.value.token.replace(/^bearer\s+/i, '').trim()
+      const byToken = saved.value.find(
+        (c) => c.token.replace(/^bearer\s+/i, '').trim() === cleanActive,
+      )
+      if (byToken?.login) return { ...byToken.login, credentialId: byToken.id }
+    }
+
+    // Fallback if exactly one saved account has credentials
+    const withLogin = saved.value.filter((c) => c.login?.username && c.login?.password)
+    if (withLogin.length === 1 && withLogin[0]?.login) {
+      return { ...withLogin[0].login, credentialId: withLogin[0].id }
+    }
+
+    return null
+  }
+
+  private configuredLoginEndpointKey(): string {
+    return projectKey(this.projectId, 'auth-login-endpoint')
+  }
+
+  async getConfiguredLoginEndpoint(): Promise<string | null> {
+    const got = await this.storage.getData<string>(this.configuredLoginEndpointKey())
+    return got.ok && got.value ? got.value : null
+  }
+
+  async setConfiguredLoginEndpoint(endpointId: string | null): Promise<Result<void>> {
+    const key = this.configuredLoginEndpointKey()
+    if (!endpointId) {
+      const removed = await this.storage.remove(key)
+      if (removed.ok) {
+        this.bus?.publish('SETTINGS_UPDATED', { keys: ['auth-login-endpoint'] })
+      }
+      return removed
+    }
+    const written = await this.storage.set(key, endpointId, { immediate: true })
+    if (written.ok) {
+      this.bus?.publish('SETTINGS_UPDATED', { keys: ['auth-login-endpoint'] })
+    }
+    return written.ok ? ok(undefined) : written
   }
 
   /** Name of the credential in use, for display. */
