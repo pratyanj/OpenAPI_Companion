@@ -53,6 +53,8 @@ interface HistoryPanelProps {
   baseUrl?: string
   /** Optional Environment service for saving response values to project variables. */
   environmentService?: EnvironmentPanelService
+  /** Opens the in-page request detail overlay on the Swagger webpage. */
+  onOpenHistoryDetail?: (historyId: string) => void
 }
 
 const METHODS = ['', 'get', 'post', 'put', 'patch', 'delete']
@@ -89,7 +91,13 @@ function lastCalled(timestamp: number): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-export function HistoryPanel({ service, bus, baseUrl, environmentService }: HistoryPanelProps) {
+export function HistoryPanel({
+  service,
+  bus,
+  baseUrl,
+  environmentService,
+  onOpenHistoryDetail,
+}: HistoryPanelProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -112,6 +120,10 @@ export function HistoryPanel({ service, bus, baseUrl, environmentService }: Hist
   useEventBus(bus, 'HISTORY_CLEARED', () => void load())
 
   const openDetail = async (id: string) => {
+    if (onOpenHistoryDetail) {
+      onOpenHistoryDetail(id)
+      return
+    }
     const result = await service.get(id)
     if (result.ok && result.value) setDetail(result.value)
   }

@@ -180,6 +180,11 @@
   - [x] **Configurable Sign-in Endpoint Override**:
     - Added endpoint picker dropdown to let developers explicitly override the login endpoint for non-standard APIs.
     - Persisted configured login endpoint per project (**531 tests ✓**).
+- [x] **History Request Detail In-Page Overlay (Swagger DOM):**
+  - [x] **Spacious In-Page Modal for Execution Inspector**:
+    - Moved the narrow Side Panel inline history detail dialog into an in-page top-centered overlay (`#oac-history-detail-host`) mounted inside the Swagger webpage's Shadow DOM (consistent with Command Palette and Request Preset Editor).
+    - Features full 672px (`max-w-2xl`) viewport, tabbed Request / Response viewers, line wrap toggle, headers/parameters inspection, cURL / PowerShell / URL copy, Save Response to Variable, and sibling calls timeline switcher.
+    - Added standalone `HistoryDetailModal`, RPC bridge `historyDetail.open`, and isolated Tailwind styling with `ThemeManager` live sync (**534 tests ✓**).
 - [ ] **Project Variables Upgrades — Phase C: Automation & Cross-Project Power:**
   - [ ] **Auto-Extraction Rules (Zero-Click Token Chaining)**:
     - Rule builder to automatically capture response values (e.g., `POST /auth/login` -> extract `response.token` into `TOKEN`).

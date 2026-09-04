@@ -264,6 +264,14 @@ export function openPagePresetEditor(options?: PresetEditorOpenOptions): void {
   void rpcResult('presetEditor.open', options)
 }
 
+/**
+ * Ask the page to open its Request Detail overlay.
+ * Lives in the page (top-centered, 672px+ wide) for ample space.
+ */
+export function openPageHistoryDetail(id: string): void {
+  void rpcResult('historyDetail.open', id)
+}
+
 export function createRemoteHistoryService(): HistoryPanelService {
   return {
     list: (query) => rpcResult('history.list', query),

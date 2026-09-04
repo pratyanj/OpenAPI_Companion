@@ -52,6 +52,8 @@ interface PanelOutletProps {
   onOpenPalette?: () => void
   /** Opens the in-page preset editor overlay. */
   onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
+  /** Opens the in-page history request detail overlay. */
+  onOpenHistoryDetail?: (historyId: string) => void
   /** Tab switcher, so the dashboard can link into the other panels. */
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
@@ -74,6 +76,7 @@ export function PanelOutlet({
   environmentId,
   onOpenPalette,
   onOpenPresetEditor,
+  onOpenHistoryDetail,
   onNavigate,
   swagger,
 }: PanelOutletProps) {
@@ -143,6 +146,7 @@ export function PanelOutlet({
         bus={bus}
         baseUrl={project?.originUrl}
         environmentService={environmentService}
+        onOpenHistoryDetail={onOpenHistoryDetail}
       />
     )
   }

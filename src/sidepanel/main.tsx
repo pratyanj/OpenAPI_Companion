@@ -19,6 +19,7 @@ import {
   fetchState,
   openPagePalette,
   openPagePresetEditor,
+  openPageHistoryDetail,
   RemoteSwaggerAdapter,
   createRemoteAuthService,
   createRemoteRequestService,
@@ -125,6 +126,7 @@ async function render(root: Root): Promise<void> {
         staleTab={staleTab}
         onOpenPalette={openPagePalette}
         onOpenPresetEditor={openPagePresetEditor}
+        onOpenHistoryDetail={openPageHistoryDetail}
         authService={createRemoteAuthService()}
         requestService={createRemoteRequestService()}
         environmentService={createRemoteEnvironmentService()}

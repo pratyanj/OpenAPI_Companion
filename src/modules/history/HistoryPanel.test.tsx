@@ -302,4 +302,20 @@ describe('HistoryPanel', () => {
     fireEvent.click(saveVarBtn)
     expect(await screen.findByText('Save Response Value to Variable')).toBeInTheDocument()
   })
+
+  it('delegates to onOpenHistoryDetail when provided instead of opening inline dialog', async () => {
+    const onOpenHistoryDetail = vi.fn()
+    render(
+      <HistoryPanel
+        service={mockService()}
+        bus={new EventBus()}
+        onOpenHistoryDetail={onOpenHistoryDetail}
+      />,
+    )
+    await screen.findByText('/users')
+    fireEvent.click(screen.getByRole('button', { name: 'View post /users details' }))
+
+    expect(onOpenHistoryDetail).toHaveBeenCalledWith('h1')
+    expect(screen.queryByRole('dialog', { name: 'Request detail' })).not.toBeInTheDocument()
+  })
 })

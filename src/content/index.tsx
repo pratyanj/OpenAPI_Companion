@@ -19,13 +19,14 @@ import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
 import { RequestService, type CustomTemplateInput, type RequestPanelService } from '@/modules/request'
 import { EnvironmentService, type EnvironmentInput } from '@/modules/environment'
-import { HistoryService } from '@/modules/history'
+import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
+import type { HistoryDetailHandle } from './history-detail'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -182,6 +183,39 @@ async function boot(): Promise<void> {
     }
   }
 
+  let historyDetail: HistoryDetailHandle | null = null
+  const withHistoryDetail = async (): Promise<HistoryDetailHandle | null> => {
+    if (historyDetail) return historyDetail
+    try {
+      const { mountHistoryDetail } = await import('./history-detail')
+      const historyPanelService: HistoryPanelService = {
+        list: (query) => history.list(query ?? {}),
+        get: (id) => history.get(id),
+        replay: (id) => history.replay(id),
+        locate: (endpointId) => history.locate(endpointId),
+        deleteEntry: (id) => history.deleteEntry(id),
+        clearProject: () => history.clearProject(),
+      }
+      historyDetail = mountHistoryDetail(
+        historyPanelService,
+        environments,
+        bus,
+        location.origin,
+      )
+      const detailTheme = new ThemeManager({ storage, root: historyDetail.themeRoot, bus })
+      await detailTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void detailTheme.init()
+        }
+      })
+      return historyDetail
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page history detail overlay.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut. `key` is
   // optional-chained because page scripts can dispatch synthetic keydowns
   // without it, and a TypeError here would kill the whole listener.
@@ -315,6 +349,11 @@ async function boot(): Promise<void> {
     // Panel's preset editor → open the in-page editor (spacious overlay on the doc).
     'presetEditor.open': ([options]) => {
       void withPresetEditor().then((p) => p?.open(options as PresetEditorOpenOptions))
+      return ok(undefined)
+    },
+    // Panel's history detail → open the in-page detail overlay (spacious overlay on the doc).
+    'historyDetail.open': ([id]) => {
+      void withHistoryDetail().then((h) => h?.open(id as string))
       return ok(undefined)
     },
     'history.list': ([q]) => history.list((q as Parameters<typeof history.list>[0]) ?? {}),

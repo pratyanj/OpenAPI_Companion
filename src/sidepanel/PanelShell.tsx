@@ -43,6 +43,8 @@ export interface PanelShellProps {
   onOpenPalette: () => void
   /** Opens the preset editor overlay in the PAGE (see `openPagePresetEditor`). */
   onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
+  /** Opens the request detail overlay in the PAGE (see `openPageHistoryDetail`). */
+  onOpenHistoryDetail?: (historyId: string) => void
   /** The page is running an older build of the agent; it needs a refresh. */
   staleTab?: boolean
   authService: AuthPanelService
@@ -69,6 +71,7 @@ export function PanelShell({
   environmentId,
   onOpenPalette,
   onOpenPresetEditor,
+  onOpenHistoryDetail,
   staleTab = false,
   authService,
   requestService,
@@ -151,6 +154,7 @@ export function PanelShell({
           environmentId={activeEnv}
           onOpenPalette={onOpenPalette}
           onOpenPresetEditor={onOpenPresetEditor}
+          onOpenHistoryDetail={onOpenHistoryDetail}
           onNavigate={setActiveTab}
           swagger={swagger}
         />
