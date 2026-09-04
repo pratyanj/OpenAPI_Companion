@@ -155,6 +155,20 @@
   - [x] **Resolved Variable Preview & Missing Variable Alert**:
     - Hover preview over any `{{VAR}}` showing its real-time resolved value.
     - Warning badge when a request template references an undefined variable with 1-click "Add Variable" prompt (**495 tests ✓**).
+- [x] **Request Presets: Path & Query Parameters & Swagger Auto-Population:**
+  - [x] **Swagger Example & Parameter Auto-Population**:
+    - Automatic fetching of example request bodies and declared/filled path and query parameter defaults from Swagger operation DOM into preset editor.
+    - One-click "⚡ Load from Swagger" action button with live visual feedback.
+  - [x] **Path Parameters Builder & Required Field Validation**:
+    - Automatic detection of `{param}` placeholders in endpoint paths (e.g. `/teams/{team_id}/members/{user_id}/promote` -> `{team_id}`, `{user_id}`).
+    - Dedicated parameter inputs supporting `{{VARIABLE}}` substitution with required-field validation.
+    - Real-time resolved path and full URL preview.
+  - [x] **Query Parameters Builder**:
+    - Dynamic key-value query parameter editor (`+ Add Query Param`, remove, variable substitution).
+    - Live URL query string preview (`/users?role=admin&limit={{LIMIT}}`).
+  - [x] **Full Execution & Locate Integration**:
+    - Inject path parameters and query parameters into Swagger UI input rows during both "Replay" (autoExecute) and "Locate & Fill".
+    - Badges on preset cards (`2 path`, `2 query`) and expanded details view (**526 tests ✓**).
 - [ ] **Project Variables Upgrades — Phase C: Automation & Cross-Project Power:**
   - [ ] **Auto-Extraction Rules (Zero-Click Token Chaining)**:
     - Rule builder to automatically capture response values (e.g., `POST /auth/login` -> extract `response.token` into `TOKEN`).
@@ -162,3 +176,4 @@
     - Cross-project shared variables (`MY_EMAIL`, `DEFAULT_PAGE_SIZE`, etc.) accessible in every Swagger doc, overridden by Project Variables.
   - [ ] **Variable Usage & Formatter Utilities**:
     - cURL header copy with resolved variables and unused variable detector.
+

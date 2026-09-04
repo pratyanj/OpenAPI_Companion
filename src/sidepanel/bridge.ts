@@ -9,7 +9,7 @@ import type {
   SwaggerChange,
 } from '@/adapters'
 import type { AuthPanelService } from '@/modules/authentication'
-import type { RequestPanelService, RequestTemplate } from '@/modules/request'
+import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/request'
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { CollectionsPanelService } from '@/modules/collections'
@@ -152,8 +152,13 @@ export class RemoteSwaggerAdapter implements SwaggerAdapter {
     void rpcResult('adapter.writeRequest', endpointId, data)
     return ok(undefined)
   }
-  replay(endpointId: string, body?: string): Result<void> {
-    void rpcResult('adapter.replay', endpointId, body)
+  replay(
+    endpointId: string,
+    body?: string,
+    path?: Record<string, string>,
+    query?: Record<string, string>,
+  ): Result<void> {
+    void rpcResult('adapter.replay', endpointId, body, path, query)
     return ok(undefined)
   }
   isRequestBodyEmpty(endpointId: string): boolean {
@@ -216,6 +221,15 @@ export function createRemoteRequestService(): RequestPanelService {
       rpcResult('requests.locateAndFill', id, env ?? latestState.context?.environmentId),
     listEndpoints: () => latestState.adapter.endpoints,
     getOpenRequests: () => latestState.adapter.openRequests,
+    getSwaggerDefaults: (endpointId: string) => {
+      const open = latestState.adapter.openRequests.find((r) => r.endpointId === endpointId)
+      const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
+      return {
+        exampleBody: open?.body || exec?.requestBody || undefined,
+        path: open?.path || undefined,
+        query: open?.query || undefined,
+      }
+    },
   }
 }
 
@@ -243,12 +257,7 @@ export function openPagePalette(): void {
  * Ask the page to open its Request Preset Editor overlay.
  * Lives in the page (top-centered, 672px+ wide) for ample space.
  */
-export function openPagePresetEditor(options?: {
-  template?: RequestTemplate | null
-  initialEndpointId?: string
-  initialBody?: string
-  initialName?: string
-}): void {
+export function openPagePresetEditor(options?: PresetEditorOpenOptions): void {
   void rpcResult('presetEditor.open', options)
 }
 

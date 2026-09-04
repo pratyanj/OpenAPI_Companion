@@ -24,6 +24,8 @@ export interface PresetEditorOpenOptions {
   initialEndpointId?: string
   initialBody?: string
   initialName?: string
+  initialPath?: Record<string, string>
+  initialQuery?: Record<string, string>
 }
 
 export interface PresetEditorHandle {
@@ -73,6 +75,8 @@ export function mountPresetEditor(
             initialEndpointId={currentOptions.initialEndpointId}
             initialBody={currentOptions.initialBody}
             initialName={currentOptions.initialName}
+            initialPath={currentOptions.initialPath}
+            initialQuery={currentOptions.initialQuery}
             onClose={closeEditor}
             onSaved={() => {
               closeEditor()

@@ -182,6 +182,18 @@ export class RequestService {
     return ok(this.adapter.listEndpoints())
   }
 
+  /** Get default example body and parameters discovered from Swagger */
+  getSwaggerDefaults(endpointId: string): {
+    exampleBody?: string
+    path?: Record<string, string>
+    query?: Record<string, string>
+  } {
+    if (typeof this.adapter.getEndpointSwaggerDefaults === 'function') {
+      return this.adapter.getEndpointSwaggerDefaults(endpointId)
+    }
+    return {}
+  }
+
   async listTemplates(): Promise<Result<RequestTemplate[]>> {
     const keys = await this.storage.list(this.templatesPrefix())
     if (!keys.ok) return keys
@@ -285,6 +297,11 @@ export class RequestService {
     const envId = environmentId ?? got.value.environmentId
     const resolvedBody =
       got.value.body != null ? await this.resolveText(got.value.body, envId) : undefined
+    const resolvedPath = await this.resolveRecord(got.value.path, envId)
+    const resolvedQuery = await this.resolveRecord(got.value.query, envId)
+    if (resolvedPath || resolvedQuery) {
+      return this.adapter.replay(target, resolvedBody, resolvedPath, resolvedQuery)
+    }
     return this.adapter.replay(target, resolvedBody)
   }
 
@@ -296,16 +313,14 @@ export class RequestService {
     const got = await this.readData<RequestTemplate>(this.templateKey(templateId))
     if (!got.ok) return got
     if (!got.value) return err(notFound(templateId))
-    const { endpointId, body } = got.value
+    const { endpointId } = got.value
     const opened = this.adapter.openEndpoint(endpointId)
     if (!opened.ok) return opened
-    if (body != null) {
-      const snapshot = await this.toResolvedSnapshot(
-        got.value,
-        environmentId ?? got.value.environmentId,
-      )
-      this.adapter.writeRequest(endpointId, snapshot)
-    }
+    const snapshot = await this.toResolvedSnapshot(
+      got.value,
+      environmentId ?? got.value.environmentId,
+    )
+    this.adapter.writeRequest(endpointId, snapshot)
     return ok(undefined)
   }
 

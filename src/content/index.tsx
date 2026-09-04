@@ -165,6 +165,7 @@ async function boot(): Promise<void> {
         locateAndFill: (id, envId) => requests.locateAndFill(id, envId),
         listEndpoints: () => adapter.listEndpoints(),
         getOpenRequests: () => adapter.readOpenRequests(),
+        getSwaggerDefaults: (epId) => requests.getSwaggerDefaults(epId),
       }
       presetEditor = mountPresetEditor(requestPanelService, environments, bus, currentEnv)
       const editorTheme = new ThemeManager({ storage, root: presetEditor.themeRoot, bus })
@@ -369,9 +370,17 @@ async function boot(): Promise<void> {
       return updated
     },
     'environments.delete': ([id]) => environments.delete(id as string),
+    'requests.getSwaggerDefaults': ([endpointId]) =>
+      requests.getSwaggerDefaults(endpointId as string),
     'adapter.writeRequest': ([id, data]) =>
       adapter.writeRequest(id as string, data as RequestSnapshot),
-    'adapter.replay': ([id, body]) => adapter.replay(id as string, body as string | undefined),
+    'adapter.replay': ([id, body, path, query]) =>
+      adapter.replay(
+        id as string,
+        body as string | undefined,
+        path as Record<string, string> | undefined,
+        query as Record<string, string> | undefined,
+      ),
     'adapter.openEndpoint': ([id]) => adapter.openEndpoint(id as string),
     'adapter.writeAuth': ([a]) => adapter.writeAuth(a as AuthSnapshot),
     'adapter.clearAuth': () => adapter.clearAuth(),

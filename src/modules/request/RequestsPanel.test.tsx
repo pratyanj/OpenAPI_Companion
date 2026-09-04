@@ -155,7 +155,7 @@ describe('RequestsPanel', () => {
     expect(await screen.findByText('Create Request Preset')).toBeInTheDocument()
 
     // Health check endpoint is selected (GET)
-    expect(screen.getByText(/requests do not require a request body/i)).toBeInTheDocument()
+    expect(screen.getByText(/requests do not typically require a request body/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/JSON Request Body/i)).not.toBeInTheDocument()
   })
 
@@ -331,5 +331,49 @@ describe('RequestsPanel', () => {
       expect.objectContaining({ template }),
     )
   })
+
+  it('renders path and query parameter count badges and expanded details', async () => {
+    const parameterizedTemplate: RequestTemplate = {
+      templateId: 'tpl_param_1',
+      name: 'Promote User in Team',
+      endpointId: 'patch /teams/{team_id}/members/{user_id}/promote',
+      method: 'patch',
+      environmentId: 'default',
+      path: { team_id: '42', user_id: '{{TARGET_USER}}' },
+      query: { notify: 'true', dry_run: 'false' },
+      body: '{"role":"lead"}',
+      updatedAt: Date.now(),
+    }
+
+    const service = mockService({
+      listTemplates: vi.fn(async () => ok([parameterizedTemplate])),
+    })
+
+    render(
+      <RequestsPanel service={service} bus={new EventBus()} environmentId="default" />,
+    )
+
+    await screen.findByText('Promote User in Team')
+
+    // Check count badges on collapsed card header
+    expect(screen.getByText('2 path')).toBeInTheDocument()
+    expect(screen.getByText('2 query')).toBeInTheDocument()
+
+    // Expand the card
+    fireEvent.click(screen.getByText('Promote User in Team'))
+
+    // Expanded details should show Path Parameters and Query Parameters sections
+    expect(screen.getByText('Path Parameters')).toBeInTheDocument()
+    expect(screen.getByText('{team_id}:')).toBeInTheDocument()
+    expect(screen.getByText('42')).toBeInTheDocument()
+    expect(screen.getByText('{user_id}:')).toBeInTheDocument()
+
+    expect(screen.getByText('Query Parameters')).toBeInTheDocument()
+    expect(screen.getByText('notify=')).toBeInTheDocument()
+    expect(screen.getByText('true')).toBeInTheDocument()
+    expect(screen.getByText('dry_run=')).toBeInTheDocument()
+    expect(screen.getByText('false')).toBeInTheDocument()
+  })
 })
+
 

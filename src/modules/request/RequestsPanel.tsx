@@ -102,6 +102,8 @@ export function RequestsPanel({
   const [createInitialEndpointId, setCreateInitialEndpointId] = useState<string | undefined>()
   const [createInitialBody, setCreateInitialBody] = useState<string | undefined>()
   const [createInitialName, setCreateInitialName] = useState<string | undefined>()
+  const [createInitialPath, setCreateInitialPath] = useState<Record<string, string> | undefined>()
+  const [createInitialQuery, setCreateInitialQuery] = useState<Record<string, string> | undefined>()
 
   const loadVariables = useCallback(async () => {
     if (!environmentService) return
@@ -275,12 +277,16 @@ export function RequestsPanel({
         initialEndpointId: template.endpointId,
         initialBody: template.body,
         initialName: `${template.name} (Copy)`,
+        initialPath: template.path,
+        initialQuery: template.query,
       })
       return
     }
     setCreateInitialEndpointId(template.endpointId)
     setCreateInitialBody(template.body)
     setCreateInitialName(`${template.name} (Copy)`)
+    setCreateInitialPath(template.path)
+    setCreateInitialQuery(template.query)
     setIsCreateOpen(true)
   }
 
@@ -460,7 +466,19 @@ export function RequestsPanel({
                     <MethodTag method={method.toUpperCase()} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold text-text">{t.name}</div>
-                      <div className="truncate font-mono text-[11px] text-muted">{path}</div>
+                      <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-muted">
+                        <span className="truncate">{path}</span>
+                        {t.path && Object.keys(t.path).length > 0 && (
+                          <span className="rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1 py-0.2 text-[9px] font-semibold uppercase shrink-0">
+                            {Object.keys(t.path).length} path
+                          </span>
+                        )}
+                        {t.query && Object.keys(t.query).length > 0 && (
+                          <span className="rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 px-1 py-0.2 text-[9px] font-semibold uppercase shrink-0">
+                            {Object.keys(t.query).length} query
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -550,7 +568,45 @@ export function RequestsPanel({
                       </div>
                     )}
 
-                    {/* Headers & Query parameters (if present) */}
+                    {/* Path parameters (if present) */}
+                    {t.path && Object.keys(t.path).length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                          Path Parameters
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(t.path).map(([k, v]) => (
+                            <span
+                              key={k}
+                              className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted border border-border"
+                            >
+                              <strong className="text-primary">{`{${k}}`}:</strong> {v}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Query parameters (if present) */}
+                    {t.query && Object.keys(t.query).length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                          Query Parameters
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(t.query).map(([k, v]) => (
+                            <span
+                              key={k}
+                              className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted border border-border"
+                            >
+                              <strong className="text-text">{k}=</strong>{v}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Custom Headers (if present) */}
                     {t.headers && Object.keys(t.headers).length > 0 && (
                       <div className="flex flex-col gap-1">
                         <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
@@ -595,11 +651,15 @@ export function RequestsPanel({
           initialEndpointId={createInitialEndpointId ?? availableEndpoints[0]?.endpointId}
           initialBody={createInitialBody}
           initialName={createInitialName}
+          initialPath={createInitialPath}
+          initialQuery={createInitialQuery}
           onClose={() => {
             setIsCreateOpen(false)
             setCreateInitialEndpointId(undefined)
             setCreateInitialBody(undefined)
             setCreateInitialName(undefined)
+            setCreateInitialPath(undefined)
+            setCreateInitialQuery(undefined)
           }}
           onSaved={() => void load()}
         />

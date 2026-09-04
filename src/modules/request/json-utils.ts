@@ -62,3 +62,12 @@ export function validateJsonWithVariables(raw: string): { isValid: boolean; erro
     return { isValid: false, error: (err as Error).message }
   }
 }
+
+/**
+ * Extracts distinct path parameter names from a URL template string (e.g. /teams/{team_id}/members/{user_id}).
+ */
+export function extractPathParams(path: string): string[] {
+  const matches = Array.from(path.matchAll(/\{([^}]+)\}/g))
+  const names = matches.map((m) => m[1]?.trim()).filter((n): n is string => Boolean(n))
+  return Array.from(new Set(names))
+}
