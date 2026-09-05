@@ -5,11 +5,7 @@ import { VariableTextarea } from './VariableAutocomplete'
 describe('VariableTextarea', () => {
   it('renders textarea with standard attributes', () => {
     render(
-      <VariableTextarea
-        id="test-textarea"
-        placeholder="Enter payload..."
-        defaultValue="hello"
-      />,
+      <VariableTextarea id="test-textarea" placeholder="Enter payload..." defaultValue="hello" />,
     )
     const textarea = screen.getByPlaceholderText('Enter payload...')
     expect(textarea).toBeInTheDocument()
@@ -42,12 +38,7 @@ describe('VariableTextarea', () => {
   it('filters suggestions when typing query after {{', () => {
     const projectVariables = { USER_ID: '42', TOKEN: 'xyz' }
 
-    render(
-      <VariableTextarea
-        projectVariables={projectVariables}
-        placeholder="Enter body"
-      />,
-    )
+    render(<VariableTextarea projectVariables={projectVariables} placeholder="Enter body" />)
 
     const textarea = screen.getByPlaceholderText('Enter body')
     fireEvent.change(textarea, { target: { value: '{"user": "{{us' } })
@@ -81,12 +72,7 @@ describe('VariableTextarea', () => {
   it('closes autocomplete on Escape key', () => {
     const projectVariables = { TOKEN: 'xyz' }
 
-    render(
-      <VariableTextarea
-        projectVariables={projectVariables}
-        placeholder="Enter body"
-      />,
-    )
+    render(<VariableTextarea projectVariables={projectVariables} placeholder="Enter body" />)
 
     const textarea = screen.getByPlaceholderText('Enter body')
     fireEvent.change(textarea, { target: { value: '{{' } })
@@ -99,12 +85,7 @@ describe('VariableTextarea', () => {
   it('navigates with ArrowDown and ArrowUp', () => {
     const projectVariables = { VAR_A: '1', VAR_B: '2' }
 
-    render(
-      <VariableTextarea
-        projectVariables={projectVariables}
-        placeholder="Enter body"
-      />,
-    )
+    render(<VariableTextarea projectVariables={projectVariables} placeholder="Enter body" />)
 
     const textarea = screen.getByPlaceholderText('Enter body')
     fireEvent.change(textarea, { target: { value: '{{' } })

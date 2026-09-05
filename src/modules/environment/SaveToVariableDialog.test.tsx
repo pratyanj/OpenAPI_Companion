@@ -73,12 +73,7 @@ describe('SaveToVariableDialog', () => {
     })
 
     render(
-      <SaveToVariableDialog
-        responseBody={rawJson}
-        service={service}
-        bus={bus}
-        onClose={onClose}
-      />,
+      <SaveToVariableDialog responseBody={rawJson} service={service} bus={bus} onClose={onClose} />,
     )
 
     expect(await screen.findByText('Save Response Value to Variable')).toBeInTheDocument()
@@ -119,13 +114,7 @@ describe('SaveToVariableDialog', () => {
       userId: 42,
     })
 
-    render(
-      <SaveToVariableDialog
-        responseBody={rawJson}
-        service={service}
-        onClose={vi.fn()}
-      />,
-    )
+    render(<SaveToVariableDialog responseBody={rawJson} service={service} onClose={vi.fn()} />)
 
     await screen.findByText('Save Response Value to Variable')
     const userChip = screen.getByRole('button', { name: 'userId' })
@@ -137,18 +126,14 @@ describe('SaveToVariableDialog', () => {
 
   it('displays error when update fails', async () => {
     const service = mockEnvService({
-      update: vi.fn(async () => err({ code: 'STORAGE_FAILED', message: 'Storage error', recoverable: true })),
+      update: vi.fn(async () =>
+        err({ code: 'STORAGE_FAILED', message: 'Storage error', recoverable: true }),
+      ),
     })
 
     const rawJson = JSON.stringify({ key: 'val' })
 
-    render(
-      <SaveToVariableDialog
-        responseBody={rawJson}
-        service={service}
-        onClose={vi.fn()}
-      />,
-    )
+    render(<SaveToVariableDialog responseBody={rawJson} service={service} onClose={vi.fn()} />)
 
     await screen.findByText('Save Response Value to Variable')
     fireEvent.click(screen.getByRole('button', { name: 'Save to Variables' }))
@@ -157,15 +142,17 @@ describe('SaveToVariableDialog', () => {
   })
 
   it('creates an auto-extraction rule when checkbox is checked', async () => {
-    const saveRuleSpy = vi.fn(async () => ok({
-      id: 'rule_1',
-      endpointId: 'post /auth/login',
-      property: 'token',
-      targetVariable: 'TOKEN',
-      isSecret: true,
-      enabled: true,
-      createdAt: Date.now(),
-    }))
+    const saveRuleSpy = vi.fn(async () =>
+      ok({
+        id: 'rule_1',
+        endpointId: 'post /auth/login',
+        property: 'token',
+        targetVariable: 'TOKEN',
+        isSecret: true,
+        enabled: true,
+        createdAt: Date.now(),
+      }),
+    )
     const service = mockEnvService({ saveRule: saveRuleSpy })
     const rawJson = JSON.stringify({ token: 'jwt_abc' })
 

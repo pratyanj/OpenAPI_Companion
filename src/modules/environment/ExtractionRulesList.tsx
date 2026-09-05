@@ -1,12 +1,5 @@
 import { useState } from 'react'
-import {
-  Badge,
-  Button,
-  DeleteIcon,
-  LockIcon,
-  PlusIcon,
-  ZapIcon,
-} from '@/components'
+import { Badge, Button, DeleteIcon, LockIcon, PlusIcon, ZapIcon } from '@/components'
 import type { Result } from '@/types'
 import type { EndpointInfo } from '@/adapters'
 import { MethodTag } from '@/modules/request/EndpointPicker'
@@ -36,10 +29,7 @@ export function ExtractionRulesList({
     if (onOpenAddModal) {
       try {
         const res = await onOpenAddModal()
-        if (
-          res === false ||
-          (res && typeof res === 'object' && 'ok' in res && !res.ok)
-        ) {
+        if (res === false || (res && typeof res === 'object' && 'ok' in res && !res.ok)) {
           setModalOpen(true)
         }
       } catch {
@@ -60,18 +50,15 @@ export function ExtractionRulesList({
           </span>
           <Badge kind="neutral">{rules.length}</Badge>
         </div>
-        <Button
-          variant="primary"
-          onClick={handleOpenModal}
-          className="gap-1 text-xs"
-        >
+        <Button variant="primary" onClick={handleOpenModal} className="gap-1 text-xs">
           <PlusIcon className="h-3.5 w-3.5" />
           Add Rule
         </Button>
       </div>
 
       <p className="text-[11px] text-muted leading-relaxed">
-        Rules automatically capture JSON values (like access tokens or entity IDs) from successful (2xx) responses and write them directly into your project's .env variables.
+        Rules automatically capture JSON values (like access tokens or entity IDs) from successful
+        (2xx) responses and write them directly into your project's .env variables.
       </p>
 
       {/* Rules list */}
@@ -83,14 +70,11 @@ export function ExtractionRulesList({
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-medium text-text">No extraction rules configured</span>
             <span className="text-[11px] text-muted">
-              Auto-extract tokens or IDs upon execution, or check "Auto-extract" when saving from History.
+              Auto-extract tokens or IDs upon execution, or check "Auto-extract" when saving from
+              History.
             </span>
           </div>
-          <Button
-            variant="secondary"
-            onClick={handleOpenModal}
-            className="mt-1 gap-1 text-xs"
-          >
+          <Button variant="secondary" onClick={handleOpenModal} className="mt-1 gap-1 text-xs">
             <PlusIcon className="h-3 w-3" />
             Create First Rule
           </Button>
@@ -105,7 +89,9 @@ export function ExtractionRulesList({
               <div
                 key={rule.id}
                 className={`flex items-center justify-between gap-3 rounded-md border p-2.5 transition-colors ${
-                  rule.enabled ? 'border-border bg-surface' : 'border-border/60 bg-surface/30 opacity-70'
+                  rule.enabled
+                    ? 'border-border bg-surface'
+                    : 'border-border/60 bg-surface/30 opacity-70'
                 }`}
               >
                 {/* Left side info */}

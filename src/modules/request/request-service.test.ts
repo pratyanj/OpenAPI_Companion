@@ -375,4 +375,3 @@ describe('RequestService — templates', () => {
     )
   })
 })
-

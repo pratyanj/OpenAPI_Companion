@@ -95,7 +95,10 @@ export function readParametersFromBlock(block: Element): {
   for (const row of rows) {
     const rawName =
       row.getAttribute('data-param-name') ??
-      row.querySelector('.parameter__name')?.textContent?.trim().replace(/\s*\*\s*$/, '')
+      row
+        .querySelector('.parameter__name')
+        ?.textContent?.trim()
+        .replace(/\s*\*\s*$/, '')
     if (!rawName) continue
 
     const rawIn =
@@ -390,9 +393,14 @@ export function writeRequestParameters(
 
     // 4. Search parameter rows by text label
     if (!input) {
-      const allRows = Array.from(block.querySelectorAll('.parameters-container tr, table.parameters tr'))
+      const allRows = Array.from(
+        block.querySelectorAll('.parameters-container tr, table.parameters tr'),
+      )
       for (const r of allRows) {
-        const label = r.querySelector('.parameter__name')?.textContent?.trim().replace(/\s*\*\s*$/, '')
+        const label = r
+          .querySelector('.parameter__name')
+          ?.textContent?.trim()
+          .replace(/\s*\*\s*$/, '')
         if (label && label.toLowerCase() === cleanName.toLowerCase()) {
           input = r.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
             'input, select, textarea',
@@ -417,4 +425,3 @@ export function isBodyEmpty(doc: Document, endpointId: string): boolean {
   const textarea = block ? bodyTextarea(block) : null
   return textarea != null && textarea.value.trim() === ''
 }
-

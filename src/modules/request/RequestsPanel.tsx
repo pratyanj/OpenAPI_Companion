@@ -526,43 +526,50 @@ export function RequestsPanel({
                 {isExpanded && (
                   <div className="flex flex-col gap-2.5 border-t border-border bg-bg/40 p-3 text-xs animate-in fade-in duration-150">
                     {/* JSON Body Section */}
-                    {t.body ? (() => {
-                      const isPreview = previewIds.has(t.templateId)
-                      const { text: resolvedText, missing } = substitute(t.body, projectVars)
-                      const displayBody = isPreview ? formatJsonSafe(resolvedText) : formattedBody
-                      return (
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
-                              Request Body (JSON)
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => togglePreview(t.templateId)}
-                                className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
-                                  isPreview
-                                    ? 'bg-primary text-primary-contrast font-semibold'
-                                    : 'border border-border bg-surface text-muted hover:text-text'
-                                }`}
-                              >
-                                {isPreview ? 'Show template' : 'Preview resolved'}
-                              </button>
-                              <CopyButton text={isPreview ? resolvedText : t.body} label="Copy payload" />
+                    {t.body ? (
+                      (() => {
+                        const isPreview = previewIds.has(t.templateId)
+                        const { text: resolvedText, missing } = substitute(t.body, projectVars)
+                        const displayBody = isPreview ? formatJsonSafe(resolvedText) : formattedBody
+                        return (
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                                Request Body (JSON)
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => togglePreview(t.templateId)}
+                                  className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
+                                    isPreview
+                                      ? 'bg-primary text-primary-contrast font-semibold'
+                                      : 'border border-border bg-surface text-muted hover:text-text'
+                                  }`}
+                                >
+                                  {isPreview ? 'Show template' : 'Preview resolved'}
+                                </button>
+                                <CopyButton
+                                  text={isPreview ? resolvedText : t.body}
+                                  label="Copy payload"
+                                />
+                              </div>
                             </div>
+                            {isPreview && missing.length > 0 ? (
+                              <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-500 flex items-center gap-1.5">
+                                <span>⚠️ Missing in project variables:</span>
+                                <span className="font-mono font-medium">
+                                  {missing.map((m) => `{{${m}}}`).join(', ')}
+                                </span>
+                              </div>
+                            ) : null}
+                            <pre className="max-h-48 overflow-auto rounded-md border border-border bg-bg/90 p-2.5 font-mono text-[11px] text-text leading-relaxed select-text">
+                              <code>{displayBody}</code>
+                            </pre>
                           </div>
-                          {isPreview && missing.length > 0 ? (
-                            <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-500 flex items-center gap-1.5">
-                              <span>⚠️ Missing in project variables:</span>
-                              <span className="font-mono font-medium">{missing.map((m) => `{{${m}}}`).join(', ')}</span>
-                            </div>
-                          ) : null}
-                          <pre className="max-h-48 overflow-auto rounded-md border border-border bg-bg/90 p-2.5 font-mono text-[11px] text-text leading-relaxed select-text">
-                            <code>{displayBody}</code>
-                          </pre>
-                        </div>
-                      )
-                    })() : (
+                        )
+                      })()
+                    ) : (
                       <div className="rounded-md border border-dashed border-border p-2.5 text-center text-[11px] text-muted italic">
                         No request body payload stored for this preset.
                       </div>
@@ -599,7 +606,8 @@ export function RequestsPanel({
                               key={k}
                               className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted border border-border"
                             >
-                              <strong className="text-text">{k}=</strong>{v}
+                              <strong className="text-text">{k}=</strong>
+                              {v}
                             </span>
                           ))}
                         </div>

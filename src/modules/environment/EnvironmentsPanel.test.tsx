@@ -248,7 +248,9 @@ describe('EnvironmentsPanel (Variables)', () => {
 
   it('shows error when update fails', async () => {
     const service = mockService({
-      update: vi.fn(async () => err({ code: 'STORAGE_FAILED', message: 'Storage error', recoverable: true })),
+      update: vi.fn(async () =>
+        err({ code: 'STORAGE_FAILED', message: 'Storage error', recoverable: true }),
+      ),
     })
     render(<EnvironmentsPanel service={service} bus={new EventBus()} />)
     await screen.findByText('Project Variables')

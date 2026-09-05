@@ -6,7 +6,12 @@ import type { EndpointInfo } from '@/adapters'
 const mockEndpoints: EndpointInfo[] = [
   { endpointId: 'post /tasks/', method: 'post', path: '/tasks/', summary: 'Create Task' },
   { endpointId: 'get /tasks/', method: 'get', path: '/tasks/', summary: 'List Tasks' },
-  { endpointId: 'delete /tasks/{id}', method: 'delete', path: '/tasks/{id}', summary: 'Delete Task' },
+  {
+    endpointId: 'delete /tasks/{id}',
+    method: 'delete',
+    path: '/tasks/{id}',
+    summary: 'Delete Task',
+  },
 ]
 
 describe('EndpointPicker', () => {

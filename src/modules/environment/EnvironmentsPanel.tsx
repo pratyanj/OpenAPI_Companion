@@ -24,12 +24,7 @@ import { copyText } from '@/utils'
 import type { EndpointInfo } from '@/adapters'
 import type { Environment } from '@/core/project'
 import type { EnvironmentInput } from './env-service'
-import {
-  parseDotEnv,
-  serializeDotEnv,
-  parsePostmanEnv,
-  exportPostmanEnv,
-} from './env-parser'
+import { parseDotEnv, serializeDotEnv, parsePostmanEnv, exportPostmanEnv } from './env-parser'
 import type { ExtractionRule, ExtractionRuleInput } from './extraction-rules-types'
 import { ExtractionRulesList } from './ExtractionRulesList'
 
@@ -53,13 +48,17 @@ export interface EnvironmentsPanelProps {
   bus: EventBus
   endpoints?: EndpointInfo[]
   requestService?: {
-    listTemplates?: () => Promise<Result<Array<{
-      endpointId: string
-      body?: string
-      query?: Record<string, string>
-      path?: Record<string, string>
-      headers?: Record<string, string>
-    }>>>
+    listTemplates?: () => Promise<
+      Result<
+        Array<{
+          endpointId: string
+          body?: string
+          query?: Record<string, string>
+          path?: Record<string, string>
+          headers?: Record<string, string>
+        }>
+      >
+    >
   }
   onOpenExtractionRuleModal?: (options?: {
     endpointId?: string
@@ -382,7 +381,9 @@ export function EnvironmentsPanel({
       const existingVars = Object.fromEntries(
         vars.filter((v) => v.key.trim()).map((v) => [v.key.trim(), v.value]),
       )
-      const existingSecrets = new Set(vars.filter((v) => v.isSecret && v.key.trim()).map((v) => v.key.trim()))
+      const existingSecrets = new Set(
+        vars.filter((v) => v.isSecret && v.key.trim()).map((v) => v.key.trim()),
+      )
       const mergedVars = { ...existingVars, ...importedVars }
       const mergedSecrets = Array.from(new Set([...existingSecrets, ...importedSecrets]))
 
@@ -439,8 +440,14 @@ export function EnvironmentsPanel({
     )
   }
 
-  const varCount = editorMode === 'table' ? vars.filter((v) => v.key.trim()).length : Object.keys(parseDotEnv(rawText).variables).length
-  const secretCount = editorMode === 'table' ? vars.filter((v) => v.isSecret && v.key.trim()).length : parseDotEnv(rawText).secrets.length
+  const varCount =
+    editorMode === 'table'
+      ? vars.filter((v) => v.key.trim()).length
+      : Object.keys(parseDotEnv(rawText).variables).length
+  const secretCount =
+    editorMode === 'table'
+      ? vars.filter((v) => v.isSecret && v.key.trim()).length
+      : parseDotEnv(rawText).secrets.length
 
   const currentVariables =
     editorMode === 'table'
@@ -474,7 +481,8 @@ export function EnvironmentsPanel({
           Scoped to this project. Injected into requests via{' '}
           <code className="rounded bg-surface px-1 py-0.5 font-mono text-[10px] text-primary">
             {`{{KEY}}`}
-          </code>.
+          </code>
+          .
         </p>
 
         {/* Dedicated Toolbar Row */}
@@ -528,9 +536,7 @@ export function EnvironmentsPanel({
                   <Spinner className="h-3 w-3" /> Saving...
                 </span>
               ) : savedSuccess ? (
-                <span className="flex items-center gap-1 text-success font-medium">
-                  Saved ✓
-                </span>
+                <span className="flex items-center gap-1 text-success font-medium">Saved ✓</span>
               ) : null}
             </div>
           </div>
@@ -649,7 +655,9 @@ export function EnvironmentsPanel({
                     {v.isSecret ? (
                       <button
                         type="button"
-                        aria-label={v.revealed ? `Hide variable ${i + 1}` : `Reveal variable ${i + 1}`}
+                        aria-label={
+                          v.revealed ? `Hide variable ${i + 1}` : `Reveal variable ${i + 1}`
+                        }
                         title={v.revealed ? 'Hide secret' : 'Reveal secret'}
                         onClick={() => updateVar(i, { revealed: !v.revealed })}
                         className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted hover:text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -681,9 +689,7 @@ export function EnvironmentsPanel({
                         label: copiedVarIndex === i ? 'Copied!' : 'Copy value',
                         icon: (
                           <CopyIcon
-                            className={`h-3.5 w-3.5 ${
-                              copiedVarIndex === i ? 'text-success' : ''
-                            }`}
+                            className={`h-3.5 w-3.5 ${copiedVarIndex === i ? 'text-success' : ''}`}
                           />
                         ),
                         onSelect: () => {
@@ -734,7 +740,8 @@ export function EnvironmentsPanel({
         <Dialog title="Import Environment Variables" onClose={() => setImportOpen(false)}>
           <div className="flex flex-col gap-3 p-3">
             <p className="text-xs text-muted">
-              Paste standard <code className="font-mono text-primary">.env</code> format or Postman environment JSON:
+              Paste standard <code className="font-mono text-primary">.env</code> format or Postman
+              environment JSON:
             </p>
             <textarea
               rows={8}
@@ -794,7 +801,11 @@ export function EnvironmentsPanel({
                     }
                   }}
                 >
-                  {copiedExport ? <CopiedIcon className="h-3.5 w-3.5 text-success" /> : <CopyIcon className="h-3.5 w-3.5" />}
+                  {copiedExport ? (
+                    <CopiedIcon className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <CopyIcon className="h-3.5 w-3.5" />
+                  )}
                   {copiedExport ? 'Copied' : 'Copy .env'}
                 </Button>
                 <Button
@@ -820,11 +831,7 @@ export function EnvironmentsPanel({
                     currentSecrets,
                     { maskSecrets: maskSecretsInExport },
                   )
-                  triggerDownload(
-                    'project.postman_environment.json',
-                    content,
-                    'application/json',
-                  )
+                  triggerDownload('project.postman_environment.json', content, 'application/json')
                 }}
               >
                 Postman JSON

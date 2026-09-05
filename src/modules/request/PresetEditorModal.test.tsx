@@ -101,9 +101,7 @@ describe('PresetEditorModal', () => {
     )
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/A preset named "Admin Login" already exists/i),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/A preset named "Admin Login" already exists/i)).toBeInTheDocument()
     })
   })
 
@@ -121,7 +119,9 @@ describe('PresetEditorModal', () => {
     await waitFor(() => {
       expect(screen.getByText(/This endpoint has/i)).toBeInTheDocument()
       expect(
-        screen.getByText(/You can create multiple presets for the same endpoint with different values/i),
+        screen.getByText(
+          /You can create multiple presets for the same endpoint with different values/i,
+        ),
       ).toBeInTheDocument()
     })
   })
@@ -247,7 +247,9 @@ describe('PresetEditorModal', () => {
     // Now trigger and preview should display /users
     expect(screen.getAllByText('/users').length).toBeGreaterThanOrEqual(1)
     // And since it's GET, body notice should be displayed
-    expect(screen.getByText(/requests do not typically require a request body/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/requests do not typically require a request body/i),
+    ).toBeInTheDocument()
   })
 
   describe('validateJsonWithVariables', () => {
@@ -294,9 +296,10 @@ describe('PresetEditorModal', () => {
 
   describe('extractPathParams', () => {
     it('extracts distinct path parameters from parameterized URLs', () => {
-      expect(
-        extractPathParams('/teams/{team_id}/members/{user_id}/promote'),
-      ).toEqual(['team_id', 'user_id'])
+      expect(extractPathParams('/teams/{team_id}/members/{user_id}/promote')).toEqual([
+        'team_id',
+        'user_id',
+      ])
       expect(extractPathParams('/items/{id}')).toEqual(['id'])
       expect(extractPathParams('/users')).toEqual([])
       expect(extractPathParams('/orgs/{org_id}/teams/{org_id}')).toEqual(['org_id'])
@@ -432,8 +435,12 @@ describe('PresetEditorModal', () => {
 
       // Path inputs should be populated
       await waitFor(() => {
-        const teamInput = screen.getByPlaceholderText(/e\.g\. 101 or {{TEAM_ID}}/i) as HTMLInputElement
-        const userInput = screen.getByPlaceholderText(/e\.g\. 101 or {{USER_ID}}/i) as HTMLInputElement
+        const teamInput = screen.getByPlaceholderText(
+          /e\.g\. 101 or {{TEAM_ID}}/i,
+        ) as HTMLInputElement
+        const userInput = screen.getByPlaceholderText(
+          /e\.g\. 101 or {{USER_ID}}/i,
+        ) as HTMLInputElement
         expect(teamInput.value).toBe('99')
         expect(userInput.value).toBe('123')
       })

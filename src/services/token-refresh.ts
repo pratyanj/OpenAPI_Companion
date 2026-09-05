@@ -429,8 +429,7 @@ export class TokenRefreshService {
     // Tier E: Tag is Auth / Authentication / Login / Session and path mentions auth or token
     const tierE = safePosts.find(
       (e) =>
-        /(?:auth|login|session)/i.test(e.tag ?? '') &&
-        /(?:auth|token|login|session)/i.test(e.path),
+        /(?:auth|login|session)/i.test(e.tag ?? '') && /(?:auth|token|login|session)/i.test(e.path),
     )
     if (tierE) return tierE.endpointId
 
@@ -456,7 +455,8 @@ export class TokenRefreshService {
           const body = { ...parsed }
           for (const key of Object.keys(body)) {
             if (/pass/i.test(key)) body[key] = login.password
-            else if (/mail|user|login|phone|account|identifier/i.test(key)) body[key] = login.username
+            else if (/mail|user|login|phone|account|identifier/i.test(key))
+              body[key] = login.username
           }
           return JSON.stringify(body)
         }

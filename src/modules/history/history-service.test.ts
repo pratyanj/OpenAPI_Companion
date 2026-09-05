@@ -210,9 +210,11 @@ describe('HistoryService', () => {
     const notifySpy = vi.fn()
     bus.subscribe('NOTIFY', notifySpy)
 
-    const applyExtractionSpy = vi.fn(async () => ok({
-      extracted: [{ variable: 'TOKEN', value: 'secret123' }],
-    }))
+    const applyExtractionSpy = vi.fn(async () =>
+      ok({
+        extracted: [{ variable: 'TOKEN', value: 'secret123' }],
+      }),
+    )
 
     const service = new HistoryService({
       storage,
@@ -223,13 +225,15 @@ describe('HistoryService', () => {
       extraction: { applyExtraction: applyExtractionSpy },
     })
 
-    await service.record(input({
-      endpointId: 'post /auth/login',
-      method: 'post',
-      endpoint: '/auth/login',
-      status: 200,
-      responseBody: '{"token":"secret123"}',
-    }))
+    await service.record(
+      input({
+        endpointId: 'post /auth/login',
+        method: 'post',
+        endpoint: '/auth/login',
+        status: 200,
+        responseBody: '{"token":"secret123"}',
+      }),
+    )
 
     expect(applyExtractionSpy).toHaveBeenCalledWith('post /auth/login', '{"token":"secret123"}')
     // Wait microtask for promise resolution

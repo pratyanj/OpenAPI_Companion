@@ -17,12 +17,16 @@ describe('json-candidates', () => {
       const candidates = extractJsonCandidates(json)
       expect(candidates.length).toBeGreaterThanOrEqual(3)
 
-      const tokenCand = candidates.find((c) => c.suggestedName.includes('ACCESS_TOKEN') || c.suggestedName.includes('TOKEN'))
+      const tokenCand = candidates.find(
+        (c) => c.suggestedName.includes('ACCESS_TOKEN') || c.suggestedName.includes('TOKEN'),
+      )
       expect(tokenCand).toBeDefined()
       expect(tokenCand?.value).toBe('ey12345')
       expect(tokenCand?.isLikelySecret).toBe(true)
 
-      const idCand = candidates.find((c) => c.suggestedName.includes('USER_ID') || c.suggestedName.includes('ID'))
+      const idCand = candidates.find(
+        (c) => c.suggestedName.includes('USER_ID') || c.suggestedName.includes('ID'),
+      )
       expect(idCand).toBeDefined()
       expect(idCand?.value).toBe('42')
     })
@@ -39,7 +43,10 @@ describe('json-candidates', () => {
           apiKey: 'key_xyz',
         },
       },
-      items: [{ id: 'item_1', name: 'First' }, { id: 'item_2', name: 'Second' }],
+      items: [
+        { id: 'item_1', name: 'First' },
+        { id: 'item_2', name: 'Second' },
+      ],
     })
 
     it('extracts top-level fields', () => {

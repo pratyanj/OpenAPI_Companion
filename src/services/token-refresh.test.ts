@@ -1003,7 +1003,11 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
     const service = new TokenRefreshService({
       adapter: {
         listEndpoints: () => [
-          { endpointId: 'post /auth/forgot-password', method: 'post', path: '/auth/forgot-password' },
+          {
+            endpointId: 'post /auth/forgot-password',
+            method: 'post',
+            path: '/auth/forgot-password',
+          },
           { endpointId: 'post /auth/register', method: 'post', path: '/auth/register' },
           { endpointId: 'post /auth/logout', method: 'post', path: '/auth/logout' },
           { endpointId: 'post /auth/reset-password', method: 'post', path: '/auth/reset-password' },
@@ -1073,4 +1077,3 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
     expect(playedEndpoint).toBe('post /auth/login')
   })
 })
-

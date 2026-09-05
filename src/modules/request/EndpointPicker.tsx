@@ -1,10 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import {
-  SearchIcon,
-  ChevronDownIcon,
-  CloseIcon,
-  CopiedIcon,
-} from '@/components'
+import { SearchIcon, ChevronDownIcon, CloseIcon, CopiedIcon } from '@/components'
 import type { EndpointInfo } from '@/adapters'
 import { METHODS, type MethodFilter } from './types'
 
@@ -113,9 +108,7 @@ export function EndpointPicker({
             )}
           </div>
         ) : (
-          <span className={hasError ? 'text-danger' : 'text-muted'}>
-            Select an API endpoint…
-          </span>
+          <span className={hasError ? 'text-danger' : 'text-muted'}>Select an API endpoint…</span>
         )}
         <ChevronDownIcon
           className={`h-4 w-4 shrink-0 text-muted transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}

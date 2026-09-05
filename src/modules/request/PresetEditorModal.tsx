@@ -72,7 +72,7 @@ export function PresetEditorModal({
   )
   const [endpointTouched, setEndpointTouched] = useState(false)
   const [body, setBody] = useState(
-    template?.body ? formatJsonSafe(template.body).formatted : initialBody ?? '',
+    template?.body ? formatJsonSafe(template.body).formatted : (initialBody ?? ''),
   )
   const [bodyTouched, setBodyTouched] = useState(false)
   const [previewResolved, setPreviewResolved] = useState(false)
@@ -162,9 +162,7 @@ export function PresetEditorModal({
   // Existing presets for currently selected endpoint
   const presetsForSelectedEndpoint = useMemo(() => {
     if (!endpointId) return []
-    return existingTemplates.filter(
-      (t) => t.endpointId.toLowerCase() === endpointId.toLowerCase(),
-    )
+    return existingTemplates.filter((t) => t.endpointId.toLowerCase() === endpointId.toLowerCase())
   }, [existingTemplates, endpointId])
 
   // Warning if duplicate preset name exists
@@ -472,8 +470,8 @@ export function PresetEditorModal({
             <div className="rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[11px] text-muted flex items-start gap-1.5">
               <span className="text-primary text-xs">ℹ️</span>
               <span>
-                This endpoint has{' '}
-                <strong>{presetsForSelectedEndpoint.length}</strong> existing preset
+                This endpoint has <strong>{presetsForSelectedEndpoint.length}</strong> existing
+                preset
                 {presetsForSelectedEndpoint.length > 1 ? 's' : ''} (
                 {presetsForSelectedEndpoint.map((p) => `"${p.name}"`).join(', ')}). You can create
                 multiple presets for the same endpoint with different values.
@@ -532,9 +530,7 @@ export function PresetEditorModal({
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-text">Query Parameters</span>
               {queryParams.filter((q) => q.key.trim()).length > 0 && (
-                <Badge kind="info">
-                  {queryParams.filter((q) => q.key.trim()).length} set
-                </Badge>
+                <Badge kind="info">{queryParams.filter((q) => q.key.trim()).length} set</Badge>
               )}
             </div>
             <Button
@@ -555,7 +551,8 @@ export function PresetEditorModal({
 
           {queryParams.length === 0 ? (
             <p className="text-[11px] text-muted italic">
-              No query parameters added. Click &quot;Add Query Param&quot; if this request expects URL parameters (e.g. ?limit=10&amp;dry_run=true).
+              No query parameters added. Click &quot;Add Query Param&quot; if this request expects
+              URL parameters (e.g. ?limit=10&amp;dry_run=true).
             </p>
           ) : (
             <div className="flex flex-col gap-1.5 pt-1">
@@ -602,7 +599,9 @@ export function PresetEditorModal({
 
           {/* Live Full URL Preview */}
           <div className="mt-1 rounded border border-border bg-bg px-2.5 py-1.5 font-mono text-[11px] text-text flex items-center gap-1.5 overflow-x-auto">
-            <span className="text-muted shrink-0 text-[10px] uppercase font-bold">Resolved URL:</span>
+            <span className="text-muted shrink-0 text-[10px] uppercase font-bold">
+              Resolved URL:
+            </span>
             <span className="text-primary font-semibold">{liveUrlPreview}</span>
           </div>
         </div>
@@ -610,7 +609,8 @@ export function PresetEditorModal({
         {/* ── Request Body Editor / Preview (POST, PUT, PATCH, DELETE) ── */}
         {!supportsBody ? (
           <div className="rounded-md border border-border bg-surface p-3 text-center text-xs text-muted">
-            <span className="font-semibold uppercase text-text">{method}</span> requests do not typically require a request body.
+            <span className="font-semibold uppercase text-text">{method}</span> requests do not
+            typically require a request body.
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -620,7 +620,8 @@ export function PresetEditorModal({
                   JSON Request Body
                 </label>
                 <span className="text-[10px] text-muted">
-                  (Type <code className="font-mono text-primary font-semibold">{`{{`}</code> for variables)
+                  (Type <code className="font-mono text-primary font-semibold">{`{{`}</code> for
+                  variables)
                 </span>
               </div>
 
@@ -729,11 +730,7 @@ export function PresetEditorModal({
                 </Button>
               </>
             ) : (
-              <Button
-                variant="primary"
-                onClick={() => void handleSave(false)}
-                disabled={isSaving}
-              >
+              <Button variant="primary" onClick={() => void handleSave(false)} disabled={isSaving}>
                 {isSaving ? <Spinner className="h-4 w-4" /> : 'Create Preset'}
               </Button>
             )}
@@ -743,4 +740,3 @@ export function PresetEditorModal({
     </Dialog>
   )
 }
-

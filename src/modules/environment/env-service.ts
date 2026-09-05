@@ -420,7 +420,9 @@ export class EnvironmentService {
       ...existing,
       ...patch,
       id: existing.id,
-      ...(patch.targetVariable ? { targetVariable: patch.targetVariable.trim().toUpperCase() } : {}),
+      ...(patch.targetVariable
+        ? { targetVariable: patch.targetVariable.trim().toUpperCase() }
+        : {}),
       ...(patch.property ? { property: patch.property.trim() } : {}),
     }
     rules[idx] = updated

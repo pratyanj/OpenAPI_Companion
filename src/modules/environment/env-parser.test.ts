@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  parseDotEnv,
-  serializeDotEnv,
-  parsePostmanEnv,
-  exportPostmanEnv,
-} from './env-parser'
+import { parseDotEnv, serializeDotEnv, parsePostmanEnv, exportPostmanEnv } from './env-parser'
 
 describe('env-parser', () => {
   describe('parseDotEnv', () => {

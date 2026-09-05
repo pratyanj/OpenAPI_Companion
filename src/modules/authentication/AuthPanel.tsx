@@ -195,9 +195,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const isCurrentTokenSaved = useMemo(() => {
     if (!record?.token) return false
     const currentClean = record.token.replace(/^bearer\s+/i, '').trim()
-    return saved.some(
-      (cred) => cred.token.replace(/^bearer\s+/i, '').trim() === currentClean,
-    )
+    return saved.some((cred) => cred.token.replace(/^bearer\s+/i, '').trim() === currentClean)
   }, [record, saved])
 
   const load = useCallback(async () => {
@@ -471,22 +469,30 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
                         value={form.username}
                         onChange={(e) => {
                           setForm({ ...form, username: e.target.value })
-                          if (editingTouched.username) setEditingTouched((t) => ({ ...t, username: true }))
+                          if (editingTouched.username)
+                            setEditingTouched((t) => ({ ...t, username: true }))
                         }}
                         onBlur={() => setEditingTouched((t) => ({ ...t, username: true }))}
                         placeholder="Email / username"
                         aria-label={`Email for ${cred.name}`}
-                        error={editingTouched.username && !form.username.trim() ? 'Email / username is required.' : null}
+                        error={
+                          editingTouched.username && !form.username.trim()
+                            ? 'Email / username is required.'
+                            : null
+                        }
                       />
                       <PasswordField
                         value={form.password}
                         onChange={(password) => {
                           setForm({ ...form, password })
-                          if (editingTouched.password) setEditingTouched((t) => ({ ...t, password: true }))
+                          if (editingTouched.password)
+                            setEditingTouched((t) => ({ ...t, password: true }))
                         }}
                         label={`Password for ${cred.name}`}
                         onEnter={() => void saveLogin(cred.id)}
-                        error={editingTouched.password && !form.password ? 'Password is required.' : null}
+                        error={
+                          editingTouched.password && !form.password ? 'Password is required.' : null
+                        }
                       />
                       <div className="flex justify-end gap-1">
                         <Button
@@ -739,18 +745,27 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           <summary className="cursor-pointer text-[11px] text-primary">How to set this up</summary>
           <div className="mt-1.5 flex flex-col gap-2 text-[11px] text-muted">
             <div className="flex flex-col gap-0.5">
-              <span className="font-semibold text-text">Option A — Saved account credentials (Recommended)</span>
+              <span className="font-semibold text-text">
+                Option A — Saved account credentials (Recommended)
+              </span>
               <p>
-                Click <strong>+ Add account with email &amp; password</strong> above, or click the key icon on any saved token to enter login credentials. When a call returns 401, OpenAPI Companion signs in automatically and updates your token.
+                Click <strong>+ Add account with email &amp; password</strong> above, or click the
+                key icon on any saved token to enter login credentials. When a call returns 401,
+                OpenAPI Companion signs in automatically and updates your token.
               </p>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="font-semibold text-text">Option B — Saved login request preset</span>
               <p>
-                Execute your login endpoint once in Swagger, then open the <strong>Requests</strong> tab and save it as a template (with “login” or “auth” in the name).
+                Execute your login endpoint once in Swagger, then open the <strong>Requests</strong>{' '}
+                tab and save it as a template (with “login” or “auth” in the name).
               </p>
               {onNavigate ? (
-                <Button variant="secondary" onClick={() => onNavigate('requests')} className="mt-1 self-start">
+                <Button
+                  variant="secondary"
+                  onClick={() => onNavigate('requests')}
+                  className="mt-1 self-start"
+                >
                   Open Requests tab
                 </Button>
               ) : null}
@@ -766,8 +781,8 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           hasLoginCredentials && credWithLogin?.login ? (
             <div className="flex flex-col gap-1 rounded-md border border-success/30 bg-success/5 p-2 animate-in fade-in duration-150">
               <p className="text-[11px] font-medium text-success">
-                ✓ Will sign in using saved account credentials for “{credWithLogin.name}” ({credWithLogin.login.username})
-                {loginEndpoint ? ` via ${loginEndpoint}` : ''}.
+                ✓ Will sign in using saved account credentials for “{credWithLogin.name}” (
+                {credWithLogin.login.username}){loginEndpoint ? ` via ${loginEndpoint}` : ''}.
               </p>
             </div>
           ) : loginTemplate ? (
@@ -779,7 +794,9 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           ) : (
             <div className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/5 p-2 animate-in fade-in duration-150">
               <p className="text-[11px] text-warning">
-                No saved login credentials or request found, so this can&apos;t run yet. Add an account with email &amp; password above, or save your login endpoint from the <strong>Requests</strong> tab.
+                No saved login credentials or request found, so this can&apos;t run yet. Add an
+                account with email &amp; password above, or save your login endpoint from the{' '}
+                <strong>Requests</strong> tab.
               </p>
             </div>
           )

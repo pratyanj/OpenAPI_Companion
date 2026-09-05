@@ -155,7 +155,9 @@ describe('RequestsPanel', () => {
     expect(await screen.findByText('Create Request Preset')).toBeInTheDocument()
 
     // Health check endpoint is selected (GET)
-    expect(screen.getByText(/requests do not typically require a request body/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/requests do not typically require a request body/i),
+    ).toBeInTheDocument()
     expect(screen.queryByLabelText(/JSON Request Body/i)).not.toBeInTheDocument()
   })
 
@@ -327,9 +329,7 @@ describe('RequestsPanel', () => {
 
     // Click "Edit"
     fireEvent.click(screen.getByRole('button', { name: 'Edit Create user' }))
-    expect(onOpenPresetEditor).toHaveBeenCalledWith(
-      expect.objectContaining({ template }),
-    )
+    expect(onOpenPresetEditor).toHaveBeenCalledWith(expect.objectContaining({ template }))
   })
 
   it('renders path and query parameter count badges and expanded details', async () => {
@@ -349,9 +349,7 @@ describe('RequestsPanel', () => {
       listTemplates: vi.fn(async () => ok([parameterizedTemplate])),
     })
 
-    render(
-      <RequestsPanel service={service} bus={new EventBus()} environmentId="default" />,
-    )
+    render(<RequestsPanel service={service} bus={new EventBus()} environmentId="default" />)
 
     await screen.findByText('Promote User in Team')
 
@@ -375,5 +373,3 @@ describe('RequestsPanel', () => {
     expect(screen.getByText('false')).toBeInTheDocument()
   })
 })
-
-

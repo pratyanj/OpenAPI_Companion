@@ -70,4 +70,3 @@ export interface PresetEditorOpenOptions {
   initialPath?: Record<string, string>
   initialQuery?: Record<string, string>
 }
-

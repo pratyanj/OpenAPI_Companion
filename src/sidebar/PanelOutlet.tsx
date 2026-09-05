@@ -3,7 +3,11 @@ import type { ProjectMeta } from '@/core/project'
 import type { EventBus } from '@/core/events'
 import type { ThemeManager } from '@/services'
 import { AuthPanel, type AuthPanelService } from '@/modules/authentication'
-import { RequestsPanel, type RequestPanelService, type PresetEditorOpenOptions } from '@/modules/request'
+import {
+  RequestsPanel,
+  type RequestPanelService,
+  type PresetEditorOpenOptions,
+} from '@/modules/request'
 import { EnvironmentsPanel, type EnvironmentPanelService } from '@/modules/environment'
 import { HistoryPanel, type HistoryPanelService } from '@/modules/history'
 import { FakeDataPanel, type FakeDataPanelService } from '@/modules/fake-data'

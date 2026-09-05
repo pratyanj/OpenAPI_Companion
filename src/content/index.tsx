@@ -17,7 +17,11 @@ import { docIdentityUrl } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
-import { RequestService, type CustomTemplateInput, type RequestPanelService } from '@/modules/request'
+import {
+  RequestService,
+  type CustomTemplateInput,
+  type RequestPanelService,
+} from '@/modules/request'
 import { EnvironmentService, type EnvironmentInput } from '@/modules/environment'
 import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
@@ -206,12 +210,7 @@ async function boot(): Promise<void> {
         deleteEntry: (id) => history.deleteEntry(id),
         clearProject: () => history.clearProject(),
       }
-      historyDetail = mountHistoryDetail(
-        historyPanelService,
-        environments,
-        bus,
-        location.origin,
-      )
+      historyDetail = mountHistoryDetail(historyPanelService, environments, bus, location.origin)
       const detailTheme = new ThemeManager({ storage, root: historyDetail.themeRoot, bus })
       await detailTheme.init()
       chrome.storage.onChanged.addListener((changes, area) => {

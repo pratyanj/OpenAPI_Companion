@@ -187,7 +187,9 @@ describe('AuthPanel', () => {
       loginTemplate: vi.fn(async () => null),
     })
     render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
-    expect(await screen.findByText(/No saved login credentials or request found/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/No saved login credentials or request found/),
+    ).toBeInTheDocument()
   })
 
   it('suppresses warning and shows green confirmation when an account has saved credentials', async () => {
@@ -206,10 +208,14 @@ describe('AuthPanel', () => {
     render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
 
     // Should NOT display warning
-    expect(screen.queryByText(/No saved login credentials or request found/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/No saved login credentials or request found/),
+    ).not.toBeInTheDocument()
     // Should display green confirmation
     expect(
-      await screen.findByText(/Will sign in using saved account credentials for “Admin” \(admin@acme\.io\)/),
+      await screen.findByText(
+        /Will sign in using saved account credentials for “Admin” \(admin@acme\.io\)/,
+      ),
     ).toBeInTheDocument()
   })
 
@@ -423,4 +429,3 @@ describe('AuthPanel', () => {
     expect(service.saveAs).not.toHaveBeenCalled()
   })
 })
-

@@ -237,7 +237,9 @@ export function SaveToVariableDialog({
             ) : null}
 
             {error ? <div className="text-xs text-danger">{error}</div> : null}
-            {successMsg ? <div className="text-xs text-success font-medium">{successMsg}</div> : null}
+            {successMsg ? (
+              <div className="text-xs text-success font-medium">{successMsg}</div>
+            ) : null}
 
             {/* Dialog Footer Actions */}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">

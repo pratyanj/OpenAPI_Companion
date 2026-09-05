@@ -7,10 +7,7 @@ import {
   type ChangeEvent,
 } from 'react'
 import { LockIcon } from '@/components/icons'
-import {
-  DYNAMIC_VARIABLE_SUGGESTIONS,
-  type VariableSuggestion,
-} from './variable-constants'
+import { DYNAMIC_VARIABLE_SUGGESTIONS, type VariableSuggestion } from './variable-constants'
 
 export interface VariableTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   projectVariables?: Record<string, string>
@@ -61,8 +58,7 @@ export function VariableTextarea({
     if (!query) return true
     const q = query.toLowerCase()
     return (
-      s.name.toLowerCase().includes(q) ||
-      (s.description && s.description.toLowerCase().includes(q))
+      s.name.toLowerCase().includes(q) || (s.description && s.description.toLowerCase().includes(q))
     )
   })
 
@@ -175,7 +171,9 @@ export function VariableTextarea({
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault()
-        setSelectedIndex((prev) => (prev - 1 + filteredSuggestions.length) % filteredSuggestions.length)
+        setSelectedIndex(
+          (prev) => (prev - 1 + filteredSuggestions.length) % filteredSuggestions.length,
+        )
         return
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
@@ -239,7 +237,9 @@ export function VariableTextarea({
                     <div className="flex items-center gap-1.5 min-w-0">
                       {s.isSecret ? (
                         <span title="Secret variable">
-                          <LockIcon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-primary-contrast' : 'text-warning'}`} />
+                          <LockIcon
+                            className={`h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-primary-contrast' : 'text-warning'}`}
+                          />
                         </span>
                       ) : null}
                       <span className="font-mono font-semibold tracking-tight text-[11px] truncate">
@@ -263,7 +263,9 @@ export function VariableTextarea({
 
           {/* Dynamic System Variables Section */}
           {filteredDynamic.length > 0 && (
-            <div className={`flex flex-col gap-0.5 ${filteredProject.length > 0 ? 'pt-1 border-t border-border/60' : ''}`}>
+            <div
+              className={`flex flex-col gap-0.5 ${filteredProject.length > 0 ? 'pt-1 border-t border-border/60' : ''}`}
+            >
               <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
                 <span>Dynamic Variables</span>
                 <span className="font-mono text-[9px] font-normal">{filteredDynamic.length}</span>

@@ -124,7 +124,8 @@ export function ExtractionRuleModal({
             placeholder="access_token, token, data.id"
           />
           <span className="text-[10px] text-muted">
-            Dot-notation in JSON response (e.g. <code>token</code> or <code>data.items[0].id</code>).
+            Dot-notation in JSON response (e.g. <code>token</code> or <code>data.items[0].id</code>
+            ).
           </span>
         </div>
 

@@ -168,4 +168,3 @@ describe('ExtractionRulesList', () => {
     expect(await screen.findByText('Add Auto-Extraction Rule')).toBeInTheDocument()
   })
 })
-

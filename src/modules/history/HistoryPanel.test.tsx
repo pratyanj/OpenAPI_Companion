@@ -273,9 +273,22 @@ describe('HistoryPanel', () => {
 
   it('opens Save to Variable dialog from response tab when environmentService is provided', async () => {
     const envService = {
-      list: vi.fn(async () => ok([{ id: 'default', name: 'Default', baseUrl: '', variables: {}, secrets: [], updatedAt: 0 }])),
+      list: vi.fn(async () =>
+        ok([
+          { id: 'default', name: 'Default', baseUrl: '', variables: {}, secrets: [], updatedAt: 0 },
+        ]),
+      ),
       getActiveId: vi.fn(async () => 'default'),
-      update: vi.fn(async () => ok({ id: 'default', name: 'Default', baseUrl: '', variables: {}, secrets: [], updatedAt: 0 })),
+      update: vi.fn(async () =>
+        ok({
+          id: 'default',
+          name: 'Default',
+          baseUrl: '',
+          variables: {},
+          secrets: [],
+          updatedAt: 0,
+        }),
+      ),
       create: vi.fn(),
       delete: vi.fn(),
     }

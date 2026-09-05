@@ -111,6 +111,21 @@ Known Issues
 
 ---
 
+# [1.1.3] - 2026-09-06
+
+## Added
+* **Project Variables Automation & Zero-Click Auto-Extraction**:
+  * **Auto-Extraction Rules**: Define automatic variable extraction rules from HTTP responses for project environments with property path traversal (`token`, `data.id`).
+  * **In-Page Swagger UI Integration**: Seamless "Save to Variable" dialog overlay directly in Swagger UI response blocks with null safety, error propagation, and local sidebar fallback.
+  * **Variable Reference Tracking**: View live reference counts and badges across requests, headers, query params, auth configs, and extraction rules.
+  * **Architecture & Specification Blueprint**: Added `/plans/` directory tracking system architecture and Phase C blueprints.
+
+## Changed
+* **Project Isolation & DRY Refactoring**: Maintained strict project isolation guarantee for environment variables while reusing core UI components (`EndpointPicker`, `MethodTag`, `extractJsonCandidates`).
+* **Code Formatting**: Fully aligned formatting across all source modules with Prettier.
+
+---
+
 # [1.1.2] - 2026-09-02
 
 ## Added
