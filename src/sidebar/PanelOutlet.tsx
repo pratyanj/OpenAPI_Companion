@@ -136,7 +136,14 @@ export function PanelOutlet({
   }
 
   if (activeTab === 'environments' && environmentService && bus) {
-    return <EnvironmentsPanel service={environmentService} bus={bus} />
+    return (
+      <EnvironmentsPanel
+        service={environmentService}
+        bus={bus}
+        endpoints={requestService?.listEndpoints?.() ?? []}
+        requestService={requestService}
+      />
+    )
   }
 
   if (activeTab === 'history' && historyService && bus) {

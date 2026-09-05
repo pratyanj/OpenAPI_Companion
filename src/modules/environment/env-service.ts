@@ -2,6 +2,8 @@ import { ok, err, type Result, type AppError } from '@/types'
 import { projectKey, type StorageService } from '@/core/storage'
 import type { EventBus } from '@/core/events'
 import { DEFAULT_ENVIRONMENT_ID, type Environment, type ProjectMeta } from '@/core/project'
+import type { ExtractionRule, ExtractionRuleInput } from './extraction-rules-types'
+import { extractValueByPath } from './json-candidates'
 
 export interface EnvironmentServiceOptions {
   storage: StorageService
@@ -329,6 +331,168 @@ export class EnvironmentService {
       { ...meta.value, lastActiveEnvId: id },
       { immediate: true },
     )
+  }
+
+  private rulesKey(): string {
+    return projectKey(this.projectId, 'environment', 'extraction-rules')
+  }
+
+  async listRules(): Promise<Result<ExtractionRule[]>> {
+    const got = await this.storage.getData<ExtractionRule[]>(this.rulesKey())
+    if (!got.ok) return got.error.code === 'STORAGE_CORRUPT' ? ok([]) : got
+    return ok(got.value ?? [])
+  }
+
+  async saveRule(input: ExtractionRuleInput): Promise<Result<ExtractionRule>> {
+    const targetVar = input.targetVariable.trim().toUpperCase()
+    if (!targetVar) {
+      return err({
+        code: 'ENV_INVALID_RULE',
+        message: 'Target variable name is required',
+        recoverable: true,
+      })
+    }
+    const prop = input.property.trim()
+    if (!prop) {
+      return err({
+        code: 'ENV_INVALID_RULE',
+        message: 'Property path is required',
+        recoverable: true,
+      })
+    }
+
+    const rulesRes = await this.listRules()
+    if (!rulesRes.ok) return rulesRes
+    const rules = [...rulesRes.value]
+
+    const existingIdx = rules.findIndex(
+      (r) =>
+        r.endpointId.toLowerCase() === input.endpointId.toLowerCase() &&
+        r.property.toLowerCase() === prop.toLowerCase() &&
+        r.targetVariable.toUpperCase() === targetVar,
+    )
+
+    let rule: ExtractionRule
+    if (existingIdx >= 0) {
+      const existing = rules[existingIdx]!
+      rule = {
+        ...existing,
+        ...input,
+        id: existing.id,
+        targetVariable: targetVar,
+        property: prop,
+      }
+      rules[existingIdx] = rule
+    } else {
+      rule = {
+        id: `rule_${this.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        endpointId: input.endpointId,
+        source: input.source ?? 'body',
+        property: prop,
+        targetVariable: targetVar,
+        isSecret: Boolean(input.isSecret),
+        enabled: input.enabled ?? true,
+        createdAt: this.now(),
+      }
+      rules.push(rule)
+    }
+
+    const written = await this.storage.set(this.rulesKey(), rules, { immediate: true })
+    if (!written.ok) return written
+    this.bus?.publish('EXTRACTION_RULE_SAVED', { projectId: this.projectId, ruleId: rule.id })
+    return ok(rule)
+  }
+
+  async updateRule(id: string, patch: Partial<ExtractionRule>): Promise<Result<ExtractionRule>> {
+    const rulesRes = await this.listRules()
+    if (!rulesRes.ok) return rulesRes
+    const rules = [...rulesRes.value]
+    const idx = rules.findIndex((r) => r.id === id)
+    if (idx < 0) {
+      return err({
+        code: 'ENV_RULE_NOT_FOUND',
+        message: `Extraction rule "${id}" not found`,
+        recoverable: true,
+      })
+    }
+    const existing = rules[idx]!
+    const updated: ExtractionRule = {
+      ...existing,
+      ...patch,
+      id: existing.id,
+      ...(patch.targetVariable ? { targetVariable: patch.targetVariable.trim().toUpperCase() } : {}),
+      ...(patch.property ? { property: patch.property.trim() } : {}),
+    }
+    rules[idx] = updated
+    const written = await this.storage.set(this.rulesKey(), rules, { immediate: true })
+    if (!written.ok) return written
+    this.bus?.publish('EXTRACTION_RULE_SAVED', { projectId: this.projectId, ruleId: id })
+    return ok(updated)
+  }
+
+  async deleteRule(id: string): Promise<Result<void>> {
+    const rulesRes = await this.listRules()
+    if (!rulesRes.ok) return rulesRes
+    const filtered = rulesRes.value.filter((r) => r.id !== id)
+    const written = await this.storage.set(this.rulesKey(), filtered, { immediate: true })
+    if (!written.ok) return written
+    this.bus?.publish('EXTRACTION_RULE_DELETED', { projectId: this.projectId, ruleId: id })
+    return ok(undefined)
+  }
+
+  async applyExtraction(
+    endpointId: string,
+    responseBody: string,
+  ): Promise<Result<{ extracted: Array<{ variable: string; value: string }> }>> {
+    const rulesRes = await this.listRules()
+    if (!rulesRes.ok) return rulesRes
+    const matching = rulesRes.value.filter(
+      (r) => r.enabled && r.endpointId.toLowerCase() === endpointId.toLowerCase(),
+    )
+    if (matching.length === 0) return ok({ extracted: [] })
+
+    const extracted: Array<{ variable: string; value: string; isSecret: boolean }> = []
+    for (const rule of matching) {
+      const val = extractValueByPath(responseBody, rule.property)
+      if (val !== null && val !== '') {
+        extracted.push({
+          variable: rule.targetVariable,
+          value: val,
+          isSecret: rule.isSecret,
+        })
+      }
+    }
+
+    if (extracted.length === 0) return ok({ extracted: [] })
+
+    const activeId = await this.getActiveId()
+    const envRes = await this.get(activeId)
+    if (!envRes.ok || !envRes.value) return ok({ extracted: [] })
+
+    const env = envRes.value
+    const nextVars = { ...(env.variables ?? {}) }
+    const secretSet = new Set(env.secrets ?? [])
+
+    for (const item of extracted) {
+      nextVars[item.variable] = item.value
+      if (item.isSecret) {
+        secretSet.add(item.variable)
+      }
+      this.bus?.publish('VARIABLE_AUTO_EXTRACTED', {
+        projectId: this.projectId,
+        variableName: item.variable,
+        endpointId,
+      })
+    }
+
+    await this.update(activeId, {
+      variables: nextVars,
+      secrets: Array.from(secretSet),
+    })
+
+    return ok({
+      extracted: extracted.map((e) => ({ variable: e.variable, value: e.value })),
+    })
   }
 
   private uniqueId(base: string, existing: Environment[]): string {

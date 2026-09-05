@@ -185,12 +185,19 @@
     - Moved the narrow Side Panel inline history detail dialog into an in-page top-centered overlay (`#oac-history-detail-host`) mounted inside the Swagger webpage's Shadow DOM (consistent with Command Palette and Request Preset Editor).
     - Features full 672px (`max-w-2xl`) viewport, tabbed Request / Response viewers, line wrap toggle, headers/parameters inspection, cURL / PowerShell / URL copy, Save Response to Variable, and sibling calls timeline switcher.
     - Added standalone `HistoryDetailModal`, RPC bridge `historyDetail.open`, and isolated Tailwind styling with `ThemeManager` live sync (**534 tests ✓**).
-- [ ] **Project Variables Upgrades — Phase C: Automation & Cross-Project Power:**
-  - [ ] **Auto-Extraction Rules (Zero-Click Token Chaining)**:
-    - Rule builder to automatically capture response values (e.g., `POST /auth/login` -> extract `response.token` into `TOKEN`).
-  - [ ] **Global Variables Hierarchy (Cross-Project Shared Variables)**:
-    - Cross-project shared variables (`MY_EMAIL`, `DEFAULT_PAGE_SIZE`, etc.) accessible in every Swagger doc, overridden by Project Variables.
-  - [ ] **Variable Usage & Formatter Utilities**:
-    - cURL header copy with resolved variables and unused variable detector.
+- [x] **Project Variables Upgrades — Phase C: Automation & Workflow Utilities:**
+  - [x] **Zero-Click Auto-Extraction Rules (Persistent Project Isolation)**:
+    - Built persistent extraction rule engine (`env-service.ts`, `extraction-rules-types.ts`) keyed strictly to `projects/<projectId>/environment/extraction-rules` to maintain 100% project isolation (FR-024).
+    - Evaluated and intentionally dropped cross-project global variables per architectural decision to ensure zero cross-origin data leakage across distinct Swagger specs.
+    - Added nested dot/bracket path resolution (`extractValueByPath`) in `json-candidates.ts` supporting `response.` and `body.` prefixes.
+    - Integrated automatic extraction hook in `HistoryService` on 2xx successful responses, triggering reactive updates and notifications (`VARIABLE_AUTO_EXTRACTED`).
+  - [x] **Interactive Rules Management UI & Quick Presets**:
+    - Created `ExtractionRulesList.tsx` with one-click token presets (`access_token`, `token`, `id`, `data.id`), enabled/disabled toggle, rule deletion, and modal creation dialog reusing `EndpointPicker`.
+    - Integrated "Rules" tab directly into `EnvironmentsPanel.tsx` segmented control.
+    - Added `⚡ Auto-extract on future 2xx responses` checkbox directly in `SaveToVariableDialog.tsx` so developers can create recurring extraction rules from any history inspection.
+  - [x] **Variable Reference & Usage Scanner**:
+    - Scans all saved endpoint request presets (`headers`, `query`, `path`, `body`) to detect active `{{VAR}}` usage.
+    - Displays `✓ Used in N presets` badge with full tooltip inspection or `unused` indicator next to each project variable (**551 tests ✓**).
+
 
 

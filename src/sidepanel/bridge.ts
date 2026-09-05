@@ -245,6 +245,10 @@ export function createRemoteEnvironmentService(): EnvironmentPanelService {
     update: (id, patch) => rpcResult('environments.update', id, patch),
     delete: (id) => rpcResult('environments.delete', id),
     listBuiltins: () => BUILTIN_ENVIRONMENTS,
+    listRules: () => rpcResult('environments.listRules'),
+    saveRule: (rule) => rpcResult('environments.saveRule', rule),
+    updateRule: (id, patch) => rpcResult('environments.updateRule', id, patch),
+    deleteRule: (id) => rpcResult('environments.deleteRule', id),
   }
 }
 

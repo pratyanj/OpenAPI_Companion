@@ -35,6 +35,9 @@ export interface EventPayload {
   ENVIRONMENT_CHANGED: { projectId: string; environmentId: string }
   ENVIRONMENT_CREATED: { environmentId: string }
   ENVIRONMENT_DELETED: { environmentId: string }
+  EXTRACTION_RULE_SAVED: { projectId: string; ruleId: string }
+  EXTRACTION_RULE_DELETED: { projectId: string; ruleId: string }
+  VARIABLE_AUTO_EXTRACTED: { projectId: string; variableName: string; endpointId: string }
 
   // History
   HISTORY_RECORDED: { recordId: string; endpointId: string; status: number }

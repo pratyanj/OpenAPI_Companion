@@ -72,3 +72,45 @@ export function extractJsonCandidates(raw: string): JsonCandidate[] {
     return []
   }
 }
+
+/**
+ * Safely extracts a primitive value from a JSON string or object given a dot/bracket path.
+ * Supports: `token`, `data.token`, `response.data.id`, `items[0].id`
+ * Returns string representation or null if not found or non-primitive.
+ */
+export function extractValueByPath(rawJsonOrObj: unknown, path: string): string | null {
+  if (rawJsonOrObj == null || !path || !path.trim()) return null
+  try {
+    let data = rawJsonOrObj
+    if (typeof rawJsonOrObj === 'string') {
+      const trimmed = rawJsonOrObj.trim()
+      if (!trimmed) return null
+      data = JSON.parse(trimmed)
+    }
+
+    // Normalize path: strip optional leading "response." or "body."
+    let cleanPath = path.trim().replace(/^(?:response|body)\./i, '')
+    // Convert array access bracket notation `[0]` to `.0`
+    cleanPath = cleanPath.replace(/\[(\d+)\]/g, '.$1').replace(/^\./, '')
+
+    const segments = cleanPath.split('.').filter(Boolean)
+    let current: unknown = data
+
+    for (const seg of segments) {
+      if (current == null || typeof current !== 'object') {
+        return null
+      }
+      current = (current as Record<string, unknown>)[seg]
+    }
+
+    if (current === null || current === undefined) return null
+    if (typeof current === 'object') {
+      // Don't extract entire objects or arrays into a single variable
+      return null
+    }
+
+    return String(current)
+  } catch {
+    return null
+  }
+}

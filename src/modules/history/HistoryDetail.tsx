@@ -257,6 +257,7 @@ export function HistoryDetail({
         <SaveToVariableDialog
           responseBody={record.responseBody}
           service={environmentService}
+          endpointId={record.endpointId}
           bus={bus}
           onClose={() => setSaveVarOpen(false)}
         />

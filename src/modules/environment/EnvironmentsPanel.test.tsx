@@ -258,4 +258,73 @@ describe('EnvironmentsPanel (Variables)', () => {
 
     expect(await screen.findByText('Storage error')).toBeInTheDocument()
   })
+
+  it('switches to Rules mode and renders extraction rules', async () => {
+    const rules = [
+      {
+        id: 'rule_1',
+        endpointId: 'post /auth/login',
+        property: 'token',
+        targetVariable: 'ACCESS_TOKEN',
+        isSecret: true,
+        enabled: true,
+        createdAt: 0,
+      },
+    ]
+    const service = mockService({
+      listRules: vi.fn(async () => ok(rules)),
+    })
+    render(<EnvironmentsPanel service={service} bus={new EventBus()} />)
+    await screen.findByText('Project Variables')
+
+    const rulesTab = screen.getByRole('button', { name: 'Rules mode' })
+    expect(rulesTab).toBeInTheDocument()
+    fireEvent.click(rulesTab)
+
+    expect(await screen.findByText('Auto-Extraction Rules')).toBeInTheDocument()
+    expect(screen.getByText('body.token')).toBeInTheDocument()
+    expect(screen.getByText('{{ACCESS_TOKEN}}')).toBeInTheDocument()
+  })
+
+  it('displays variable reference badge when variable is used in templates', async () => {
+    const existing: Environment = {
+      id: 'default',
+      name: 'Default',
+      baseUrl: '',
+      variables: { TOKEN: 'my_token', UNUSED_VAR: 'unused_val' },
+      secrets: [],
+      updatedAt: 0,
+    }
+    const mockRequestService = {
+      listTemplates: vi.fn(async () =>
+        ok([
+          {
+            templateId: 't1',
+            name: 'Get Users',
+            endpointId: 'get /users',
+            method: 'get',
+            environmentId: 'default',
+            body: '{"auth": "{{TOKEN}}"}',
+            updatedAt: 0,
+          },
+        ]),
+      ),
+    }
+
+    const service = mockService({ list: vi.fn(async () => ok([existing])) })
+    render(
+      <EnvironmentsPanel
+        service={service}
+        bus={new EventBus()}
+        requestService={mockRequestService}
+      />,
+    )
+    await screen.findByText('Project Variables')
+
+    // Used variable has reference count
+    await waitFor(() => {
+      expect(screen.getByText('✓1')).toBeInTheDocument()
+      expect(screen.getByText('unused')).toBeInTheDocument()
+    })
+  })
 })

@@ -18,8 +18,10 @@ import {
   UploadIcon,
   DownloadIcon,
   Menu,
+  ZapIcon,
 } from '@/components'
 import { copyText } from '@/utils'
+import type { EndpointInfo } from '@/adapters'
 import type { Environment } from '@/core/project'
 import type { EnvironmentInput } from './env-service'
 import {
@@ -28,6 +30,8 @@ import {
   parsePostmanEnv,
   exportPostmanEnv,
 } from './env-parser'
+import type { ExtractionRule, ExtractionRuleInput } from './extraction-rules-types'
+import { ExtractionRulesList } from './ExtractionRulesList'
 
 /** Surface EnvironmentsPanel needs from EnvironmentService (eases testing). */
 export interface EnvironmentPanelService {
@@ -38,11 +42,25 @@ export interface EnvironmentPanelService {
   update(id: string, patch: Partial<EnvironmentInput>): Promise<Result<Environment>>
   delete?(id: string): Promise<Result<void>>
   listBuiltins?(): ReadonlyArray<{ id: string; name: string }>
+  listRules?(): Promise<Result<ExtractionRule[]>>
+  saveRule?(rule: ExtractionRuleInput): Promise<Result<ExtractionRule>>
+  updateRule?(id: string, patch: Partial<ExtractionRule>): Promise<Result<ExtractionRule>>
+  deleteRule?(id: string): Promise<Result<void>>
 }
 
-interface EnvironmentsPanelProps {
+export interface EnvironmentsPanelProps {
   service: EnvironmentPanelService
   bus: EventBus
+  endpoints?: EndpointInfo[]
+  requestService?: {
+    listTemplates?: () => Promise<Result<Array<{
+      endpointId: string
+      body?: string
+      query?: Record<string, string>
+      path?: Record<string, string>
+      headers?: Record<string, string>
+    }>>>
+  }
 }
 
 interface VarRow {
@@ -74,12 +92,19 @@ function triggerDownload(filename: string, content: string, mimeType = 'applicat
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function EnvironmentsPanel({ service, bus }: EnvironmentsPanelProps) {
+export function EnvironmentsPanel({
+  service,
+  bus,
+  endpoints = [],
+  requestService,
+}: EnvironmentsPanelProps) {
   const [activeEnv, setActiveEnv] = useState<Environment | null>(null)
   const [activeId, setActiveId] = useState('default')
   const [loading, setLoading] = useState(true)
   const [vars, setVars] = useState<VarRow[]>([])
-  const [editorMode, setEditorMode] = useState<'table' | 'raw'>('table')
+  const [editorMode, setEditorMode] = useState<'table' | 'rules' | 'raw'>('table')
+  const [rules, setRules] = useState<ExtractionRule[]>([])
+  const [templateRefs, setTemplateRefs] = useState<Record<string, string[]>>({})
   const [rawText, setRawText] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
@@ -196,19 +221,88 @@ export function EnvironmentsPanel({ service, bus }: EnvironmentsPanelProps) {
   useEventBus(bus, 'ENVIRONMENT_CREATED', () => void load())
   useEventBus(bus, 'ENVIRONMENT_DELETED', () => void load())
 
+  const loadRules = useCallback(async () => {
+    if (service.listRules) {
+      const res = await service.listRules()
+      if (res.ok) setRules(res.value)
+    }
+  }, [service])
+
+  const scanVariableUsage = useCallback(async () => {
+    if (!requestService?.listTemplates) return
+    const res = await requestService.listTemplates()
+    if (!res.ok) return
+    const refs: Record<string, string[]> = {}
+
+    const scanText = (text: string | undefined, endpointId: string) => {
+      if (!text) return
+      const matches = text.match(/\{\{\s*([$A-Za-z0-9_]+)\s*\}\}/g)
+      if (!matches) return
+      for (const m of matches) {
+        const key = m.replace(/[{}$\s]/g, '').toUpperCase()
+        if (!key) continue
+        if (!refs[key]) refs[key] = []
+        if (!refs[key].includes(endpointId)) refs[key].push(endpointId)
+      }
+    }
+
+    for (const t of res.value) {
+      scanText(t.body, t.endpointId)
+      if (t.query) Object.values(t.query).forEach((v) => scanText(v, t.endpointId))
+      if (t.path) Object.values(t.path).forEach((v) => scanText(v, t.endpointId))
+      if (t.headers) Object.values(t.headers).forEach((v) => scanText(v, t.endpointId))
+    }
+
+    setTemplateRefs(refs)
+  }, [requestService])
+
+  useEffect(() => {
+    void loadRules()
+    void scanVariableUsage()
+  }, [loadRules, scanVariableUsage])
+
+  useEventBus(bus, 'EXTRACTION_RULE_SAVED', () => void loadRules())
+  useEventBus(bus, 'EXTRACTION_RULE_DELETED', () => void loadRules())
+  useEventBus(bus, 'VARIABLE_AUTO_EXTRACTED', () => void load())
+  useEventBus(bus, 'TEMPLATE_SAVED', () => void scanVariableUsage())
+  useEventBus(bus, 'TEMPLATE_DELETED', () => void scanVariableUsage())
+
+  const handleToggleRule = async (id: string, enabled: boolean) => {
+    if (service.updateRule) {
+      await service.updateRule(id, { enabled })
+      await loadRules()
+    }
+  }
+
+  const handleDeleteRule = async (id: string) => {
+    if (service.deleteRule) {
+      await service.deleteRule(id)
+      await loadRules()
+    }
+  }
+
+  const handleAddRule = async (ruleInput: ExtractionRuleInput) => {
+    if (service.saveRule) {
+      const res = await service.saveRule(ruleInput)
+      if (!res.ok) throw new Error(res.error.message)
+      await loadRules()
+    }
+  }
+
   const handleBlur = () => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
       debounceTimerRef.current = null
-      void performSave(vars, editorMode, rawText)
+      void performSave(vars, editorMode === 'raw' ? 'raw' : 'table', rawText)
     }
   }
 
-  const handleModeSwitch = (targetMode: 'table' | 'raw') => {
+  const handleModeSwitch = (targetMode: 'table' | 'rules' | 'raw') => {
     if (targetMode === editorMode) return
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
       debounceTimerRef.current = null
+      void performSave(vars, editorMode === 'raw' ? 'raw' : 'table', rawText)
     }
     if (targetMode === 'raw') {
       const currentVars = Object.fromEntries(
@@ -219,19 +313,23 @@ export function EnvironmentsPanel({ service, bus }: EnvironmentsPanelProps) {
       setRawText(serialized)
       setEditorMode('raw')
       void performSave(vars, 'table', serialized)
-    } else {
-      const parsed = parseDotEnv(rawText)
-      const existingSecrets = new Set(vars.filter((v) => v.isSecret).map((v) => v.key))
-      const combinedSecrets = new Set([...existingSecrets, ...parsed.secrets])
-      const nextRows = Object.entries(parsed.variables).map(([k, v]) => ({
-        key: k,
-        value: v,
-        isSecret: combinedSecrets.has(k),
-        revealed: false,
-      }))
-      setVars(nextRows)
+    } else if (targetMode === 'table') {
+      if (editorMode === 'raw') {
+        const parsed = parseDotEnv(rawText)
+        const existingSecrets = new Set(vars.filter((v) => v.isSecret).map((v) => v.key))
+        const combinedSecrets = new Set([...existingSecrets, ...parsed.secrets])
+        const nextRows = Object.entries(parsed.variables).map(([k, v]) => ({
+          key: k,
+          value: v,
+          isSecret: combinedSecrets.has(k),
+          revealed: false,
+        }))
+        setVars(nextRows)
+        void performSave(nextRows, 'raw', rawText)
+      }
       setEditorMode('table')
-      void performSave(nextRows, 'raw', rawText)
+    } else {
+      setEditorMode('rules')
     }
   }
 
@@ -376,6 +474,19 @@ export function EnvironmentsPanel({ service, bus }: EnvironmentsPanelProps) {
               </button>
               <button
                 type="button"
+                aria-label="Rules mode"
+                onClick={() => handleModeSwitch('rules')}
+                className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                  editorMode === 'rules'
+                    ? 'bg-primary text-primary-contrast'
+                    : 'text-muted hover:text-text'
+                }`}
+              >
+                <ZapIcon className="h-3 w-3" />
+                Rules {rules.length > 0 ? `(${rules.length})` : ''}
+              </button>
+              <button
+                type="button"
                 aria-label="Raw .env mode"
                 onClick={() => handleModeSwitch('raw')}
                 className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
@@ -440,7 +551,15 @@ export function EnvironmentsPanel({ service, bus }: EnvironmentsPanelProps) {
       ) : null}
 
       {/* Editor Body */}
-      {editorMode === 'table' ? (
+      {editorMode === 'rules' ? (
+        <ExtractionRulesList
+          rules={rules}
+          endpoints={endpoints}
+          onToggleRule={handleToggleRule}
+          onDeleteRule={handleDeleteRule}
+          onAddRule={handleAddRule}
+        />
+      ) : editorMode === 'table' ? (
         <div className="flex flex-col gap-2">
           {vars.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border p-5 text-center">
@@ -459,14 +578,39 @@ export function EnvironmentsPanel({ service, bus }: EnvironmentsPanelProps) {
             <div className="flex flex-col gap-2">
               {vars.map((v, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={v.key}
-                    onChange={(e) => updateVar(i, { key: e.target.value })}
-                    onBlur={handleBlur}
-                    placeholder="KEY"
-                    aria-label={`Variable ${i + 1} name`}
-                    className="w-2/5 rounded-md border border-border bg-surface px-2.5 py-1 font-mono text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  />
+                  <div className="flex w-2/5 items-center gap-1.5">
+                    <input
+                      value={v.key}
+                      onChange={(e) => updateVar(i, { key: e.target.value })}
+                      onBlur={handleBlur}
+                      placeholder="KEY"
+                      aria-label={`Variable ${i + 1} name`}
+                      className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-1 font-mono text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                    {(() => {
+                      const trimmedKey = v.key.trim().toUpperCase()
+                      if (!trimmedKey) return null
+                      const refs = templateRefs[trimmedKey]
+                      if (refs && refs.length > 0) {
+                        return (
+                          <span
+                            title={`Used in ${refs.length} preset(s): ${refs.join(', ')}`}
+                            className="shrink-0 rounded bg-success/15 px-1 py-0.5 font-mono text-[9px] font-medium text-success"
+                          >
+                            ✓{refs.length}
+                          </span>
+                        )
+                      }
+                      return (
+                        <span
+                          title="Not referenced in any presets"
+                          className="shrink-0 rounded bg-surface px-1 py-0.5 font-mono text-[9px] text-muted"
+                        >
+                          unused
+                        </span>
+                      )
+                    })()}
+                  </div>
                   <div className="relative flex-1">
                     <input
                       type={v.isSecret && !v.revealed ? 'password' : 'text'}

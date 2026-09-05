@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Dialog, Input, LockIcon, Spinner } from '@/components'
+import { Button, Dialog, Input, LockIcon, Spinner, ZapIcon } from '@/components'
 import type { EventBus } from '@/core/events'
 import type { Environment } from '@/core/project'
 import type { EnvironmentPanelService } from './EnvironmentsPanel'
@@ -8,6 +8,7 @@ import { extractJsonCandidates, type JsonCandidate } from './json-candidates'
 export interface SaveToVariableDialogProps {
   responseBody: string
   service: EnvironmentPanelService
+  endpointId?: string
   bus?: EventBus
   onClose: () => void
   onSaved?: (variableName: string, value: string) => void
@@ -16,6 +17,7 @@ export interface SaveToVariableDialogProps {
 export function SaveToVariableDialog({
   responseBody,
   service,
+  endpointId,
   bus,
   onClose,
   onSaved,
@@ -34,6 +36,7 @@ export function SaveToVariableDialog({
   const [name, setName] = useState(candidates[0]?.suggestedName ?? '')
   const [value, setValue] = useState(candidates[0]?.value ?? '')
   const [isSecret, setIsSecret] = useState(candidates[0]?.isLikelySecret ?? false)
+  const [autoExtract, setAutoExtract] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,10 +104,24 @@ export function SaveToVariableDialog({
       return
     }
 
-    setSuccessMsg(`Saved {{${trimmedName}}} to project variables!`)
+    if (autoExtract && endpointId && service.saveRule) {
+      const propPath = selectedCandidate?.path ?? name.toLowerCase()
+      await service.saveRule({
+        endpointId,
+        property: propPath,
+        targetVariable: trimmedName,
+        isSecret,
+        enabled: true,
+      })
+    }
+
+    const msg = autoExtract
+      ? `Saved {{${trimmedName}}} & created auto-extraction rule!`
+      : `Saved {{${trimmedName}}} to project variables!`
+    setSuccessMsg(msg)
     bus?.publish('NOTIFY', {
       kind: 'success',
-      message: `Saved {{${trimmedName}}} to project variables!`,
+      message: msg,
     })
     onSaved?.(trimmedName, value)
 
@@ -202,6 +219,22 @@ export function SaveToVariableDialog({
                 Mark as secret (mask with •••••••• in UI)
               </span>
             </label>
+
+            {/* Auto-Extract Rule Toggle */}
+            {endpointId ? (
+              <label className="flex items-center gap-2 text-xs text-text cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoExtract}
+                  onChange={(e) => setAutoExtract(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="flex items-center gap-1 font-medium text-primary">
+                  <ZapIcon className="h-3.5 w-3.5 text-primary" />
+                  Auto-extract on future 2xx responses (Create rule)
+                </span>
+              </label>
+            ) : null}
 
             {error ? <div className="text-xs text-danger">{error}</div> : null}
             {successMsg ? <div className="text-xs text-success font-medium">{successMsg}</div> : null}

@@ -203,4 +203,42 @@ describe('HistoryService', () => {
     expect(after.ok && after.value).toEqual([])
     expect(cleared).toHaveBeenCalledWith({ projectId: PROJECT })
   })
+
+  it('triggers auto-extraction on 2xx response when extraction api is provided', async () => {
+    const storage = new StorageService({ area: createFakeArea(), now: () => NOW })
+    const bus = new EventBus()
+    const notifySpy = vi.fn()
+    bus.subscribe('NOTIFY', notifySpy)
+
+    const applyExtractionSpy = vi.fn(async () => ok({
+      extracted: [{ variable: 'TOKEN', value: 'secret123' }],
+    }))
+
+    const service = new HistoryService({
+      storage,
+      adapter: mockAdapter(),
+      projectId: PROJECT,
+      bus,
+      now: () => NOW,
+      extraction: { applyExtraction: applyExtractionSpy },
+    })
+
+    await service.record(input({
+      endpointId: 'post /auth/login',
+      method: 'post',
+      endpoint: '/auth/login',
+      status: 200,
+      responseBody: '{"token":"secret123"}',
+    }))
+
+    expect(applyExtractionSpy).toHaveBeenCalledWith('post /auth/login', '{"token":"secret123"}')
+    // Wait microtask for promise resolution
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(notifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'success',
+        message: expect.stringContaining('{{TOKEN}}'),
+      }),
+    )
+  })
 })

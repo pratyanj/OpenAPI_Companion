@@ -85,7 +85,13 @@ async function boot(): Promise<void> {
     bus,
     resolveVariables: (text, envId) => environments.resolve(text, envId),
   })
-  const history = new HistoryService({ storage, adapter, projectId: meta.id, bus })
+  const history = new HistoryService({
+    storage,
+    adapter,
+    projectId: meta.id,
+    bus,
+    extraction: environments,
+  })
   const collections = new CollectionsService({ storage, projectId: meta.id, bus })
 
   let currentEnv = meta.lastActiveEnvId
@@ -422,6 +428,12 @@ async function boot(): Promise<void> {
       return updated
     },
     'environments.delete': ([id]) => environments.delete(id as string),
+    'environments.listRules': () => environments.listRules(),
+    'environments.saveRule': ([rule]) =>
+      environments.saveRule(rule as Parameters<typeof environments.saveRule>[0]),
+    'environments.updateRule': ([id, patch]) =>
+      environments.updateRule(id as string, patch as Parameters<typeof environments.updateRule>[1]),
+    'environments.deleteRule': ([id]) => environments.deleteRule(id as string),
     'requests.getSwaggerDefaults': ([endpointId]) =>
       requests.getSwaggerDefaults(endpointId as string),
     'adapter.writeRequest': ([id, data]) =>

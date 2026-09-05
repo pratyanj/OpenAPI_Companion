@@ -155,4 +155,46 @@ describe('SaveToVariableDialog', () => {
 
     expect(await screen.findByText('Storage error')).toBeInTheDocument()
   })
+
+  it('creates an auto-extraction rule when checkbox is checked', async () => {
+    const saveRuleSpy = vi.fn(async () => ok({
+      id: 'rule_1',
+      endpointId: 'post /auth/login',
+      property: 'token',
+      targetVariable: 'TOKEN',
+      isSecret: true,
+      enabled: true,
+      createdAt: Date.now(),
+    }))
+    const service = mockEnvService({ saveRule: saveRuleSpy })
+    const rawJson = JSON.stringify({ token: 'jwt_abc' })
+
+    render(
+      <SaveToVariableDialog
+        responseBody={rawJson}
+        service={service}
+        endpointId="post /auth/login"
+        onClose={vi.fn()}
+      />,
+    )
+
+    await screen.findByText('Save Response Value to Variable')
+    const autoExtractCheckbox = screen.getByLabelText(/Auto-extract on future 2xx responses/i)
+    expect(autoExtractCheckbox).toBeInTheDocument()
+    fireEvent.click(autoExtractCheckbox)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save to Variables' }))
+
+    await waitFor(() => {
+      expect(saveRuleSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpointId: 'post /auth/login',
+          property: 'token',
+          targetVariable: 'TOKEN',
+          isSecret: true,
+          enabled: true,
+        }),
+      )
+    })
+  })
 })
