@@ -276,6 +276,21 @@ export function openPageHistoryDetail(id: string): void {
   void rpcResult('historyDetail.open', id)
 }
 
+export interface ExtractionRuleModalOpenOptions {
+  endpointId?: string
+  property?: string
+  targetVariable?: string
+  isSecret?: boolean
+}
+
+/**
+ * Ask the page to open its Auto-Extraction Rule modal overlay.
+ * Lives in the page (top-centered, 512px+ wide) on top of the Swagger doc.
+ */
+export function openPageExtractionRuleModal(options?: ExtractionRuleModalOpenOptions): void {
+  void rpcResult('extractionRuleModal.open', options)
+}
+
 export function createRemoteHistoryService(): HistoryPanelService {
   return {
     list: (query) => rpcResult('history.list', query),

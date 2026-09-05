@@ -22,6 +22,7 @@ import type { CollectionsPanelService } from '@/modules/collections'
 import type { DocStats } from '@/sidebar/Dashboard'
 import { PanelOutlet } from '@/sidebar/PanelOutlet'
 import { TABS, DEFAULT_TAB } from '@/sidebar/tabs'
+import type { ExtractionRuleModalOpenOptions } from './bridge'
 
 const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
   light: 'dark',
@@ -45,6 +46,8 @@ export interface PanelShellProps {
   onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
   /** Opens the request detail overlay in the PAGE (see `openPageHistoryDetail`). */
   onOpenHistoryDetail?: (historyId: string) => void
+  /** Opens the auto-extraction rule modal overlay in the PAGE (see `openPageExtractionRuleModal`). */
+  onOpenExtractionRuleModal?: (options?: ExtractionRuleModalOpenOptions) => void
   /** The page is running an older build of the agent; it needs a refresh. */
   staleTab?: boolean
   authService: AuthPanelService
@@ -72,6 +75,7 @@ export function PanelShell({
   onOpenPalette,
   onOpenPresetEditor,
   onOpenHistoryDetail,
+  onOpenExtractionRuleModal,
   staleTab = false,
   authService,
   requestService,
@@ -155,6 +159,7 @@ export function PanelShell({
           onOpenPalette={onOpenPalette}
           onOpenPresetEditor={onOpenPresetEditor}
           onOpenHistoryDetail={onOpenHistoryDetail}
+          onOpenExtractionRuleModal={onOpenExtractionRuleModal}
           onNavigate={setActiveTab}
           swagger={swagger}
         />

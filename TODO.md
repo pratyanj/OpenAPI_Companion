@@ -191,13 +191,14 @@
     - Evaluated and intentionally dropped cross-project global variables per architectural decision to ensure zero cross-origin data leakage across distinct Swagger specs.
     - Added nested dot/bracket path resolution (`extractValueByPath`) in `json-candidates.ts` supporting `response.` and `body.` prefixes.
     - Integrated automatic extraction hook in `HistoryService` on 2xx successful responses, triggering reactive updates and notifications (`VARIABLE_AUTO_EXTRACTED`).
-  - [x] **Interactive Rules Management UI & Quick Presets**:
-    - Created `ExtractionRulesList.tsx` with one-click token presets (`access_token`, `token`, `id`, `data.id`), enabled/disabled toggle, rule deletion, and modal creation dialog reusing `EndpointPicker`.
-    - Integrated "Rules" tab directly into `EnvironmentsPanel.tsx` segmented control.
+  - [x] **Interactive Rules Management UI & In-Page Swagger Overlay**:
+    - Created `ExtractionRuleModal.tsx` and in-page Shadow DOM host `#oac-extraction-rule-host` (`mountExtractionRuleModal` in `src/content/extraction-rule-modal.tsx`) so rule creation opens as a spacious top-centered overlay directly on top of Swagger UI rather than cramped inside the narrow 380px side panel.
+    - Integrated one-click token presets (`access_token`, `token`, `id`, `data.id`, `jwt`), property path detection, auto-uppercased variable names, and secret masking toggle.
+    - Created `ExtractionRulesList.tsx` with enabled/disabled toggles and rule deletion, and added the dedicated "Rules" tab in `EnvironmentsPanel.tsx`.
     - Added `⚡ Auto-extract on future 2xx responses` checkbox directly in `SaveToVariableDialog.tsx` so developers can create recurring extraction rules from any history inspection.
   - [x] **Variable Reference & Usage Scanner**:
     - Scans all saved endpoint request presets (`headers`, `query`, `path`, `body`) to detect active `{{VAR}}` usage.
-    - Displays `✓ Used in N presets` badge with full tooltip inspection or `unused` indicator next to each project variable (**551 tests ✓**).
+    - Displays `✓ Used in N presets` badge with full tooltip inspection or `unused` indicator next to each project variable (**557 tests ✓**).
 
 
 

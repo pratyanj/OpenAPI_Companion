@@ -127,4 +127,23 @@ describe('ExtractionRulesList', () => {
       )
     })
   })
+
+  it('delegates to onOpenAddModal when provided instead of local state', () => {
+    const onOpenAddModal = vi.fn()
+
+    render(
+      <ExtractionRulesList
+        rules={mockRules}
+        endpoints={mockEndpoints}
+        onToggleRule={vi.fn()}
+        onDeleteRule={vi.fn()}
+        onAddRule={vi.fn()}
+        onOpenAddModal={onOpenAddModal}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Rule' }))
+    expect(onOpenAddModal).toHaveBeenCalled()
+  })
 })
+

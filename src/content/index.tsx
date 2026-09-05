@@ -27,6 +27,10 @@ import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
+import type {
+  ExtractionRuleModalHandle,
+  ExtractionRuleModalOpenOptions,
+} from './extraction-rule-modal'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -222,6 +226,30 @@ async function boot(): Promise<void> {
     }
   }
 
+  let extractionRuleModal: ExtractionRuleModalHandle | null = null
+  const withExtractionRuleModal = async (): Promise<ExtractionRuleModalHandle | null> => {
+    if (extractionRuleModal) return extractionRuleModal
+    try {
+      const { mountExtractionRuleModal } = await import('./extraction-rule-modal')
+      extractionRuleModal = mountExtractionRuleModal(
+        environments,
+        () => adapter.listEndpoints(),
+        bus,
+      )
+      const ruleTheme = new ThemeManager({ storage, root: extractionRuleModal.themeRoot, bus })
+      await ruleTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void ruleTheme.init()
+        }
+      })
+      return extractionRuleModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page extraction rule modal.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut. `key` is
   // optional-chained because page scripts can dispatch synthetic keydowns
   // without it, and a TypeError here would kill the whole listener.
@@ -360,6 +388,13 @@ async function boot(): Promise<void> {
     // Panel's history detail → open the in-page detail overlay (spacious overlay on the doc).
     'historyDetail.open': ([id]) => {
       void withHistoryDetail().then((h) => h?.open(id as string))
+      return ok(undefined)
+    },
+    // Panel's auto-extraction rule modal → open the in-page modal (spacious overlay on the doc).
+    'extractionRuleModal.open': ([options]) => {
+      void withExtractionRuleModal().then((m) =>
+        m?.open(options as ExtractionRuleModalOpenOptions),
+      )
       return ok(undefined)
     },
     'history.list': ([q]) => history.list((q as Parameters<typeof history.list>[0]) ?? {}),

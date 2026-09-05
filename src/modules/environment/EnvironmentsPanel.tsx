@@ -61,6 +61,12 @@ export interface EnvironmentsPanelProps {
       headers?: Record<string, string>
     }>>>
   }
+  onOpenExtractionRuleModal?: (options?: {
+    endpointId?: string
+    property?: string
+    targetVariable?: string
+    isSecret?: boolean
+  }) => void
 }
 
 interface VarRow {
@@ -97,6 +103,7 @@ export function EnvironmentsPanel({
   bus,
   endpoints = [],
   requestService,
+  onOpenExtractionRuleModal,
 }: EnvironmentsPanelProps) {
   const [activeEnv, setActiveEnv] = useState<Environment | null>(null)
   const [activeId, setActiveId] = useState('default')
@@ -558,6 +565,7 @@ export function EnvironmentsPanel({
           onToggleRule={handleToggleRule}
           onDeleteRule={handleDeleteRule}
           onAddRule={handleAddRule}
+          onOpenAddModal={onOpenExtractionRuleModal ? () => onOpenExtractionRuleModal() : undefined}
         />
       ) : editorMode === 'table' ? (
         <div className="flex flex-col gap-2">

@@ -34,6 +34,8 @@ function BasicHome({ project }: { project: ProjectMeta | null }) {
   )
 }
 
+import type { ExtractionRuleModalOpenOptions } from '@/sidepanel/bridge'
+
 interface PanelOutletProps {
   activeTab: string
   project: ProjectMeta | null
@@ -54,6 +56,8 @@ interface PanelOutletProps {
   onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
   /** Opens the in-page history request detail overlay. */
   onOpenHistoryDetail?: (historyId: string) => void
+  /** Opens the in-page auto-extraction rule modal overlay. */
+  onOpenExtractionRuleModal?: (options?: ExtractionRuleModalOpenOptions) => void
   /** Tab switcher, so the dashboard can link into the other panels. */
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
@@ -77,6 +81,7 @@ export function PanelOutlet({
   onOpenPalette,
   onOpenPresetEditor,
   onOpenHistoryDetail,
+  onOpenExtractionRuleModal,
   onNavigate,
   swagger,
 }: PanelOutletProps) {
@@ -142,6 +147,7 @@ export function PanelOutlet({
         bus={bus}
         endpoints={requestService?.listEndpoints?.() ?? []}
         requestService={requestService}
+        onOpenExtractionRuleModal={onOpenExtractionRuleModal}
       />
     )
   }
