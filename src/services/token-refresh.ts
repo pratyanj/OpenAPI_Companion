@@ -94,6 +94,8 @@ export interface TokenRefreshOptions {
   now?: () => number
   /** Feature gate — refresh only runs when this returns true (default: always). */
   enabled?: () => boolean
+  /** Optional manually configured login endpoint (from user selection or settings). */
+  configuredLoginEndpoint?: () => string | null
   /** Whether to replay the failing request after a successful refresh (default: true). */
   retryRequest?: () => boolean
   /** Minimum gap between refresh attempts, to break login-failure loops (ms). */
@@ -114,14 +116,8 @@ const LOGIN_RE = /log[-_ ]?in|sign[-_ ]?in|authenticate|auth\b|token/i
  * paths look auth-related. Guessing here has real consequences: a loose match on
  * `auth` once fired `POST /auth/forgot-password`, which emails the user.
  */
-const NOT_LOGIN_RE =
-  /forgot|reset|recover|change|update|register|sign[-_ ]?up|signup|log[-_ ]?out|sign[-_ ]?out|logout|refresh|verify|confirm|activate|resend|invite|otp|2fa|mfa|social|oauth|google|apple|facebook|github/i
-
-/** An unmistakable sign-in path: the LAST segment is login / signin / token. */
-const LOGIN_PATH_RE = /(?:^|\/)(?:log[-_ ]?in|sign[-_ ]?in|signin|login|token|authenticate)\/?$/i
-
-/** Weaker signal, used only after the exclusions above have been applied. */
-const LOGIN_HINT_RE = /log[-_ ]?in|sign[-_ ]?in|authenticate/i
+const DANGEROUS_PATH_RE =
+  /(?:forgot[-_ ]?password|reset[-_ ]?password|change[-_ ]?password|update[-_ ]?password|register|sign[-_ ]?up|signup|log[-_ ]?out|sign[-_ ]?out|logout|refresh|verify|confirm|activate|resend|invite|otp|2fa|mfa)/i
 
 /** Response fields commonly carrying the fresh token, most-specific first. */
 const TOKEN_KEYS = [
@@ -172,6 +168,7 @@ export class TokenRefreshService {
   private readonly enabled: () => boolean
   private readonly retryRequest: () => boolean
   private readonly cooldownMs: number
+  private readonly configuredLoginEndpoint?: () => string | null
   private running = false
   private lastAttempt = 0
   /** Warn once per missing-template streak, not on every DOM mutation. */
@@ -188,6 +185,7 @@ export class TokenRefreshService {
     this.bus = options.bus
     this.now = options.now ?? (() => Date.now())
     this.enabled = options.enabled ?? (() => true)
+    this.configuredLoginEndpoint = options.configuredLoginEndpoint
     this.retryRequest = options.retryRequest ?? (() => true)
     this.cooldownMs = options.cooldownMs ?? 15_000
     this.pollMs = options.pollMs ?? 400
@@ -271,8 +269,8 @@ export class TokenRefreshService {
       (t) =>
         (LOGIN_RE.test(t.name) || LOGIN_RE.test(t.endpointId)) &&
         // Never re-run a saved forgot-password / register / logout request.
-        !NOT_LOGIN_RE.test(t.name) &&
-        !NOT_LOGIN_RE.test(t.endpointId),
+        !DANGEROUS_PATH_RE.test(t.name) &&
+        !DANGEROUS_PATH_RE.test(t.endpointId),
     )
     return logins.find((t) => t.environmentId === environmentId) ?? logins[0] ?? null
   }
@@ -383,49 +381,87 @@ export class TokenRefreshService {
   }
 
   /**
-   * The API's own sign-in operation, from the spec Swagger has rendered.
-   *
-   * Deliberately strict: anything that merely mentions "auth" is rejected, since
-   * posting credentials to the wrong endpoint has side effects (forgot-password
-   * emails the user, register creates accounts). If nothing is unmistakably a
-   * sign-in, this returns null and the caller tells the user instead of guessing.
+   * The API's own sign-in operation, from user configuration, templates, or Swagger spec.
    */
   findLoginEndpoint(): string | null {
-    const candidates = this.adapter
-      .listEndpoints()
-      .filter((e) => e.method.toLowerCase() === 'post')
-      .filter((e) => !NOT_LOGIN_RE.test(e.path) && !NOT_LOGIN_RE.test(e.summary ?? ''))
+    // 1. User-configured login endpoint takes highest precedence
+    const configured = this.configuredLoginEndpoint?.()
+    if (configured) {
+      const exists = this.adapter.listEndpoints().some((e) => e.endpointId === configured)
+      if (exists) return configured
+    }
 
-    return (
-      // "/auth/login", "/login", "/api/v1/signin" — the path ends with sign-in.
-      candidates.find((e) => LOGIN_PATH_RE.test(e.path))?.endpointId ??
-      // Otherwise a path that still clearly says log in / sign in.
-      candidates.find((e) => LOGIN_HINT_RE.test(e.path))?.endpointId ??
-      candidates.find((e) => LOGIN_HINT_RE.test(e.summary ?? ''))?.endpointId ??
-      null
+    const endpoints = this.adapter.listEndpoints()
+
+    // 2. Dangerous endpoints that must NEVER be called automatically with user credentials
+    const safePosts = endpoints.filter(
+      (e) => e.method.toLowerCase() === 'post' && !DANGEROUS_PATH_RE.test(e.path),
     )
+
+    // Tier A: Unmistakable sign-in paths where the last segment is login / signin / token / authenticate / auth / session
+    const tierA = safePosts.find((e) =>
+      /(?:^|\/)(?:log[-_ ]?in|sign[-_ ]?in|signin|login|token|authenticate|auth|session|sessions)\/?$/i.test(
+        e.path,
+      ),
+    )
+    if (tierA) return tierA.endpointId
+
+    // Tier B: OAuth token, connect token, or JWT creation endpoints (/oauth/token, /oauth2/token, /connect/token, /api/token, /auth/jwt/create, /access-token)
+    const tierB = safePosts.find((e) =>
+      /(?:oauth2?\/token|connect\/token|jwt\/create|token\/login|auth\/token|access[-_ ]?token)/i.test(
+        e.path,
+      ),
+    )
+    if (tierB) return tierB.endpointId
+
+    // Tier C: Path has login / signin / authenticate anywhere
+    const tierC = safePosts.find((e) => /log[-_ ]?in|sign[-_ ]?in|authenticate/i.test(e.path))
+    if (tierC) return tierC.endpointId
+
+    // Tier D: Summary/description says log in, sign in, authenticate, or obtain token
+    const tierD = safePosts.find((e) =>
+      /(?:log[-_ ]?in|sign[-_ ]?in|authenticate|obtain (?:access )?token|user login)/i.test(
+        e.summary ?? '',
+      ),
+    )
+    if (tierD) return tierD.endpointId
+
+    // Tier E: Tag is Auth / Authentication / Login / Session and path mentions auth or token
+    const tierE = safePosts.find(
+      (e) =>
+        /(?:auth|login|session)/i.test(e.tag ?? '') && /(?:auth|token|login|session)/i.test(e.path),
+    )
+    if (tierE) return tierE.endpointId
+
+    return null
   }
 
   /**
-   * Login body carrying the saved credentials. Starts from the shape that
-   * endpoint was last called with (so `tenant`, `device_id` and friends survive)
-   * and replaces only the username-ish and password-ish fields.
+   * Login body carrying the saved credentials. Starts from previous calls, Swagger DOM defaults,
+   * or a smart fallback, replacing username and password fields.
    */
   private buildLoginBody(endpointId: string, login: SavedLoginLike): string {
     const previous = this.adapter.readOpenRequests().find((r) => r.endpointId === endpointId)?.body
-    if (previous) {
+    let templateBody: string | undefined = previous
+
+    if (!templateBody && this.adapter.getEndpointSwaggerDefaults) {
+      templateBody = this.adapter.getEndpointSwaggerDefaults(endpointId)?.exampleBody
+    }
+
+    if (templateBody) {
       try {
-        const parsed = JSON.parse(previous) as Record<string, unknown>
+        const parsed = JSON.parse(templateBody) as Record<string, unknown>
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           const body = { ...parsed }
           for (const key of Object.keys(body)) {
             if (/pass/i.test(key)) body[key] = login.password
-            else if (/mail|user|login|phone/i.test(key)) body[key] = login.username
+            else if (/mail|user|login|phone|account|identifier/i.test(key))
+              body[key] = login.username
           }
           return JSON.stringify(body)
         }
       } catch {
-        /* not JSON — fall through to the default shape */
+        /* not JSON — fall through to default */
       }
     }
     return JSON.stringify({ email: login.username, password: login.password })
@@ -448,6 +484,17 @@ export class TokenRefreshService {
 
     const got = await this.auth.current(environmentId)
     if (!got.ok || !got.value) {
+      // If manual refresh or token expired and an account with credentials exists, sign in directly
+      const stored = await this.vault?.activeLogin(environmentId)
+      if (stored) {
+        this.running = true
+        this.lastAttempt = this.now()
+        try {
+          return await this.loginWithCredentials(environmentId, stored)
+        } finally {
+          this.running = false
+        }
+      }
       this.note('skipped', 'Nothing is authorized, so there is no token to refresh')
       return ok(false)
     }

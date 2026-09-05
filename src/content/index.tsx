@@ -9,7 +9,7 @@
  * service/adapter calls, a pushed read-state mirror, and forwarded bus events.
  * It never renders UI into the page.
  */
-import { ok } from '@/types'
+import { ok, err } from '@/types'
 import { bus } from '@/core/events'
 import { StorageService, chromeLocalArea } from '@/core/storage'
 import { ProjectService, type ProjectMeta } from '@/core/project'
@@ -17,14 +17,24 @@ import { docIdentityUrl } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
-import { RequestService, type CustomTemplateInput } from '@/modules/request'
+import {
+  RequestService,
+  type CustomTemplateInput,
+  type RequestPanelService,
+} from '@/modules/request'
 import { EnvironmentService, type EnvironmentInput } from '@/modules/environment'
-import { HistoryService } from '@/modules/history'
+import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
+import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
+import type { HistoryDetailHandle } from './history-detail'
+import type {
+  ExtractionRuleModalHandle,
+  ExtractionRuleModalOpenOptions,
+} from './extraction-rule-modal'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -83,16 +93,25 @@ async function boot(): Promise<void> {
     bus,
     resolveVariables: (text, envId) => environments.resolve(text, envId),
   })
-  const history = new HistoryService({ storage, adapter, projectId: meta.id, bus })
+  const history = new HistoryService({
+    storage,
+    adapter,
+    projectId: meta.id,
+    bus,
+    extraction: environments,
+  })
   const collections = new CollectionsService({ storage, projectId: meta.id, bus })
 
   let currentEnv = meta.lastActiveEnvId
 
-  // Active environment's Base URL, kept in sync for code generation (below).
+  // Active environment's Base URL (read from BASE_URL variable or legacy baseUrl), kept in sync for code generation (below).
   let envBaseUrl = ''
   const refreshEnvBaseUrl = async (): Promise<void> => {
     const env = await environments.get(currentEnv)
-    envBaseUrl = env.ok && env.value ? env.value.baseUrl.trim() : ''
+    envBaseUrl =
+      env.ok && env.value
+        ? (env.value.variables?.['BASE_URL'] || env.value.baseUrl || '').trim()
+        : ''
   }
   await refreshEnvBaseUrl()
 
@@ -146,6 +165,90 @@ async function boot(): Promise<void> {
     }
   }
 
+  let presetEditor: PresetEditorHandle | null = null
+  const withPresetEditor = async (): Promise<PresetEditorHandle | null> => {
+    if (presetEditor) return presetEditor
+    try {
+      const { mountPresetEditor } = await import('./preset-editor')
+      const requestPanelService: RequestPanelService = {
+        listTemplates: () => requests.listTemplates(),
+        saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
+        createCustomTemplate: (input) => requests.createCustomTemplate(input),
+        updateTemplate: (id, updates) => requests.updateTemplate(id, updates),
+        deleteTemplate: (id) => requests.deleteTemplate(id),
+        applyTemplate: (id, envId) => requests.applyTemplate(id, envId),
+        locateAndFill: (id, envId) => requests.locateAndFill(id, envId),
+        listEndpoints: () => adapter.listEndpoints(),
+        getOpenRequests: () => adapter.readOpenRequests(),
+        getSwaggerDefaults: (epId) => requests.getSwaggerDefaults(epId),
+      }
+      presetEditor = mountPresetEditor(requestPanelService, environments, bus, currentEnv)
+      const editorTheme = new ThemeManager({ storage, root: presetEditor.themeRoot, bus })
+      await editorTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void editorTheme.init()
+        }
+      })
+      return presetEditor
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page preset editor.`, cause)
+      return null
+    }
+  }
+
+  let historyDetail: HistoryDetailHandle | null = null
+  const withHistoryDetail = async (): Promise<HistoryDetailHandle | null> => {
+    if (historyDetail) return historyDetail
+    try {
+      const { mountHistoryDetail } = await import('./history-detail')
+      const historyPanelService: HistoryPanelService = {
+        list: (query) => history.list(query ?? {}),
+        get: (id) => history.get(id),
+        replay: (id) => history.replay(id),
+        locate: (endpointId) => history.locate(endpointId),
+        deleteEntry: (id) => history.deleteEntry(id),
+        clearProject: () => history.clearProject(),
+      }
+      historyDetail = mountHistoryDetail(historyPanelService, environments, bus, location.origin)
+      const detailTheme = new ThemeManager({ storage, root: historyDetail.themeRoot, bus })
+      await detailTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void detailTheme.init()
+        }
+      })
+      return historyDetail
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page history detail overlay.`, cause)
+      return null
+    }
+  }
+
+  let extractionRuleModal: ExtractionRuleModalHandle | null = null
+  const withExtractionRuleModal = async (): Promise<ExtractionRuleModalHandle | null> => {
+    if (extractionRuleModal) return extractionRuleModal
+    try {
+      const { mountExtractionRuleModal } = await import('./extraction-rule-modal')
+      extractionRuleModal = mountExtractionRuleModal(
+        environments,
+        () => adapter.listEndpoints(),
+        bus,
+      )
+      const ruleTheme = new ThemeManager({ storage, root: extractionRuleModal.themeRoot, bus })
+      await ruleTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void ruleTheme.init()
+        }
+      })
+      return extractionRuleModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page extraction rule modal.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut. `key` is
   // optional-chained because page scripts can dispatch synthetic keydowns
   // without it, and a TypeError here would kill the whole listener.
@@ -162,6 +265,7 @@ async function boot(): Promise<void> {
 
   // Token auto-refresh (opt-in; toggled from the Auth panel via RPC → runs here).
   let autoRefreshEnabled = await auth.isAutoRefreshEnabled()
+  let configuredLoginEndpoint = await auth.getConfiguredLoginEndpoint()
   const tokenRefresh = new TokenRefreshService({
     adapter,
     auth,
@@ -169,6 +273,7 @@ async function boot(): Promise<void> {
     vault: auth, // its activeLogin() targets the account actually in use
     bus,
     enabled: () => autoRefreshEnabled,
+    configuredLoginEndpoint: () => configuredLoginEndpoint,
   })
   bus.subscribe(
     'AUTH_EXPIRED',
@@ -177,6 +282,9 @@ async function boot(): Promise<void> {
   bus.subscribe('SETTINGS_UPDATED', (payload) => {
     if (payload.keys.includes('auto-refresh-token')) {
       void auth.isAutoRefreshEnabled().then((on) => (autoRefreshEnabled = on))
+    }
+    if (payload.keys.includes('auth-login-endpoint')) {
+      void auth.getConfiguredLoginEndpoint().then((ep) => (configuredLoginEndpoint = ep))
     }
   })
 
@@ -271,6 +379,37 @@ async function boot(): Promise<void> {
       void withPalette().then((p) => p?.open())
       return ok(undefined)
     },
+    // Panel's preset editor → open the in-page editor (spacious overlay on the doc).
+    'presetEditor.open': ([options]) => {
+      void withPresetEditor().then((p) => p?.open(options as PresetEditorOpenOptions))
+      return ok(undefined)
+    },
+    // Panel's history detail → open the in-page detail overlay (spacious overlay on the doc).
+    'historyDetail.open': ([id]) => {
+      void withHistoryDetail().then((h) => h?.open(id as string))
+      return ok(undefined)
+    },
+    // Panel's auto-extraction rule modal → open the in-page modal (spacious overlay on the doc).
+    'extractionRuleModal.open': async ([options]) => {
+      try {
+        const m = await withExtractionRuleModal()
+        if (!m) {
+          return err({
+            code: 'EXTRACTION_RULE_MODAL_UNAVAILABLE',
+            message: 'Could not load in-page extraction rule modal',
+            recoverable: true,
+          })
+        }
+        m.open((options as ExtractionRuleModalOpenOptions) ?? {})
+        return ok(undefined)
+      } catch (cause) {
+        return err({
+          code: 'EXTRACTION_RULE_MODAL_FAILED',
+          message: cause instanceof Error ? cause.message : String(cause),
+          recoverable: true,
+        })
+      }
+    },
     'history.list': ([q]) => history.list((q as Parameters<typeof history.list>[0]) ?? {}),
     'history.get': ([id]) => history.get(id as string),
     'history.replay': ([id]) => history.replay(id as string),
@@ -285,6 +424,14 @@ async function boot(): Promise<void> {
     'auth.setBearerPrefixEnabled': ([env, on]) =>
       auth.setBearerPrefixEnabled(env as string, on as boolean),
     'auth.loginEndpoint': () => tokenRefresh.findLoginEndpoint(),
+    'auth.configuredLoginEndpoint': () => auth.getConfiguredLoginEndpoint(),
+    'auth.setConfiguredLoginEndpoint': async ([endpointId]) => {
+      const res = await auth.setConfiguredLoginEndpoint((endpointId as string) || null)
+      if (res.ok) {
+        configuredLoginEndpoint = (endpointId as string) || null
+      }
+      return res
+    },
     'auth.refreshActivity': () => tokenRefresh.recentActivity(),
     // Add an account: log in with the given credentials, then keep the issued
     // token under `name` with those credentials attached for later refreshes.
@@ -329,9 +476,23 @@ async function boot(): Promise<void> {
       return updated
     },
     'environments.delete': ([id]) => environments.delete(id as string),
+    'environments.listRules': () => environments.listRules(),
+    'environments.saveRule': ([rule]) =>
+      environments.saveRule(rule as Parameters<typeof environments.saveRule>[0]),
+    'environments.updateRule': ([id, patch]) =>
+      environments.updateRule(id as string, patch as Parameters<typeof environments.updateRule>[1]),
+    'environments.deleteRule': ([id]) => environments.deleteRule(id as string),
+    'requests.getSwaggerDefaults': ([endpointId]) =>
+      requests.getSwaggerDefaults(endpointId as string),
     'adapter.writeRequest': ([id, data]) =>
       adapter.writeRequest(id as string, data as RequestSnapshot),
-    'adapter.replay': ([id, body]) => adapter.replay(id as string, body as string | undefined),
+    'adapter.replay': ([id, body, path, query]) =>
+      adapter.replay(
+        id as string,
+        body as string | undefined,
+        path as Record<string, string> | undefined,
+        query as Record<string, string> | undefined,
+      ),
     'adapter.openEndpoint': ([id]) => adapter.openEndpoint(id as string),
     'adapter.writeAuth': ([a]) => adapter.writeAuth(a as AuthSnapshot),
     'adapter.clearAuth': () => adapter.clearAuth(),

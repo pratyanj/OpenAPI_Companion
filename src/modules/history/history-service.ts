@@ -6,6 +6,13 @@ import type { SwaggerAdapter } from '@/adapters'
 import type { HistoryEntry, HistoryQuery, HistoryRecord } from './types'
 import { settingsKey } from '@/core/storage'
 
+export interface HistoryExtractionApi {
+  applyExtraction(
+    endpointId: string,
+    responseBody: string,
+  ): Promise<Result<{ extracted: Array<{ variable: string; value: string }> }>>
+}
+
 export interface HistoryServiceOptions {
   storage: StorageService
   adapter: SwaggerAdapter
@@ -14,6 +21,7 @@ export interface HistoryServiceOptions {
   now?: () => number
   max?: number
   debounceMs?: number
+  extraction?: HistoryExtractionApi
 }
 
 export interface HistoryInput {
@@ -58,6 +66,7 @@ export class HistoryService {
   private captureTimer: ReturnType<typeof setTimeout> | null = null
   private readonly lastSignature = new Map<string, string>()
   private readonly pendingRetries = new Map<string, HistoryRecord>()
+  private readonly extraction?: HistoryExtractionApi
 
   constructor(options: HistoryServiceOptions) {
     this.storage = options.storage
@@ -67,6 +76,7 @@ export class HistoryService {
     this.now = options.now ?? (() => Date.now())
     this.max = options.max ?? MAX_HISTORY_ITEMS
     this.debounceMs = options.debounceMs ?? 400
+    this.extraction = options.extraction
 
     // Listen for auth updates to trigger auto-retry
     if (this.bus) {
@@ -134,6 +144,24 @@ export class HistoryService {
         // Store the record for potential retry
         this.pendingRetries.set(input.environmentId, full)
       }
+    }
+
+    // Auto-extraction rules check on 2xx responses
+    if (input.status >= 200 && input.status < 300 && input.responseBody && this.extraction) {
+      void this.extraction
+        .applyExtraction(input.endpointId, input.responseBody)
+        .then((res) => {
+          if (res.ok && res.value.extracted.length > 0) {
+            const vars = res.value.extracted.map((e) => `{{${e.variable}}}`).join(', ')
+            this.bus?.publish('NOTIFY', {
+              kind: 'success',
+              message: `⚡ Auto-extracted ${vars} from ${input.method.toUpperCase()} ${input.endpoint}`,
+            })
+          }
+        })
+        .catch(() => {
+          // ignore extraction failures
+        })
     }
 
     return ok(full)

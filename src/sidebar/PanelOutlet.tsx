@@ -3,7 +3,11 @@ import type { ProjectMeta } from '@/core/project'
 import type { EventBus } from '@/core/events'
 import type { ThemeManager } from '@/services'
 import { AuthPanel, type AuthPanelService } from '@/modules/authentication'
-import { RequestsPanel, type RequestPanelService } from '@/modules/request'
+import {
+  RequestsPanel,
+  type RequestPanelService,
+  type PresetEditorOpenOptions,
+} from '@/modules/request'
 import { EnvironmentsPanel, type EnvironmentPanelService } from '@/modules/environment'
 import { HistoryPanel, type HistoryPanelService } from '@/modules/history'
 import { FakeDataPanel, type FakeDataPanelService } from '@/modules/fake-data'
@@ -18,7 +22,7 @@ import { Dashboard, type DocStats } from './Dashboard'
 const PLACEHOLDERS: Record<string, { title: string; message: string }> = {
   auth: { title: 'Authentication', message: 'Not connected to the page yet.' },
   requests: { title: 'Requests & Templates', message: 'Not connected to the page yet.' },
-  environments: { title: 'Environments', message: 'Not connected to the page yet.' },
+  environments: { title: 'Variables', message: 'Not connected to the page yet.' },
   history: { title: 'API History', message: 'Not connected to the page yet.' },
   collections: { title: 'Collections', message: 'Not connected to the page yet.' },
 }
@@ -33,6 +37,9 @@ function BasicHome({ project }: { project: ProjectMeta | null }) {
     />
   )
 }
+
+import type { Result } from '@/types'
+import type { ExtractionRuleModalOpenOptions } from '@/sidepanel/bridge'
 
 interface PanelOutletProps {
   activeTab: string
@@ -50,6 +57,14 @@ interface PanelOutletProps {
   environmentId?: string
   /** Opens the in-page command palette; enables the dashboard's Search action. */
   onOpenPalette?: () => void
+  /** Opens the in-page preset editor overlay. */
+  onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
+  /** Opens the in-page history request detail overlay. */
+  onOpenHistoryDetail?: (historyId: string) => void
+  /** Opens the in-page auto-extraction rule modal overlay. */
+  onOpenExtractionRuleModal?: (
+    options?: ExtractionRuleModalOpenOptions,
+  ) => Promise<Result<void>> | Result<void> | void
   /** Tab switcher, so the dashboard can link into the other panels. */
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
@@ -71,6 +86,9 @@ export function PanelOutlet({
   theme,
   environmentId,
   onOpenPalette,
+  onOpenPresetEditor,
+  onOpenHistoryDetail,
+  onOpenExtractionRuleModal,
   onNavigate,
   swagger,
 }: PanelOutletProps) {
@@ -118,15 +136,39 @@ export function PanelOutlet({
   }
 
   if (activeTab === 'requests' && requestService && bus && environmentId) {
-    return <RequestsPanel service={requestService} bus={bus} environmentId={environmentId} />
+    return (
+      <RequestsPanel
+        service={requestService}
+        bus={bus}
+        environmentId={environmentId}
+        environmentService={environmentService}
+        onOpenPresetEditor={onOpenPresetEditor}
+      />
+    )
   }
 
   if (activeTab === 'environments' && environmentService && bus) {
-    return <EnvironmentsPanel service={environmentService} bus={bus} />
+    return (
+      <EnvironmentsPanel
+        service={environmentService}
+        bus={bus}
+        endpoints={requestService?.listEndpoints?.() ?? []}
+        requestService={requestService}
+        onOpenExtractionRuleModal={onOpenExtractionRuleModal}
+      />
+    )
   }
 
   if (activeTab === 'history' && historyService && bus) {
-    return <HistoryPanel service={historyService} bus={bus} baseUrl={project?.originUrl} />
+    return (
+      <HistoryPanel
+        service={historyService}
+        bus={bus}
+        baseUrl={project?.originUrl}
+        environmentService={environmentService}
+        onOpenHistoryDetail={onOpenHistoryDetail}
+      />
+    )
   }
 
   if (activeTab === 'fake-data' && fakeDataService && bus) {

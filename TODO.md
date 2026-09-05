@@ -135,5 +135,70 @@
   - [ ] **⚠️ Verify in real browser:** every tab interactive in the native panel; nothing renders inside the Swagger page except the floating launcher + the ⌘K overlay; toolbar / `⌘⇧O` / launcher all toggle the panel; ⌘K opens the top-centered palette in the correct theme.
   - [ ] **Post-fix:** panel showed "No OpenAPI page connected" — root cause was missing `host_permissions` (panel→page `tabs.sendMessage` needs host access; `activeTab` doesn't survive tab switches). Added `host_permissions: http/https` + empty-state self-heal on the agent's first push. Boot diagnostics logged to the page/panel console.
   - [x] **Wire `{{VAR}}` substitution into request populate & dynamic system variables** (DD-032) — built-in dynamic variables (`{{$uuid}}`, `{{$timestamp}}`, `{{$isoDate}}`, `{{$randomEmail}}`, `{{$randomName}}`, etc.) + `resolveVariables` wired into `RequestService.restore`, `applyTemplate`, and `locateAndFill` for request bodies, path parameters, query parameters, and headers. **466 tests ✓.**
-- [ ] **Sprint B:** `.env` bulk import/export, raw text editor, secret masking (`••••••••`), and environment duplication.
-- [ ] **Sprint C:** 1-Click "Save to Environment" from History, Global Variable scope, and OpenAPI Spec Server Auto-Detection.
+- [x] **Project Variables Manager (Streamlined from legacy Environments):**
+  - [x] Removed redundant `Local`, `QA`, `Staging`, `UAT`, `Production` presets, cross-site jump confusion, and header switcher. Projects already map 1-to-1 with webpage origins/domains.
+  - [x] Direct **Project Variables** tab (`.env`): instantly view, add, edit, and save project variables without detached forms or "name already exists" errors.
+  - [x] Dual-mode editing: Table view + Raw `.env` editor (multi-line paste/edit: `KEY=value`).
+  - [x] Secret masking (`••••••••`) with one-click peek toggle and 1-click credential copy.
+  - [x] Exact `.env` file export (`application/octet-stream`, no `.txt` suffix) and Postman JSON export.
+  - [x] Import from `.env` and Postman JSON with auto-secret detection (**482 tests ✓**).
+- [x] **Project Variables Upgrades — Phase B: Workflow & Instant Chaining:**
+  - [x] **1-Click "Save to Variable" from API History & Response Inspector**:
+    - In `HistoryDetail` response viewer / headers viewer, click any JSON value or header to open a quick "Save to Variable" popover.
+    - Suggests target variable name (e.g. `access_token` -> `TOKEN` / `ACCESS_TOKEN`, `id` -> `USER_ID`, etc.) or custom variable name.
+    - Saves directly into active Project Variables with automatic secret detection (e.g. tokens/passwords marked as secret).
+    - Emits `ENVIRONMENT_CHANGED` to notify all panels and Swagger injectors immediately.
+  - [x] **Live Variable Autocomplete (`{{`) in Requests & Templates**:
+    - Interactive autocomplete popup triggered by typing `{{` in request body textareas, header values, path/query parameter inputs, and template editors.
+    - Lists both Project Variables (`{{TOKEN}}`, `{{API_KEY}}`, etc.) and built-in Dynamic Variables (`{{$uuid}}`, `{{$timestamp}}`, `{{$randomEmail}}`, etc.).
+    - Keyboard navigation (ArrowUp, ArrowDown, Enter/Tab, Escape) with variable value preview.
+  - [x] **Resolved Variable Preview & Missing Variable Alert**:
+    - Hover preview over any `{{VAR}}` showing its real-time resolved value.
+    - Warning badge when a request template references an undefined variable with 1-click "Add Variable" prompt (**495 tests ✓**).
+- [x] **Request Presets: Path & Query Parameters & Swagger Auto-Population:**
+  - [x] **Swagger Example & Parameter Auto-Population**:
+    - Automatic fetching of example request bodies and declared/filled path and query parameter defaults from Swagger operation DOM into preset editor.
+    - One-click "⚡ Load from Swagger" action button with live visual feedback.
+  - [x] **Path Parameters Builder & Required Field Validation**:
+    - Automatic detection of `{param}` placeholders in endpoint paths (e.g. `/teams/{team_id}/members/{user_id}/promote` -> `{team_id}`, `{user_id}`).
+    - Dedicated parameter inputs supporting `{{VARIABLE}}` substitution with required-field validation.
+    - Real-time resolved path and full URL preview.
+  - [x] **Query Parameters Builder**:
+    - Dynamic key-value query parameter editor (`+ Add Query Param`, remove, variable substitution).
+    - Live URL query string preview (`/users?role=admin&limit={{LIMIT}}`).
+  - [x] **Full Execution & Locate Integration**:
+    - Inject path parameters and query parameters into Swagger UI input rows during both "Replay" (autoExecute) and "Locate & Fill".
+    - Badges on preset cards (`2 path`, `2 query`) and expanded details view (**526 tests ✓**).
+- [x] **Auto-Refresh with Saved Account Credentials & Warning Suppression:**
+  - [x] **Zero-Setup Token Auto-Renewal via Account Credentials**:
+    - When an account has saved credentials (`username`, `password`), auto-refresh automatically signs in using those credentials on 401/expiry or manual "Refresh now"—without requiring a separate preset saved in Requests.
+    - Suppressed misleading warning banner *"No saved login request found, so this can't run yet..."* whenever account credentials exist.
+    - Displayed green confirmation banner: `✓ Will sign in using saved account credentials for "{account.name}" ({username}) via {endpoint}`.
+  - [x] **Multi-Tier Endpoint Auto-Detection & Safe Exclusions**:
+    - Broadened auto-detection for `/oauth/token`, `/oauth2/token`, `/api/token`, `/auth/jwt/create`, `/session`, and endpoints tagged `Auth`/`Login` without falsely excluding them.
+    - Excluded dangerous operations (`/forgot-password`, `/reset-password`, `/register`, `/logout`, `/resend-otp`, `/verify`).
+  - [x] **Configurable Sign-in Endpoint Override**:
+    - Added endpoint picker dropdown to let developers explicitly override the login endpoint for non-standard APIs.
+    - Persisted configured login endpoint per project (**531 tests ✓**).
+- [x] **History Request Detail In-Page Overlay (Swagger DOM):**
+  - [x] **Spacious In-Page Modal for Execution Inspector**:
+    - Moved the narrow Side Panel inline history detail dialog into an in-page top-centered overlay (`#oac-history-detail-host`) mounted inside the Swagger webpage's Shadow DOM (consistent with Command Palette and Request Preset Editor).
+    - Features full 672px (`max-w-2xl`) viewport, tabbed Request / Response viewers, line wrap toggle, headers/parameters inspection, cURL / PowerShell / URL copy, Save Response to Variable, and sibling calls timeline switcher.
+    - Added standalone `HistoryDetailModal`, RPC bridge `historyDetail.open`, and isolated Tailwind styling with `ThemeManager` live sync (**534 tests ✓**).
+- [x] **Project Variables Upgrades — Phase C: Automation & Workflow Utilities:**
+  - [x] **Zero-Click Auto-Extraction Rules (Persistent Project Isolation)**:
+    - Built persistent extraction rule engine (`env-service.ts`, `extraction-rules-types.ts`) keyed strictly to `projects/<projectId>/environment/extraction-rules` to maintain 100% project isolation (FR-024).
+    - Evaluated and intentionally dropped cross-project global variables per architectural decision to ensure zero cross-origin data leakage across distinct Swagger specs.
+    - Added nested dot/bracket path resolution (`extractValueByPath`) in `json-candidates.ts` supporting `response.` and `body.` prefixes.
+    - Integrated automatic extraction hook in `HistoryService` on 2xx successful responses, triggering reactive updates and notifications (`VARIABLE_AUTO_EXTRACTED`).
+  - [x] **Interactive Rules Management UI & In-Page Swagger Overlay**:
+    - Created `ExtractionRuleModal.tsx` and in-page Shadow DOM host `#oac-extraction-rule-host` (`mountExtractionRuleModal` in `src/content/extraction-rule-modal.tsx`) so rule creation opens as a spacious top-centered overlay directly on top of Swagger UI rather than cramped inside the narrow 380px side panel.
+    - Integrated one-click token presets (`access_token`, `token`, `id`, `data.id`, `jwt`), property path detection, auto-uppercased variable names, and secret masking toggle.
+    - Created `ExtractionRulesList.tsx` with enabled/disabled toggles and rule deletion, and added the dedicated "Rules" tab in `EnvironmentsPanel.tsx`.
+    - Added `⚡ Auto-extract on future 2xx responses` checkbox directly in `SaveToVariableDialog.tsx` so developers can create recurring extraction rules from any history inspection.
+  - [x] **Variable Reference & Usage Scanner**:
+    - Scans all saved endpoint request presets (`headers`, `query`, `path`, `body`) to detect active `{{VAR}}` usage.
+    - Displays `✓ Used in N presets` badge with full tooltip inspection or `unused` indicator next to each project variable (**557 tests ✓**).
+
+
+

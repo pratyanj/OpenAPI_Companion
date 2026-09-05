@@ -945,3 +945,135 @@ describe('TokenRefreshService — auto-retry after successful refresh', () => {
     expect(retried[0]).toMatchObject({ endpointId: FAILING, triggeredBy: 'token-refresh' })
   })
 })
+
+describe('TokenRefreshService — findLoginEndpoint and credentials-based refresh', () => {
+  it('prioritizes user-configured login endpoint override', () => {
+    const service = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          { endpointId: 'post /auth/login', method: 'post', path: '/auth/login' },
+          { endpointId: 'post /custom/auth', method: 'post', path: '/custom/auth' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () => [],
+        replay: () => ok(undefined),
+      } as unknown as SwaggerAdapter,
+      auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
+      templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
+      configuredLoginEndpoint: () => 'post /custom/auth',
+    })
+
+    expect(service.findLoginEndpoint()).toBe('post /custom/auth')
+  })
+
+  it('detects Tier A and Tier B login and oauth endpoints', () => {
+    const oauthService = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          { endpointId: 'post /oauth/token', method: 'post', path: '/oauth/token' },
+          { endpointId: 'get /users', method: 'get', path: '/users' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () => [],
+        replay: () => ok(undefined),
+      } as unknown as SwaggerAdapter,
+      auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
+      templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
+    })
+
+    expect(oauthService.findLoginEndpoint()).toBe('post /oauth/token')
+
+    const jwtService = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          { endpointId: 'post /api/auth/jwt/create', method: 'post', path: '/api/auth/jwt/create' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () => [],
+        replay: () => ok(undefined),
+      } as unknown as SwaggerAdapter,
+      auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
+      templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
+    })
+
+    expect(jwtService.findLoginEndpoint()).toBe('post /api/auth/jwt/create')
+  })
+
+  it('never picks dangerous endpoints (forgot-password, register, logout, reset)', () => {
+    const service = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          {
+            endpointId: 'post /auth/forgot-password',
+            method: 'post',
+            path: '/auth/forgot-password',
+          },
+          { endpointId: 'post /auth/register', method: 'post', path: '/auth/register' },
+          { endpointId: 'post /auth/logout', method: 'post', path: '/auth/logout' },
+          { endpointId: 'post /auth/reset-password', method: 'post', path: '/auth/reset-password' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () => [],
+        replay: () => ok(undefined),
+      } as unknown as SwaggerAdapter,
+      auth: { current: async () => ok(null), applyToken: async () => ok({ token: '' }) },
+      templates: { listTemplates: async () => ok([]), applyTemplate: async () => ok(undefined) },
+    })
+
+    expect(service.findLoginEndpoint()).toBeNull()
+  })
+
+  it('directly logs in with credentials on refreshNow when Swagger has no token but credentials exist', async () => {
+    let playedEndpoint: string | null = null
+    let executed = false
+    const service = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          { endpointId: 'post /auth/login', method: 'post', path: '/auth/login' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () =>
+          executed
+            ? [
+                {
+                  endpointId: 'post /auth/login',
+                  method: 'post',
+                  endpoint: '/auth/login',
+                  status: 200,
+                  responseBody: JSON.stringify({ token: 'NEW_LOGGED_IN_TOKEN_123' }),
+                },
+              ]
+            : [],
+        replay: (id: string) => {
+          playedEndpoint = id
+          executed = true
+          return ok(undefined)
+        },
+      } as unknown as SwaggerAdapter,
+      auth: {
+        current: async () => ok(null), // no token currently authorized in Swagger
+        applyToken: async (_env, t) => ok({ token: t }),
+      },
+      templates: {
+        listTemplates: async () => ok([]), // no saved request template
+        applyTemplate: async () => ok(undefined),
+      },
+      vault: {
+        activeLogin: async () => ({
+          credentialId: 'c1',
+          username: 'admin@acme.io',
+          password: 'secretpassword',
+        }),
+        updateSavedToken: async () => ok(undefined),
+      },
+      setTimeoutFn: (fn) => {
+        fn()
+        return 0
+      },
+    })
+
+    const refreshed = await service.refreshNow('default')
+    expect(refreshed).toEqual({ ok: true, value: true })
+    expect(playedEndpoint).toBe('post /auth/login')
+  })
+})

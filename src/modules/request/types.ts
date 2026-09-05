@@ -52,4 +52,21 @@ export interface RequestPanelService {
   locateAndFill(templateId: string, environmentId?: string): Promise<Result<void>>
   listEndpoints(): EndpointInfo[]
   getOpenRequests(): RequestSnapshot[]
+  getSwaggerDefaults?(endpointId: string): {
+    exampleBody?: string
+    path?: Record<string, string>
+    query?: Record<string, string>
+  }
+}
+
+export const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+export type MethodFilter = (typeof METHODS)[number]
+
+export interface PresetEditorOpenOptions {
+  template?: RequestTemplate | null
+  initialEndpointId?: string
+  initialBody?: string
+  initialName?: string
+  initialPath?: Record<string, string>
+  initialQuery?: Record<string, string>
 }

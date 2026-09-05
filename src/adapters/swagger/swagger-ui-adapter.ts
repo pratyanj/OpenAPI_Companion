@@ -13,6 +13,10 @@ import {
   isBodyEmpty,
   readOpenRequests,
   writeRequestBody,
+  writeRequestParameters,
+  readSwaggerExample,
+  readParametersFromBlock,
+  findAnyBlock,
   observeExecutions,
 } from './swagger-request-dom'
 import { readExecutedResponses } from './swagger-response-dom'
@@ -79,18 +83,37 @@ export class SwaggerUiAdapter implements SwaggerAdapter {
   }
 
   writeRequest(endpointId: string, data: RequestSnapshot): Result<void> {
-    if (data.body == null) return ok(undefined)
-    const done = writeRequestBody(document, endpointId, data.body)
+    if (data.body == null && !data.path && !data.query && !data.headers) {
+      return ok(undefined)
+    }
+    let bodyDone = false
+    let paramsDone = false
+    if (data.body != null) {
+      bodyDone = writeRequestBody(document, endpointId, data.body)
+    }
+    if (data.path || data.query || data.headers) {
+      paramsDone = writeRequestParameters(document, endpointId, {
+        path: data.path,
+        query: data.query,
+        headers: data.headers,
+      })
+    }
+    const done = bodyDone || paramsDone
     return done ? ok(undefined) : err(this.notFound(endpointId))
   }
 
   /**
-   * Expand the operation, enable "Try it out", fill the body, then Execute — with
+   * Expand the operation, enable "Try it out", fill the body and parameters, then Execute — with
    * no user interaction. Delegates to the polling state machine in
    * `autoExecute` (Swagger re-renders asynchronously between each step).
    */
-  replay(endpointId: string, body?: string): Result<void> {
-    const started = autoExecute(document, endpointId, { body })
+  replay(
+    endpointId: string,
+    body?: string,
+    path?: Record<string, string>,
+    query?: Record<string, string>,
+  ): Result<void> {
+    const started = autoExecute(document, endpointId, { body, path, query })
     return started ? ok(undefined) : err(this.notFound(endpointId))
   }
 
@@ -109,6 +132,23 @@ export class SwaggerUiAdapter implements SwaggerAdapter {
 
   openEndpoint(endpointId: string): Result<void> {
     return openEndpoint(document, endpointId) ? ok(undefined) : err(this.notFound(endpointId))
+  }
+
+  getEndpointSwaggerDefaults(endpointId: string): {
+    exampleBody?: string
+    path?: Record<string, string>
+    query?: Record<string, string>
+  } {
+    const exampleBody = readSwaggerExample(document, endpointId) ?? undefined
+    const block = findAnyBlock(document, endpointId)
+    let path: Record<string, string> | undefined
+    let query: Record<string, string> | undefined
+    if (block) {
+      const parsed = readParametersFromBlock(block)
+      if (Object.keys(parsed.path).length > 0) path = parsed.path
+      if (Object.keys(parsed.query).length > 0) query = parsed.query
+    }
+    return { exampleBody, path, query }
   }
 
   private notFound(endpointId: string): AppError {

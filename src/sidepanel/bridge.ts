@@ -9,7 +9,7 @@ import type {
   SwaggerChange,
 } from '@/adapters'
 import type { AuthPanelService } from '@/modules/authentication'
-import type { RequestPanelService } from '@/modules/request'
+import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/request'
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { CollectionsPanelService } from '@/modules/collections'
@@ -35,7 +35,10 @@ let activeTabId: number | null = null
 
 /** Low-level RPC to the active tab's agent. Throws on transport failure. */
 async function rpc<T>(method: string, args: unknown[]): Promise<T> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id && activeTabId != null) {
+    tab = await chrome.tabs.get(activeTabId).catch(() => undefined as unknown as chrome.tabs.Tab)
+  }
   if (!tab?.id) throw new Error('No active tab')
   activeTabId = tab.id
   const res = (await chrome.tabs.sendMessage(tab.id, { type: RPC_REQUEST, method, args })) as
@@ -152,8 +155,13 @@ export class RemoteSwaggerAdapter implements SwaggerAdapter {
     void rpcResult('adapter.writeRequest', endpointId, data)
     return ok(undefined)
   }
-  replay(endpointId: string, body?: string): Result<void> {
-    void rpcResult('adapter.replay', endpointId, body)
+  replay(
+    endpointId: string,
+    body?: string,
+    path?: Record<string, string>,
+    query?: Record<string, string>,
+  ): Result<void> {
+    void rpcResult('adapter.replay', endpointId, body, path, query)
     return ok(undefined)
   }
   isRequestBodyEmpty(endpointId: string): boolean {
@@ -200,6 +208,9 @@ export function createRemoteAuthService(): AuthPanelService {
     activateSaved: (id, env) => rpcResult('auth.activateSaved', id, env),
     deleteSaved: (id) => rpcResult('auth.deleteSaved', id),
     setLogin: (id, login) => rpcResult('auth.setLogin', id, login),
+    configuredLoginEndpoint: () => rpcValue('auth.configuredLoginEndpoint', null),
+    setConfiguredLoginEndpoint: (id) => rpcResult('auth.setConfiguredLoginEndpoint', id),
+    listEndpoints: () => latestState.adapter.endpoints,
   }
 }
 
@@ -216,6 +227,15 @@ export function createRemoteRequestService(): RequestPanelService {
       rpcResult('requests.locateAndFill', id, env ?? latestState.context?.environmentId),
     listEndpoints: () => latestState.adapter.endpoints,
     getOpenRequests: () => latestState.adapter.openRequests,
+    getSwaggerDefaults: (endpointId: string) => {
+      const open = latestState.adapter.openRequests.find((r) => r.endpointId === endpointId)
+      const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
+      return {
+        exampleBody: open?.body || exec?.requestBody || undefined,
+        path: open?.path || undefined,
+        query: open?.query || undefined,
+      }
+    },
   }
 }
 
@@ -228,6 +248,10 @@ export function createRemoteEnvironmentService(): EnvironmentPanelService {
     update: (id, patch) => rpcResult('environments.update', id, patch),
     delete: (id) => rpcResult('environments.delete', id),
     listBuiltins: () => BUILTIN_ENVIRONMENTS,
+    listRules: () => rpcResult('environments.listRules'),
+    saveRule: (rule) => rpcResult('environments.saveRule', rule),
+    updateRule: (id, patch) => rpcResult('environments.updateRule', id, patch),
+    deleteRule: (id) => rpcResult('environments.deleteRule', id),
   }
 }
 
@@ -237,6 +261,39 @@ export function createRemoteEnvironmentService(): EnvironmentPanelService {
  */
 export function openPagePalette(): void {
   void rpcResult('palette.open')
+}
+
+/**
+ * Ask the page to open its Request Preset Editor overlay.
+ * Lives in the page (top-centered, 672px+ wide) for ample space.
+ */
+export function openPagePresetEditor(options?: PresetEditorOpenOptions): void {
+  void rpcResult('presetEditor.open', options)
+}
+
+/**
+ * Ask the page to open its Request Detail overlay.
+ * Lives in the page (top-centered, 672px+ wide) for ample space.
+ */
+export function openPageHistoryDetail(id: string): void {
+  void rpcResult('historyDetail.open', id)
+}
+
+export interface ExtractionRuleModalOpenOptions {
+  endpointId?: string
+  property?: string
+  targetVariable?: string
+  isSecret?: boolean
+}
+
+/**
+ * Ask the page to open its Auto-Extraction Rule modal overlay.
+ * Lives in the page (top-centered, 512px+ wide) on top of the Swagger doc.
+ */
+export async function openPageExtractionRuleModal(
+  options?: ExtractionRuleModalOpenOptions,
+): Promise<Result<void>> {
+  return await rpcResult<void>('extractionRuleModal.open', options ?? {})
 }
 
 export function createRemoteHistoryService(): HistoryPanelService {

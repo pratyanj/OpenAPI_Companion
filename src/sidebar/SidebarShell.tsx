@@ -132,7 +132,7 @@ export function SidebarShell({
       >
         <header className="flex items-center justify-between border-b border-border px-3 py-2">
           <strong className="text-sm">OpenAPI Companion</strong>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {productivityService ? (
               <IconButton label="Search endpoints (⌘K)" onClick={() => setPaletteOpen(true)}>
                 <SearchIcon />

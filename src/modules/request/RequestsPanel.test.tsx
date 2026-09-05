@@ -155,7 +155,9 @@ describe('RequestsPanel', () => {
     expect(await screen.findByText('Create Request Preset')).toBeInTheDocument()
 
     // Health check endpoint is selected (GET)
-    expect(screen.getByText(/requests do not require a request body/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/requests do not typically require a request body/i),
+    ).toBeInTheDocument()
     expect(screen.queryByLabelText(/JSON Request Body/i)).not.toBeInTheDocument()
   })
 
@@ -247,5 +249,127 @@ describe('RequestsPanel', () => {
     act(() => bus.publish('TEMPLATE_SAVED', { templateId: 'tpl_1', endpointId: 'post /users' }))
 
     await waitFor(() => expect(screen.getByText('Create user')).toBeInTheDocument())
+  })
+
+  it('toggles Preview Resolved and warns about missing variables', async () => {
+    const templateWithVar: RequestTemplate = {
+      templateId: 'tpl_var',
+      name: 'Auth Preset',
+      endpointId: 'post /login',
+      method: 'post',
+      body: JSON.stringify({ token: '{{MY_TOKEN}}', missing: '{{NOT_SET}}' }),
+      environmentId: 'default',
+      updatedAt: 1_700_000_000_000,
+    }
+    const envService = {
+      list: vi.fn(async () =>
+        ok([
+          {
+            id: 'default',
+            name: 'Default',
+            baseUrl: '',
+            variables: { MY_TOKEN: 'resolved_secret_123' },
+            secrets: ['MY_TOKEN'],
+            updatedAt: 0,
+          },
+        ]),
+      ),
+      getActiveId: vi.fn(async () => 'default'),
+      update: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    }
+
+    const service = mockService({ listTemplates: vi.fn(async () => ok([templateWithVar])) })
+    render(
+      <RequestsPanel
+        service={service}
+        bus={new EventBus()}
+        environmentId="default"
+        environmentService={envService}
+      />,
+    )
+
+    const cardHeader = await screen.findByText('Auth Preset')
+
+    // Expand preset card by clicking header
+    fireEvent.click(cardHeader)
+    expect(screen.getByRole('button', { name: 'Preview resolved' })).toBeInTheDocument()
+
+    // Click Preview resolved
+    fireEvent.click(screen.getByRole('button', { name: 'Preview resolved' }))
+
+    // Should display substituted text
+    expect(screen.getByText(/resolved_secret_123/)).toBeInTheDocument()
+
+    // Should display missing variable warning
+    expect(screen.getByText(/Missing in project variables:/)).toBeInTheDocument()
+    expect(screen.getAllByText(/\{\{NOT_SET\}\}/).length).toBe(2)
+  })
+
+  it('delegates New preset and Edit clicks to onOpenPresetEditor when provided', async () => {
+    const onOpenPresetEditor = vi.fn()
+    const service = mockService({ listTemplates: vi.fn(async () => ok([template])) })
+    render(
+      <RequestsPanel
+        service={service}
+        bus={new EventBus()}
+        environmentId="default"
+        onOpenPresetEditor={onOpenPresetEditor}
+      />,
+    )
+
+    await screen.findByText('Create user')
+
+    // Click "New preset"
+    fireEvent.click(screen.getByRole('button', { name: /New preset/i }))
+    expect(onOpenPresetEditor).toHaveBeenCalledWith(
+      expect.objectContaining({ initialEndpointId: expect.any(String) }),
+    )
+
+    // Click "Edit"
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Create user' }))
+    expect(onOpenPresetEditor).toHaveBeenCalledWith(expect.objectContaining({ template }))
+  })
+
+  it('renders path and query parameter count badges and expanded details', async () => {
+    const parameterizedTemplate: RequestTemplate = {
+      templateId: 'tpl_param_1',
+      name: 'Promote User in Team',
+      endpointId: 'patch /teams/{team_id}/members/{user_id}/promote',
+      method: 'patch',
+      environmentId: 'default',
+      path: { team_id: '42', user_id: '{{TARGET_USER}}' },
+      query: { notify: 'true', dry_run: 'false' },
+      body: '{"role":"lead"}',
+      updatedAt: Date.now(),
+    }
+
+    const service = mockService({
+      listTemplates: vi.fn(async () => ok([parameterizedTemplate])),
+    })
+
+    render(<RequestsPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+    await screen.findByText('Promote User in Team')
+
+    // Check count badges on collapsed card header
+    expect(screen.getByText('2 path')).toBeInTheDocument()
+    expect(screen.getByText('2 query')).toBeInTheDocument()
+
+    // Expand the card
+    fireEvent.click(screen.getByText('Promote User in Team'))
+
+    // Expanded details should show Path Parameters and Query Parameters sections
+    expect(screen.getByText('Path Parameters')).toBeInTheDocument()
+    expect(screen.getByText('{team_id}:')).toBeInTheDocument()
+    expect(screen.getByText('42')).toBeInTheDocument()
+    expect(screen.getByText('{user_id}:')).toBeInTheDocument()
+
+    expect(screen.getByText('Query Parameters')).toBeInTheDocument()
+    expect(screen.getByText('notify=')).toBeInTheDocument()
+    expect(screen.getByText('true')).toBeInTheDocument()
+    expect(screen.getByText('dry_run=')).toBeInTheDocument()
+    expect(screen.getByText('false')).toBeInTheDocument()
   })
 })

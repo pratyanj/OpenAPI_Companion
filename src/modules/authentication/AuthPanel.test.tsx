@@ -31,14 +31,14 @@ function mockService(over: Partial<AuthPanelService> = {}): AuthPanelService {
     setBearerPrefixEnabled: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     addByLogin: vi.fn(async (): Promise<Result<SavedCredential>> => ok(credential)),
     refreshActivity: vi.fn(async () => []),
-    refreshNow: vi.fn(async (): Promise<Result<boolean>> => ok(true)),
+    refreshNow: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     loginEndpoint: vi.fn(async () => 'post /auth/login'),
     loginTemplate: vi.fn(async () => null),
     listSaved: vi.fn(async (): Promise<Result<SavedCredential[]>> => ok([])),
     saveAs: vi.fn(async (): Promise<Result<SavedCredential>> => ok(credential)),
-    activateSaved: vi.fn(async (): Promise<Result<AuthRecord>> => ok(authorized)),
+    activateSaved: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     deleteSaved: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
-    setLogin: vi.fn(async (): Promise<Result<SavedCredential>> => ok(credential)),
+    setLogin: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     ...over,
   }
 }
@@ -178,16 +178,45 @@ describe('AuthPanel', () => {
     await waitFor(() => expect(service.deleteSaved).toHaveBeenCalledWith('cred_admin'))
   })
 
-  // An enabled toggle with no saved login request does nothing at all — the panel
+  // An enabled toggle with no saved login credentials or request does nothing at all — the panel
   // has to say so instead of looking functional.
-  it('warns when auto-refresh is on but no login request is saved', async () => {
+  it('warns when auto-refresh is on but no login request or credentials are saved', async () => {
     const service = mockService({
       current: vi.fn(async () => ok(authorized)),
       isAutoRefreshEnabled: vi.fn(async () => true),
       loginTemplate: vi.fn(async () => null),
     })
     render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
-    expect(await screen.findByText(/No saved login request found/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/No saved login credentials or request found/),
+    ).toBeInTheDocument()
+  })
+
+  it('suppresses warning and shows green confirmation when an account has saved credentials', async () => {
+    const credWithLogin: SavedCredential = {
+      ...credential,
+      token: authorized.token,
+      login: { username: 'admin@acme.io', password: 'secretpassword' },
+    }
+    const service = mockService({
+      current: vi.fn(async () => ok(authorized)),
+      listSaved: vi.fn(async () => ok([credWithLogin])),
+      isAutoRefreshEnabled: vi.fn(async () => true),
+      loginTemplate: vi.fn(async () => null),
+      loginEndpoint: vi.fn(async () => 'POST /api/v1/auth/login'),
+    })
+    render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+    // Should NOT display warning
+    expect(
+      screen.queryByText(/No saved login credentials or request found/),
+    ).not.toBeInTheDocument()
+    // Should display green confirmation
+    expect(
+      await screen.findByText(
+        /Will sign in using saved account credentials for “Admin” \(admin@acme\.io\)/,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('names the request it will re-run once one is saved', async () => {
@@ -340,5 +369,63 @@ describe('AuthPanel', () => {
     await waitFor(() =>
       expect(service.setBearerPrefixEnabled).toHaveBeenCalledWith('default', false),
     )
+  })
+
+  it('shows validation errors when Add Account fields are empty on submit or blur', async () => {
+    const service = mockService({ current: vi.fn(async () => ok(authorized)) })
+    render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Add account with email/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in & save' }))
+
+    expect(await screen.findByText('Token name is required.')).toBeInTheDocument()
+    expect(screen.getByText('Email / username is required.')).toBeInTheDocument()
+    expect(screen.getByText('Password is required.')).toBeInTheDocument()
+    expect(service.addByLogin).not.toHaveBeenCalled()
+  })
+
+  it('hides Save Current Token when token is already in saved tokens or not authorized', async () => {
+    // 1. When not authorized: Save Current Token should not be displayed
+    const unauthService = mockService({ current: vi.fn(async () => ok(null)) })
+    const { unmount } = render(
+      <AuthPanel service={unauthService} bus={new EventBus()} environmentId="default" />,
+    )
+    expect(await screen.findByText('Not authorized')).toBeInTheDocument()
+    expect(screen.queryByText('Save current token')).not.toBeInTheDocument()
+    unmount()
+
+    // 2. When authorized, but the active token is already in saved list: should NOT be displayed
+    const activeSaved: SavedCredential = { ...credential, token: authorized.token }
+    const savedService = mockService({
+      current: vi.fn(async () => ok(authorized)),
+      listSaved: vi.fn(async () => ok([activeSaved])),
+    })
+    const { unmount: unmount2 } = render(
+      <AuthPanel service={savedService} bus={new EventBus()} environmentId="default" />,
+    )
+    expect(await screen.findByText('Authorized')).toBeInTheDocument()
+    expect(screen.queryByText('Save current token')).not.toBeInTheDocument()
+    unmount2()
+
+    // 3. When authorized and token is NOT in saved list: should be displayed
+    const unsavedService = mockService({
+      current: vi.fn(async () => ok(authorized)),
+      listSaved: vi.fn(async () => ok([])),
+    })
+    render(<AuthPanel service={unsavedService} bus={new EventBus()} environmentId="default" />)
+    expect(await screen.findByText('Save current token')).toBeInTheDocument()
+  })
+
+  it('validates token name when clicking Save Current with an empty input', async () => {
+    const service = mockService({
+      current: vi.fn(async () => ok(authorized)),
+      listSaved: vi.fn(async () => ok([])),
+    })
+    render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+    expect(await screen.findByText('Save current token')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save current' }))
+    expect(await screen.findByText('Token name is required.')).toBeInTheDocument()
+    expect(service.saveAs).not.toHaveBeenCalled()
   })
 })

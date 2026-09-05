@@ -79,10 +79,15 @@ export interface SwaggerAdapter {
   /** Populate an open operation's fields (never executes it). */
   writeRequest(endpointId: string, data: RequestSnapshot): Result<void>
   /**
-   * Navigate to an operation, expand + enable "Try it out", populate the body,
+   * Navigate to an operation, expand + enable "Try it out", populate the body and parameters,
    * and click Execute — a full auto-replay (unlike writeRequest, which only fills).
    */
-  replay(endpointId: string, body?: string): Result<void>
+  replay(
+    endpointId: string,
+    body?: string,
+    path?: Record<string, string>,
+    query?: Record<string, string>,
+  ): Result<void>
   /** True if the operation is open with an empty body — safe to auto-restore. */
   isRequestBodyEmpty(endpointId: string): boolean
   /** Currently-rendered executed responses in open operations (for History). */
@@ -91,6 +96,12 @@ export interface SwaggerAdapter {
   listEndpoints(): EndpointInfo[]
   /** Expand an operation and scroll it into view, without executing it. */
   openEndpoint(endpointId: string): Result<void>
+  /** Default/example data discovered from Swagger for an endpoint (for preset pre-population). */
+  getEndpointSwaggerDefaults?(endpointId: string): {
+    exampleBody?: string
+    path?: Record<string, string>
+    query?: Record<string, string>
+  }
   observe(cb: (change: SwaggerChange) => void): Unsubscribe
 
   /**

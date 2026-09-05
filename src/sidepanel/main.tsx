@@ -18,6 +18,9 @@ import {
   startBridge,
   fetchState,
   openPagePalette,
+  openPagePresetEditor,
+  openPageHistoryDetail,
+  openPageExtractionRuleModal,
   RemoteSwaggerAdapter,
   createRemoteAuthService,
   createRemoteRequestService,
@@ -123,6 +126,9 @@ async function render(root: Root): Promise<void> {
         environmentId={ctx.environmentId}
         staleTab={staleTab}
         onOpenPalette={openPagePalette}
+        onOpenPresetEditor={openPagePresetEditor}
+        onOpenHistoryDetail={openPageHistoryDetail}
+        onOpenExtractionRuleModal={openPageExtractionRuleModal}
         authService={createRemoteAuthService()}
         requestService={createRemoteRequestService()}
         environmentService={createRemoteEnvironmentService()}

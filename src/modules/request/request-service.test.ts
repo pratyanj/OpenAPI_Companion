@@ -334,4 +334,44 @@ describe('RequestService — templates', () => {
       }),
     )
   })
+
+  it('resolves {{VAR}} in path and query parameters and passes them to replay when applying', async () => {
+    const replay = vi.fn(() => ok(undefined))
+    const adapter = mockAdapter({ replay })
+    const storage = new StorageService({ area: createFakeArea(), now: () => NOW })
+    const bus = new EventBus()
+    const service = new RequestService({
+      storage,
+      adapter,
+      bus,
+      projectId: PROJECT,
+      now: () => NOW,
+      resolveVariables: (text) => {
+        let res = text.replace('{{TEAM}}', 'engineering')
+        res = res.replace('{{USER}}', 'usr_42')
+        res = res.replace('{{FLAG}}', 'true')
+        return ok({ text: res, missing: [] })
+      },
+    })
+
+    const tpl = await service.saveTemplate('Promote Member', {
+      endpointId: 'patch /teams/{team_id}/members/{user_id}/promote',
+      method: 'patch',
+      environmentId: 'default',
+      path: { team_id: '{{TEAM}}', user_id: '{{USER}}' },
+      query: { dry_run: '{{FLAG}}' },
+      body: '{"role":"admin"}',
+      updatedAt: NOW,
+    })
+    expect(tpl.ok).toBe(true)
+    if (!tpl.ok) return
+
+    await service.applyTemplate(tpl.value.templateId)
+    expect(replay).toHaveBeenCalledWith(
+      'patch /teams/{team_id}/members/{user_id}/promote',
+      '{"role":"admin"}',
+      { team_id: 'engineering', user_id: 'usr_42' },
+      { dry_run: 'true' },
+    )
+  })
 })

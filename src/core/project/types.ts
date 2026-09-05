@@ -25,6 +25,7 @@ export interface Environment {
   name: string
   baseUrl: string
   variables: Record<string, string>
+  secrets?: string[]
   description?: string
   authRef?: string
   updatedAt: number

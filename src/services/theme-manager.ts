@@ -106,8 +106,13 @@ export class ThemeManager {
 
   private apply(): void {
     const resolved = this.resolved()
-    if (resolved === 'dark') this.root.classList.add('dark')
-    else this.root.classList.remove('dark')
+    if (resolved === 'dark') {
+      this.root.classList.add('dark')
+      if (this.root.style) this.root.style.colorScheme = 'dark'
+    } else {
+      this.root.classList.remove('dark')
+      if (this.root.style) this.root.style.colorScheme = 'light'
+    }
     this.snapshot = { preference: this.preference, resolved }
     for (const listener of this.listeners) listener()
   }

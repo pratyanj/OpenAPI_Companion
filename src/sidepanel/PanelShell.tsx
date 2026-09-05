@@ -13,7 +13,7 @@ import type { EventBus } from '@/core/events'
 import type { ProjectMeta } from '@/core/project'
 import type { ThemeManager, ThemePreference } from '@/services'
 import type { AuthPanelService } from '@/modules/authentication'
-import type { RequestPanelService } from '@/modules/request'
+import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/request'
 import type { EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { FakeDataPanelService } from '@/modules/fake-data'
@@ -22,6 +22,8 @@ import type { CollectionsPanelService } from '@/modules/collections'
 import type { DocStats } from '@/sidebar/Dashboard'
 import { PanelOutlet } from '@/sidebar/PanelOutlet'
 import { TABS, DEFAULT_TAB } from '@/sidebar/tabs'
+import type { Result } from '@/types'
+import type { ExtractionRuleModalOpenOptions } from './bridge'
 
 const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
   light: 'dark',
@@ -41,6 +43,14 @@ export interface PanelShellProps {
   environmentId: string
   /** Opens the palette in the PAGE (see `openPagePalette`) — not in this column. */
   onOpenPalette: () => void
+  /** Opens the preset editor overlay in the PAGE (see `openPagePresetEditor`). */
+  onOpenPresetEditor?: (options?: PresetEditorOpenOptions) => void
+  /** Opens the request detail overlay in the PAGE (see `openPageHistoryDetail`). */
+  onOpenHistoryDetail?: (historyId: string) => void
+  /** Opens the auto-extraction rule modal overlay in the PAGE (see `openPageExtractionRuleModal`). */
+  onOpenExtractionRuleModal?: (
+    options?: ExtractionRuleModalOpenOptions,
+  ) => Promise<Result<void>> | Result<void> | void
   /** The page is running an older build of the agent; it needs a refresh. */
   staleTab?: boolean
   authService: AuthPanelService
@@ -66,6 +76,9 @@ export function PanelShell({
   bus,
   environmentId,
   onOpenPalette,
+  onOpenPresetEditor,
+  onOpenHistoryDetail,
+  onOpenExtractionRuleModal,
   staleTab = false,
   authService,
   requestService,
@@ -99,10 +112,10 @@ export function PanelShell({
   const PreferenceIcon = PREFERENCE_ICON[preference]
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg text-text">
-      <header className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="flex h-screen max-h-screen flex-col bg-bg text-text overscroll-none overflow-hidden">
+      <header className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg px-3 py-2">
         <strong className="text-sm">OpenAPI Companion</strong>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <IconButton label="Search endpoints (⌘K)" onClick={onOpenPalette}>
             <SearchIcon />
           </IconButton>
@@ -115,14 +128,14 @@ export function PanelShell({
       {staleTab ? (
         <p
           role="status"
-          className="border-b border-warning bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning"
+          className="flex-shrink-0 border-b border-warning bg-warning/10 px-3 py-2 text-[11px] leading-snug text-warning"
         >
           This tab is running an older build of the extension, so newer actions won&apos;t work.
           Refresh the page (⌘⇧R / Ctrl+Shift+R).
         </p>
       ) : null}
 
-      <nav className="border-b border-border px-2 py-2">
+      <nav className="flex-shrink-0 border-b border-border bg-bg px-2 py-2">
         <Tabs tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
       </nav>
 
@@ -130,7 +143,7 @@ export function PanelShell({
         role="tabpanel"
         id={`panel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
-        className="flex-1 overflow-auto"
+        className="flex-1 overflow-y-auto overscroll-contain bg-bg"
       >
         <PanelOutlet
           activeTab={activeTab}
@@ -147,6 +160,9 @@ export function PanelShell({
           theme={theme}
           environmentId={activeEnv}
           onOpenPalette={onOpenPalette}
+          onOpenPresetEditor={onOpenPresetEditor}
+          onOpenHistoryDetail={onOpenHistoryDetail}
+          onOpenExtractionRuleModal={onOpenExtractionRuleModal}
           onNavigate={setActiveTab}
           swagger={swagger}
         />

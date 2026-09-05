@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Result } from '@/types'
+import type { EndpointInfo } from '@/adapters'
 import type { EventBus } from '@/core/events'
 import { useEventBus } from '@/hooks'
+import { cn } from '@/utils'
 import {
   Badge,
   Button,
   CopyButton,
   EmptyState,
   IconButton,
+  Input,
   Spinner,
   AuthIcon,
   DeleteIcon,
@@ -28,25 +31,32 @@ export interface AuthPanelService {
   isBearerPrefixEnabled(environmentId: string): Promise<boolean>
   setBearerPrefixEnabled(environmentId: string, enabled: boolean): Promise<Result<void>>
   /**
-   * Name of the saved request auto-refresh would re-run, or null if none matches.
-   * Auto-refresh is inert without one, so the panel states it plainly.
+   * Identifies the login request used for auto-refresh, if one exists.
+   * Matches templates by convention (name/path includes login/signin/auth/token).
    */
   loginTemplate(environmentId: string): Promise<string | null>
-  /** The sign-in operation saved credentials would be sent to, if identifiable. */
+  /**
+   * Discovered auth endpoint from the spec (e.g. `POST /api/auth/login`).
+   * Used for the inline "Add account" form so the user doesn't have to save
+   * a request manually when the spec already declares a login path.
+   */
   loginEndpoint(): Promise<string | null>
-  /** Recent refresh activity, newest first — so the flow is observable. */
-  refreshActivity(): Promise<RefreshLogEntry[]>
-  /** Run a refresh immediately, ignoring the cooldown. */
-  refreshNow(environmentId: string): Promise<Result<boolean>>
-  /** Sign in with these credentials and save the issued token under `name`. */
+  /** Optional custom configured login endpoint override */
+  configuredLoginEndpoint?(): Promise<string | null>
+  setConfiguredLoginEndpoint?(endpointId: string | null): Promise<Result<void>>
+  listEndpoints?(): EndpointInfo[]
+  /** Creates a new saved credential by executing the login endpoint directly. */
   addByLogin(name: string, username: string, password: string): Promise<Result<SavedCredential>>
-  /** Named credential vault — switch accounts without re-authorizing. */
   listSaved(): Promise<Result<SavedCredential[]>>
   saveAs(name: string, environmentId: string): Promise<Result<SavedCredential>>
-  activateSaved(id: string, environmentId: string): Promise<Result<AuthRecord>>
+  activateSaved(id: string, environmentId: string): Promise<Result<void>>
   deleteSaved(id: string): Promise<Result<void>>
-  /** Attach (or clear) the login used to re-authenticate this account. */
-  setLogin(id: string, login: SavedLogin | null): Promise<Result<SavedCredential>>
+  /** Set or clear the login credentials attached to a saved token. */
+  setLogin(id: string, login: SavedLogin | null): Promise<Result<void>>
+  /** Re-authenticate now using whatever saved login is attached to the active token. */
+  refreshNow(environmentId: string): Promise<Result<void>>
+  /** Most recent refresher decisions, for diagnostics in the panel. */
+  refreshActivity(): Promise<RefreshLogEntry[]>
 }
 
 interface AuthPanelProps {
@@ -65,32 +75,50 @@ function PasswordField({
   onChange,
   label,
   onEnter,
+  error,
 }: {
   value: string
   onChange: (value: string) => void
   label: string
   onEnter?: () => void
+  error?: string | boolean | null
 }) {
   const [shown, setShown] = useState(false)
+  const hasError = Boolean(error)
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border bg-bg pr-1">
-      <input
-        type={shown ? 'text' : 'password'}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onEnter?.()
-        }}
-        placeholder="Password"
-        aria-label={label}
-        className="min-w-0 flex-1 bg-transparent px-2 py-1 text-[11px] text-text focus:outline-none"
-      />
-      <IconButton
-        label={shown ? 'Hide password' : 'Show password'}
-        onClick={() => setShown((v) => !v)}
+    <div className="flex flex-col gap-1 w-full">
+      <div
+        className={cn(
+          'flex items-center gap-1 rounded-md border bg-bg pr-1 transition-colors',
+          hasError
+            ? 'border-danger focus-within:ring-1 focus-within:ring-danger'
+            : 'border-border focus-within:ring-1 focus-within:ring-primary',
+        )}
       >
-        {shown ? <HideIcon /> : <RevealIcon />}
-      </IconButton>
+        <input
+          type={shown ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onEnter?.()
+          }}
+          placeholder="Password"
+          aria-label={label}
+          className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-xs text-text focus:outline-none"
+        />
+        <IconButton
+          label={shown ? 'Hide password' : 'Show password'}
+          onClick={() => setShown((v) => !v)}
+        >
+          {shown ? <HideIcon /> : <RevealIcon />}
+        </IconButton>
+      </div>
+      {typeof error === 'string' && error && (
+        <span className="text-[11px] text-danger dark:text-red-300 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded flex items-center gap-1 font-medium">
+          <span className="shrink-0">⚠️</span>
+          <span>{error}</span>
+        </span>
+      )}
     </div>
   )
 }
@@ -124,15 +152,51 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const [saved, setSaved] = useState<SavedCredential[]>([])
   const [loginTemplate, setLoginTemplate] = useState<string | null>(null)
   const [loginEndpoint, setLoginEndpoint] = useState<string | null>(null)
+  const [configuredLoginEp, setConfiguredLoginEp] = useState<string | null>(null)
+  const [showEndpointPicker, setShowEndpointPicker] = useState(false)
   const [activity, setActivity] = useState<RefreshLogEntry[]>([])
   const [testing, setTesting] = useState(false)
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
   const [newAccount, setNewAccount] = useState({ name: '', username: '', password: '' })
+  const [newAccountTouched, setNewAccountTouched] = useState({
+    name: false,
+    username: false,
+    password: false,
+  })
   /** Which vault entry has its login form open. */
   const [editing, setEditing] = useState<string | null>(null)
   const [form, setForm] = useState<SavedLogin>(EMPTY_LOGIN)
+  const [editingTouched, setEditingTouched] = useState({ username: false, password: false })
   const [newName, setNewName] = useState('')
+  const [saveCurrentTouched, setSaveCurrentTouched] = useState(false)
+
+  const activeCred = useMemo(() => {
+    if (!record?.token) return null
+    const currentClean = record.token.replace(/^bearer\s+/i, '').trim()
+    return (
+      saved.find((cred) => cred.token.replace(/^bearer\s+/i, '').trim() === currentClean) ?? null
+    )
+  }, [record, saved])
+
+  const credWithLogin = useMemo(() => {
+    if (activeCred?.login?.username?.trim() && activeCred?.login?.password) {
+      return activeCred
+    }
+    return (
+      saved.find((cred) => Boolean(cred.login?.username?.trim() && cred.login?.password)) ?? null
+    )
+  }, [activeCred, saved])
+
+  const hasLoginCredentials = Boolean(
+    credWithLogin?.login?.username?.trim() && credWithLogin?.login?.password,
+  )
+
+  const isCurrentTokenSaved = useMemo(() => {
+    if (!record?.token) return false
+    const currentClean = record.token.replace(/^bearer\s+/i, '').trim()
+    return saved.some((cred) => cred.token.replace(/^bearer\s+/i, '').trim() === currentClean)
+  }, [record, saved])
 
   const load = useCallback(async () => {
     const [result, vault] = await Promise.all([service.current(environmentId), service.listSaved()])
@@ -147,9 +211,13 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   }
 
   const saveCurrent = async () => {
+    setSaveCurrentTouched(true)
     const name = newName.trim()
     if (!name) return
-    if (report(await service.saveAs(name, environmentId))) setNewName('')
+    if (report(await service.saveAs(name, environmentId))) {
+      setNewName('')
+      setSaveCurrentTouched(false)
+    }
     await load()
   }
 
@@ -159,6 +227,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   }
 
   const addAccount = async () => {
+    setNewAccountTouched({ name: true, username: true, password: true })
     const { name, username, password } = newAccount
     if (!name.trim() || !username.trim() || !password) return
     setBusy(true)
@@ -166,6 +235,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
     setBusy(false)
     if (report(result)) {
       setNewAccount({ name: '', username: '', password: '' })
+      setNewAccountTouched({ name: false, username: false, password: false })
       setAdding(false)
     }
     setActivity(await service.refreshActivity())
@@ -184,13 +254,17 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const openLoginForm = (cred: SavedCredential) => {
     setEditing(cred.id)
     setForm({ ...EMPTY_LOGIN, ...cred.login })
+    setEditingTouched({ username: false, password: false })
   }
 
   const saveLogin = async (id: string) => {
+    setEditingTouched({ username: true, password: true })
     // Both required — half a login can't sign anything in.
     const complete = form.username.trim() !== '' && form.password !== ''
-    report(await service.setLogin(id, complete ? form : null))
+    if (!complete) return
+    report(await service.setLogin(id, form))
     setEditing(null)
+    setEditingTouched({ username: false, password: false })
     await load()
   }
 
@@ -209,8 +283,20 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
     void service.isBearerPrefixEnabled(environmentId).then(setBearerPrefix)
     void service.loginTemplate(environmentId).then(setLoginTemplate)
     void service.loginEndpoint().then(setLoginEndpoint)
+    if (service.configuredLoginEndpoint) {
+      void service.configuredLoginEndpoint().then(setConfiguredLoginEp)
+    }
     void service.refreshActivity().then(setActivity)
   }, [service, environmentId])
+
+  useEventBus(bus, 'SETTINGS_UPDATED', (payload) => {
+    if (payload.keys?.includes('auth-login-endpoint')) {
+      void service.loginEndpoint().then(setLoginEndpoint)
+      if (service.configuredLoginEndpoint) {
+        void service.configuredLoginEndpoint().then(setConfiguredLoginEp)
+      }
+    }
+  })
 
   useEventBus(bus, 'AUTH_UPDATED', () => void load())
   useEventBus(bus, 'AUTH_RESTORED', () => void load())
@@ -379,21 +465,43 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
                           <strong>Requests</strong> tab gives it something to run instead.
                         </p>
                       )}
-                      <input
+                      <Input
                         value={form.username}
-                        onChange={(e) => setForm({ ...form, username: e.target.value })}
+                        onChange={(e) => {
+                          setForm({ ...form, username: e.target.value })
+                          if (editingTouched.username)
+                            setEditingTouched((t) => ({ ...t, username: true }))
+                        }}
+                        onBlur={() => setEditingTouched((t) => ({ ...t, username: true }))}
                         placeholder="Email / username"
                         aria-label={`Email for ${cred.name}`}
-                        className="rounded-md border border-border bg-bg px-2 py-1 text-[11px] text-text"
+                        error={
+                          editingTouched.username && !form.username.trim()
+                            ? 'Email / username is required.'
+                            : null
+                        }
                       />
                       <PasswordField
                         value={form.password}
-                        onChange={(password) => setForm({ ...form, password })}
+                        onChange={(password) => {
+                          setForm({ ...form, password })
+                          if (editingTouched.password)
+                            setEditingTouched((t) => ({ ...t, password: true }))
+                        }}
                         label={`Password for ${cred.name}`}
                         onEnter={() => void saveLogin(cred.id)}
+                        error={
+                          editingTouched.password && !form.password ? 'Password is required.' : null
+                        }
                       />
                       <div className="flex justify-end gap-1">
-                        <Button variant="secondary" onClick={() => setEditing(null)}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setEditing(null)
+                            setEditingTouched({ username: false, password: false })
+                          }}
+                        >
                           Cancel
                         </Button>
                         <Button variant="primary" onClick={() => void saveLogin(cred.id)}>
@@ -411,8 +519,8 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
         {/* Add an account without authorizing in Swagger first: sign in here and
             keep the issued token, with its credentials, under one name. */}
         {adding ? (
-          <div className="flex flex-col gap-1 rounded-md border border-primary px-2 py-2">
-            <span className="text-[11px] font-medium text-text">Add account</span>
+          <div className="flex flex-col gap-2 rounded-md border border-primary p-2.5 bg-surface/30">
+            <span className="text-xs font-semibold text-text">Add account</span>
             <p className="text-[10px] leading-snug text-muted">
               Signs in with these details and saves the token it returns
               {loginEndpoint ? (
@@ -423,28 +531,67 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
               ) : null}
               .
             </p>
-            <input
-              value={newAccount.name}
-              onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
-              placeholder="Token name (e.g. Admin)"
-              aria-label="New account name"
-              className="rounded-md border border-border bg-bg px-2 py-1 text-[11px] text-text"
-            />
-            <input
-              value={newAccount.username}
-              onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value })}
-              placeholder="Email / username"
-              aria-label="New account email"
-              className="rounded-md border border-border bg-bg px-2 py-1 text-[11px] text-text"
-            />
-            <PasswordField
-              value={newAccount.password}
-              onChange={(password) => setNewAccount({ ...newAccount, password })}
-              label="New account password"
-              onEnter={() => void addAccount()}
-            />
-            <div className="flex justify-end gap-1">
-              <Button variant="secondary" onClick={() => setAdding(false)}>
+            <div className="flex flex-col gap-2">
+              <Input
+                value={newAccount.name}
+                onChange={(e) => {
+                  setNewAccount({ ...newAccount, name: e.target.value })
+                  if (newAccountTouched.name) {
+                    setNewAccountTouched((t) => ({ ...t, name: true }))
+                  }
+                }}
+                onBlur={() => setNewAccountTouched((t) => ({ ...t, name: true }))}
+                placeholder="Token name (e.g. Admin)"
+                aria-label="New account name"
+                error={
+                  newAccountTouched.name && !newAccount.name.trim()
+                    ? 'Token name is required.'
+                    : null
+                }
+              />
+              <Input
+                value={newAccount.username}
+                onChange={(e) => {
+                  setNewAccount({ ...newAccount, username: e.target.value })
+                  if (newAccountTouched.username) {
+                    setNewAccountTouched((t) => ({ ...t, username: true }))
+                  }
+                }}
+                onBlur={() => setNewAccountTouched((t) => ({ ...t, username: true }))}
+                placeholder="Email / username"
+                aria-label="New account email"
+                error={
+                  newAccountTouched.username && !newAccount.username.trim()
+                    ? 'Email / username is required.'
+                    : null
+                }
+              />
+              <PasswordField
+                value={newAccount.password}
+                onChange={(password) => {
+                  setNewAccount({ ...newAccount, password })
+                  if (newAccountTouched.password) {
+                    setNewAccountTouched((t) => ({ ...t, password: true }))
+                  }
+                }}
+                label="New account password"
+                onEnter={() => void addAccount()}
+                error={
+                  newAccountTouched.password && !newAccount.password
+                    ? 'Password is required.'
+                    : null
+                }
+              />
+            </div>
+            <div className="flex justify-end gap-1.5 pt-1">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAdding(false)
+                  setNewAccount({ name: '', username: '', password: '' })
+                  setNewAccountTouched({ name: false, username: false, password: false })
+                }}
+              >
                 Cancel
               </Button>
               <Button variant="primary" onClick={() => void addAccount()} disabled={busy}>
@@ -458,21 +605,32 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           </Button>
         )}
 
-        <div className="flex gap-1">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void saveCurrent()
-            }}
-            placeholder="Name (e.g. Admin)"
-            aria-label="Name for the current token"
-            className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          />
-          <Button variant="secondary" onClick={() => void saveCurrent()} disabled={!newName.trim()}>
-            Save current
-          </Button>
-        </div>
+        {/* Only show when there is an active Swagger token that is not yet saved */}
+        {record && !isCurrentTokenSaved && (
+          <div className="flex flex-col gap-1.5 rounded-md border border-primary/30 bg-primary/5 p-2 animate-in fade-in duration-150">
+            <span className="text-[11px] font-medium text-text">Save current token</span>
+            <div className="flex gap-1.5 items-start">
+              <div className="flex-1">
+                <Input
+                  value={newName}
+                  onChange={(e) => {
+                    setNewName(e.target.value)
+                    if (saveCurrentTouched) setSaveCurrentTouched(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void saveCurrent()
+                  }}
+                  placeholder="Name (e.g. Admin)"
+                  aria-label="Name for the current token"
+                  error={saveCurrentTouched && !newName.trim() ? 'Token name is required.' : null}
+                />
+              </div>
+              <Button variant="primary" onClick={() => void saveCurrent()}>
+                Save current
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <hr className="border-border" />
@@ -506,7 +664,9 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           Auto-refresh token on expiry
         </label>
         <p className="text-[11px] text-muted">
-          When a request returns 401, runs your saved login request and stores the new token.
+          {hasLoginCredentials
+            ? 'When a request returns 401, automatically signs in using your saved account credentials and updates the token.'
+            : 'When a request returns 401, runs your saved login request and stores the new token.'}
         </p>
         {/* Setup lives in the product, not just in a changelog: the feature has a
             prerequisite the user can't guess, so spell it out where it's enabled. */}
@@ -532,44 +692,113 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
           </ul>
         ) : null}
 
+        {service.listEndpoints && (
+          <div className="flex flex-col gap-1 rounded-md border border-border bg-surface/50 p-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted">
+                Sign-in endpoint:{' '}
+                {loginEndpoint ? (
+                  <span className="font-mono font-medium text-text">{loginEndpoint}</span>
+                ) : (
+                  <span className="text-warning">None detected</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowEndpointPicker((v) => !v)}
+                className="text-[11px] text-primary hover:underline"
+              >
+                {showEndpointPicker ? 'Done' : 'Change'}
+              </button>
+            </div>
+            {showEndpointPicker && service.setConfiguredLoginEndpoint && (
+              <div className="mt-1 flex flex-col gap-1 text-[11px]">
+                <label className="text-muted">Select endpoint used for sign-in:</label>
+                <select
+                  className="rounded-md border border-border bg-bg px-2 py-1 text-xs font-mono text-text"
+                  value={configuredLoginEp ?? ''}
+                  onChange={async (e) => {
+                    const val = e.target.value || null
+                    setConfiguredLoginEp(val)
+                    await service.setConfiguredLoginEndpoint?.(val)
+                    const ep = await service.loginEndpoint()
+                    setLoginEndpoint(ep)
+                  }}
+                >
+                  <option value="">Auto-detect from Swagger (default)</option>
+                  {service
+                    .listEndpoints()
+                    .filter((ep) => ['post', 'put'].includes(ep.method.toLowerCase()))
+                    .map((ep) => (
+                      <option key={ep.endpointId} value={ep.endpointId}>
+                        {ep.method.toUpperCase()} {ep.path}
+                        {ep.summary ? ` (${ep.summary})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
         <details className="rounded-md border border-border px-2 py-1">
           <summary className="cursor-pointer text-[11px] text-primary">How to set this up</summary>
-          <ol className="mt-1 flex list-decimal flex-col gap-1 pl-4 text-[11px] text-muted">
-            <li>
-              In Swagger, open your login endpoint (e.g. POST /auth/login) and fill in the body.
-            </li>
-            <li>Click Execute once, so a real response is on screen.</li>
-            <li>
-              Open the <strong>Requests</strong> tab and save it as a template. Its name or path
-              must mention <span className="font-mono">login</span>,{' '}
-              <span className="font-mono">signin</span>, <span className="font-mono">auth</span> or{' '}
-              <span className="font-mono">token</span> — that&apos;s how it&apos;s recognised.
-            </li>
-            <li>
-              Done. When a call returns 401, that request is re-run, the token is read from its
-              response, and Swagger is re-authorized automatically.
-            </li>
-          </ol>
-          {onNavigate ? (
-            <Button variant="secondary" onClick={() => onNavigate('requests')} className="mt-2">
-              Open Requests tab
-            </Button>
-          ) : null}
+          <div className="mt-1.5 flex flex-col gap-2 text-[11px] text-muted">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-text">
+                Option A — Saved account credentials (Recommended)
+              </span>
+              <p>
+                Click <strong>+ Add account with email &amp; password</strong> above, or click the
+                key icon on any saved token to enter login credentials. When a call returns 401,
+                OpenAPI Companion signs in automatically and updates your token.
+              </p>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-text">Option B — Saved login request preset</span>
+              <p>
+                Execute your login endpoint once in Swagger, then open the <strong>Requests</strong>{' '}
+                tab and save it as a template (with “login” or “auth” in the name).
+              </p>
+              {onNavigate ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => onNavigate('requests')}
+                  className="mt-1 self-start"
+                >
+                  Open Requests tab
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </details>
 
-        {/* The prerequisite, stated where it's enabled — an enabled toggle with no
-            login request saved does nothing at all. */}
+        {/* When auto-refresh is enabled:
+            1. If account credentials exist: show green confirmation and suppress the warning.
+            2. If saved login template exists: show green confirmation for template.
+            3. If neither exists: show warning with clear instructions. */}
         {autoRefresh ? (
-          loginTemplate ? (
-            <p className="text-[11px] text-success">
-              Will re-run your saved request “{loginTemplate}”.
-            </p>
+          hasLoginCredentials && credWithLogin?.login ? (
+            <div className="flex flex-col gap-1 rounded-md border border-success/30 bg-success/5 p-2 animate-in fade-in duration-150">
+              <p className="text-[11px] font-medium text-success">
+                ✓ Will sign in using saved account credentials for “{credWithLogin.name}” (
+                {credWithLogin.login.username}){loginEndpoint ? ` via ${loginEndpoint}` : ''}.
+              </p>
+            </div>
+          ) : loginTemplate ? (
+            <div className="flex flex-col gap-1 rounded-md border border-success/30 bg-success/5 p-2 animate-in fade-in duration-150">
+              <p className="text-[11px] font-medium text-success">
+                ✓ Will re-run your saved request “{loginTemplate}”.
+              </p>
+            </div>
           ) : (
-            <p className="text-[11px] text-warning">
-              No saved login request found, so this can&apos;t run yet. Open your login endpoint in
-              Swagger, fill it in, then save it from the <strong>Requests</strong> tab — its name or
-              path needs to mention login / signin / auth / token.
-            </p>
+            <div className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/5 p-2 animate-in fade-in duration-150">
+              <p className="text-[11px] text-warning">
+                No saved login credentials or request found, so this can&apos;t run yet. Add an
+                account with email &amp; password above, or save your login endpoint from the{' '}
+                <strong>Requests</strong> tab.
+              </p>
+            </div>
           )
         ) : null}
       </div>

@@ -180,4 +180,103 @@ describe('EnvironmentService', () => {
     const resolved = await service.resolve('{{BASE_URL}}/health', 'qa')
     expect(resolved.ok && resolved.value.text).toBe('https://qa.example.com/health')
   })
+
+  it('stores, updates, and duplicates secrets', async () => {
+    const { service } = await setup()
+    const created = await service.create({
+      name: 'Staging',
+      variables: { API_KEY: 'secret1', PUBLIC_VAR: 'hello' },
+      secrets: ['API_KEY'],
+    })
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+    expect(created.value.secrets).toEqual(['API_KEY'])
+
+    // Update with new secrets
+    const updated = await service.update('staging', {
+      secrets: ['API_KEY', 'PUBLIC_VAR'],
+    })
+    expect(updated.ok).toBe(true)
+    if (!updated.ok) return
+    expect(updated.value.secrets).toEqual(['API_KEY', 'PUBLIC_VAR'])
+
+    // Duplicate preserves secrets
+    const dup = await service.duplicate('staging')
+    expect(dup.ok).toBe(true)
+    if (!dup.ok) return
+    expect(dup.value.secrets).toEqual(['API_KEY', 'PUBLIC_VAR'])
+  })
+
+  describe('extraction rules', () => {
+    it('creates, lists, updates, and deletes extraction rules', async () => {
+      const { service, bus } = await setup()
+      const savedEvents: string[] = []
+      bus.subscribe('EXTRACTION_RULE_SAVED', (e) => savedEvents.push(e.ruleId))
+
+      const created = await service.saveRule({
+        endpointId: 'post /auth/login',
+        property: 'token',
+        targetVariable: 'AUTH_TOKEN',
+        isSecret: true,
+        enabled: true,
+      })
+
+      expect(created.ok).toBe(true)
+      if (!created.ok) return
+      expect(created.value.id).toBeDefined()
+      expect(created.value.targetVariable).toBe('AUTH_TOKEN')
+      expect(savedEvents).toContain(created.value.id)
+
+      const listRes = await service.listRules()
+      expect(listRes.ok).toBe(true)
+      if (!listRes.ok) return
+      expect(listRes.value.length).toBe(1)
+      expect(listRes.value[0]?.targetVariable).toBe('AUTH_TOKEN')
+
+      // Update rule
+      const updateRes = await service.updateRule(created.value.id, { enabled: false })
+      expect(updateRes.ok).toBe(true)
+      if (!updateRes.ok) return
+      expect(updateRes.value.enabled).toBe(false)
+
+      // Delete rule
+      const delRes = await service.deleteRule(created.value.id)
+      expect(delRes.ok).toBe(true)
+      const afterDel = await service.listRules()
+      expect(afterDel.ok && afterDel.value.length).toBe(0)
+    })
+
+    it('applies extraction on matching responses and updates active environment variables', async () => {
+      const { service, bus } = await setup()
+      const extractedEvents: string[] = []
+      bus.subscribe('VARIABLE_AUTO_EXTRACTED', (e) => extractedEvents.push(e.variableName))
+
+      await service.saveRule({
+        endpointId: 'post /auth/login',
+        property: 'data.accessToken',
+        targetVariable: 'TOKEN',
+        isSecret: true,
+        enabled: true,
+      })
+
+      const responseBody = JSON.stringify({
+        status: 'success',
+        data: {
+          accessToken: 'fresh_jwt_999',
+          user: { id: 101 },
+        },
+      })
+
+      const res = await service.applyExtraction('post /auth/login', responseBody)
+      expect(res.ok).toBe(true)
+      if (!res.ok) return
+      expect(res.value.extracted).toEqual([{ variable: 'TOKEN', value: 'fresh_jwt_999' }])
+      expect(extractedEvents).toContain('TOKEN')
+
+      // Check environment variables updated
+      const env = await service.get('default')
+      expect(env.ok && env.value?.variables?.TOKEN).toBe('fresh_jwt_999')
+      expect(env.ok && env.value?.secrets).toContain('TOKEN')
+    })
+  })
 })
