@@ -13,6 +13,7 @@ import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/req
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { CollectionsPanelService } from '@/modules/collections'
+import type { WorkflowsPanelService } from '@/modules/workflows'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -337,6 +338,23 @@ export function createRemoteCollectionsService(): CollectionsPanelService {
       const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
       if (exec?.requestBody && exec.requestBody.trim()) return exec.requestBody.trim()
       return null
+    },
+  }
+}
+
+export function createRemoteWorkflowsService(): WorkflowsPanelService {
+  return {
+    list: () => rpcResult('workflows.list'),
+    get: (id) => rpcResult('workflows.get', id),
+    create: (input) => rpcResult('workflows.create', input),
+    update: (id, patch) => rpcResult('workflows.update', id, patch),
+    delete: (id) => rpcResult('workflows.delete', id),
+    duplicate: (id) => rpcResult('workflows.duplicate', id),
+    execute: (workflowId, options) =>
+      rpcResult('workflows.execute', workflowId, options?.environmentId),
+    listEndpoints: () => latestState.adapter.endpoints,
+    openEndpoint: (endpointId) => {
+      void rpcResult('adapter.openEndpoint', endpointId)
     },
   }
 }

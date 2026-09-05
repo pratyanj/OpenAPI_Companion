@@ -19,6 +19,7 @@ import type { HistoryPanelService } from '@/modules/history'
 import type { FakeDataPanelService } from '@/modules/fake-data'
 import type { SettingsApi, ImportExportApi } from '@/modules/settings'
 import type { CollectionsPanelService } from '@/modules/collections'
+import type { WorkflowsPanelService } from '@/modules/workflows'
 import type { DocStats } from '@/sidebar/Dashboard'
 import { PanelOutlet } from '@/sidebar/PanelOutlet'
 import { TABS, DEFAULT_TAB } from '@/sidebar/tabs'
@@ -61,6 +62,7 @@ export interface PanelShellProps {
   settingsService: SettingsApi
   importExportService: ImportExportApi
   collectionsService: CollectionsPanelService
+  workflowsService?: WorkflowsPanelService
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
   swagger?: DocStats
 }
@@ -88,6 +90,7 @@ export function PanelShell({
   settingsService,
   importExportService,
   collectionsService,
+  workflowsService,
   swagger,
 }: PanelShellProps) {
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
@@ -155,6 +158,7 @@ export function PanelShell({
           historyService={historyService}
           fakeDataService={fakeDataService}
           collectionsService={collectionsService}
+          workflowsService={workflowsService}
           settingsService={settingsService}
           importExportService={importExportService}
           theme={theme}

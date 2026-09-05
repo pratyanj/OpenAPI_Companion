@@ -26,6 +26,7 @@ import { EnvironmentService, type EnvironmentInput } from '@/modules/environment
 import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
+import { WorkflowService, executeWorkflowStep, type WorkflowInput } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -101,6 +102,15 @@ async function boot(): Promise<void> {
     extraction: environments,
   })
   const collections = new CollectionsService({ storage, projectId: meta.id, bus })
+  const workflows = new WorkflowService({
+    storage,
+    projectId: meta.id,
+    bus,
+    environmentService: environments,
+    defaultExecutor: async (payload) => {
+      return executeWorkflowStep(adapter, payload)
+    },
+  })
 
   let currentEnv = meta.lastActiveEnvId
 
@@ -510,6 +520,15 @@ async function boot(): Promise<void> {
       collections.removeEndpointFromCollection(collectionId as string, endpointId as string),
     'collections.importTags': ([groups]) =>
       collections.importTags(groups as Array<{ name: string; endpointIds: string[] }>),
+    'workflows.list': () => workflows.list(),
+    'workflows.get': ([id]) => workflows.get(id as string),
+    'workflows.create': ([input]) => workflows.create(input as WorkflowInput),
+    'workflows.update': ([id, patch]) =>
+      workflows.update(id as string, patch as Partial<WorkflowInput>),
+    'workflows.delete': ([id]) => workflows.delete(id as string),
+    'workflows.duplicate': ([id]) => workflows.duplicate(id as string),
+    'workflows.execute': ([id, envId]) =>
+      workflows.execute(id as string, { environmentId: envId as string }),
   }
 
   chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {

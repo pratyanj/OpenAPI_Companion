@@ -52,6 +52,31 @@ export interface EventPayload {
   COLLECTION_ENDPOINT_ADDED: { projectId: string; collectionId: string; endpointId: string }
   COLLECTION_ENDPOINT_REMOVED: { projectId: string; collectionId: string; endpointId: string }
 
+  // Workflows
+  WORKFLOW_SAVED: { projectId: string; workflowId: string }
+  WORKFLOW_DELETED: { projectId: string; workflowId: string }
+  WORKFLOW_STARTED: { projectId: string; workflowId: string }
+  WORKFLOW_STEP_COMPLETED: {
+    projectId: string
+    workflowId: string
+    stepIndex: number
+    total: number
+    stepId: string
+    endpointId: string
+    status?: number
+    durationMs?: number
+    error?: string
+    success: boolean
+  }
+  WORKFLOW_COMPLETED: {
+    projectId: string
+    workflowId: string
+    status: 'success' | 'failed' | 'cancelled'
+    totalSteps: number
+    completedSteps: number
+    durationMs: number
+  }
+
   // Fake data / productivity
   FAKE_DATA_GENERATED: { endpointId: string; fieldCount: number }
   FAVORITE_TOGGLED: { endpointId: string; favorite: boolean }

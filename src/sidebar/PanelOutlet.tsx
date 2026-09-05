@@ -13,6 +13,7 @@ import { HistoryPanel, type HistoryPanelService } from '@/modules/history'
 import { FakeDataPanel, type FakeDataPanelService } from '@/modules/fake-data'
 import { SettingsPanel, type SettingsApi, type ImportExportApi } from '@/modules/settings'
 import { CollectionsPanel, type CollectionsPanelService } from '@/modules/collections'
+import { WorkflowsPanel, type WorkflowsPanelService } from '@/modules/workflows'
 import { Dashboard, type DocStats } from './Dashboard'
 
 /**
@@ -25,6 +26,7 @@ const PLACEHOLDERS: Record<string, { title: string; message: string }> = {
   environments: { title: 'Variables', message: 'Not connected to the page yet.' },
   history: { title: 'API History', message: 'Not connected to the page yet.' },
   collections: { title: 'Collections', message: 'Not connected to the page yet.' },
+  workflows: { title: 'Workflows', message: 'Not connected to the page yet.' },
 }
 
 /** Shown when the rich dashboard can't be built (no services / no project). */
@@ -51,6 +53,7 @@ interface PanelOutletProps {
   historyService?: HistoryPanelService
   fakeDataService?: FakeDataPanelService
   collectionsService?: CollectionsPanelService
+  workflowsService?: WorkflowsPanelService
   settingsService?: SettingsApi
   importExportService?: ImportExportApi
   theme?: ThemeManager
@@ -81,6 +84,7 @@ export function PanelOutlet({
   historyService,
   fakeDataService,
   collectionsService,
+  workflowsService,
   settingsService,
   importExportService,
   theme,
@@ -177,6 +181,17 @@ export function PanelOutlet({
 
   if (activeTab === 'collections' && collectionsService && bus) {
     return <CollectionsPanel service={collectionsService} bus={bus} />
+  }
+
+  if (activeTab === 'workflows' && workflowsService && bus) {
+    return (
+      <WorkflowsPanel
+        service={workflowsService}
+        bus={bus}
+        environmentId={environmentId}
+        endpoints={requestService?.listEndpoints?.() ?? []}
+      />
+    )
   }
 
   if (activeTab === 'settings' && settingsService && importExportService && theme && bus) {

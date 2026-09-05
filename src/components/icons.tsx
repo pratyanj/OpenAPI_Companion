@@ -43,6 +43,10 @@ import {
   Unlock,
   Upload,
   FileText,
+  Workflow,
+  PlayCircle,
+  ArrowUp,
+  ArrowDown,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -110,6 +114,10 @@ export const LockIcon = make(Lock)
 export const UnlockIcon = make(Unlock)
 export const UploadIcon = make(Upload)
 export const FileTextIcon = make(FileText)
+export const WorkflowIcon = make(Workflow)
+export const RunIcon = make(PlayCircle)
+export const ArrowUpIcon = make(ArrowUp)
+export const ArrowDownIcon = make(ArrowDown)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)
