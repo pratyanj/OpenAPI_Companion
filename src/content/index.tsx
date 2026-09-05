@@ -9,7 +9,7 @@
  * service/adapter calls, a pushed read-state mirror, and forwarded bus events.
  * It never renders UI into the page.
  */
-import { ok } from '@/types'
+import { ok, err } from '@/types'
 import { bus } from '@/core/events'
 import { StorageService, chromeLocalArea } from '@/core/storage'
 import { ProjectService, type ProjectMeta } from '@/core/project'
@@ -391,11 +391,25 @@ async function boot(): Promise<void> {
       return ok(undefined)
     },
     // Panel's auto-extraction rule modal → open the in-page modal (spacious overlay on the doc).
-    'extractionRuleModal.open': ([options]) => {
-      void withExtractionRuleModal().then((m) =>
-        m?.open(options as ExtractionRuleModalOpenOptions),
-      )
-      return ok(undefined)
+    'extractionRuleModal.open': async ([options]) => {
+      try {
+        const m = await withExtractionRuleModal()
+        if (!m) {
+          return err({
+            code: 'EXTRACTION_RULE_MODAL_UNAVAILABLE',
+            message: 'Could not load in-page extraction rule modal',
+            recoverable: true,
+          })
+        }
+        m.open((options as ExtractionRuleModalOpenOptions) ?? {})
+        return ok(undefined)
+      } catch (cause) {
+        return err({
+          code: 'EXTRACTION_RULE_MODAL_FAILED',
+          message: cause instanceof Error ? cause.message : String(cause),
+          recoverable: true,
+        })
+      }
     },
     'history.list': ([q]) => history.list((q as Parameters<typeof history.list>[0]) ?? {}),
     'history.get': ([id]) => history.get(id as string),

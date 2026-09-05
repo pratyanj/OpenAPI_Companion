@@ -66,7 +66,7 @@ export interface EnvironmentsPanelProps {
     property?: string
     targetVariable?: string
     isSecret?: boolean
-  }) => void
+  }) => Promise<Result<void>> | Result<void> | void
 }
 
 interface VarRow {
@@ -294,6 +294,21 @@ export function EnvironmentsPanel({
       if (!res.ok) throw new Error(res.error.message)
       await loadRules()
     }
+  }
+
+  const handleOpenAddRuleModal = async () => {
+    if (onOpenExtractionRuleModal) {
+      try {
+        const res = await onOpenExtractionRuleModal()
+        if (res && typeof res === 'object' && 'ok' in res && !res.ok) {
+          return false
+        }
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
   }
 
   const handleBlur = () => {
@@ -565,7 +580,7 @@ export function EnvironmentsPanel({
           onToggleRule={handleToggleRule}
           onDeleteRule={handleDeleteRule}
           onAddRule={handleAddRule}
-          onOpenAddModal={onOpenExtractionRuleModal ? () => onOpenExtractionRuleModal() : undefined}
+          onOpenAddModal={handleOpenAddRuleModal}
         />
       ) : editorMode === 'table' ? (
         <div className="flex flex-col gap-2">

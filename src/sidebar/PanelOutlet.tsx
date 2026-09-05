@@ -34,6 +34,7 @@ function BasicHome({ project }: { project: ProjectMeta | null }) {
   )
 }
 
+import type { Result } from '@/types'
 import type { ExtractionRuleModalOpenOptions } from '@/sidepanel/bridge'
 
 interface PanelOutletProps {
@@ -57,7 +58,9 @@ interface PanelOutletProps {
   /** Opens the in-page history request detail overlay. */
   onOpenHistoryDetail?: (historyId: string) => void
   /** Opens the in-page auto-extraction rule modal overlay. */
-  onOpenExtractionRuleModal?: (options?: ExtractionRuleModalOpenOptions) => void
+  onOpenExtractionRuleModal?: (
+    options?: ExtractionRuleModalOpenOptions,
+  ) => Promise<Result<void>> | Result<void> | void
   /** Tab switcher, so the dashboard can link into the other panels. */
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */

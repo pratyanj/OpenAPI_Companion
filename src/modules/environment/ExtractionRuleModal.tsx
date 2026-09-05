@@ -32,9 +32,9 @@ export function ExtractionRuleModal({
   onSave,
 }: ExtractionRuleModalProps) {
   const [endpointId, setEndpointId] = useState(initialEndpointId ?? endpoints[0]?.endpointId ?? '')
-  const [property, setProperty] = useState(initialProperty)
-  const [targetVariable, setTargetVariable] = useState(initialTargetVariable)
-  const [isSecret, setIsSecret] = useState(initialIsSecret)
+  const [property, setProperty] = useState(initialProperty || 'access_token')
+  const [targetVariable, setTargetVariable] = useState(initialTargetVariable || 'ACCESS_TOKEN')
+  const [isSecret, setIsSecret] = useState(initialIsSecret ?? true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

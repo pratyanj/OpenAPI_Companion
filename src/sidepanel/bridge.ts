@@ -35,7 +35,10 @@ let activeTabId: number | null = null
 
 /** Low-level RPC to the active tab's agent. Throws on transport failure. */
 async function rpc<T>(method: string, args: unknown[]): Promise<T> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id && activeTabId != null) {
+    tab = await chrome.tabs.get(activeTabId).catch(() => undefined as unknown as chrome.tabs.Tab)
+  }
   if (!tab?.id) throw new Error('No active tab')
   activeTabId = tab.id
   const res = (await chrome.tabs.sendMessage(tab.id, { type: RPC_REQUEST, method, args })) as
@@ -287,8 +290,10 @@ export interface ExtractionRuleModalOpenOptions {
  * Ask the page to open its Auto-Extraction Rule modal overlay.
  * Lives in the page (top-centered, 512px+ wide) on top of the Swagger doc.
  */
-export function openPageExtractionRuleModal(options?: ExtractionRuleModalOpenOptions): void {
-  void rpcResult('extractionRuleModal.open', options)
+export async function openPageExtractionRuleModal(
+  options?: ExtractionRuleModalOpenOptions,
+): Promise<Result<void>> {
+  return await rpcResult<void>('extractionRuleModal.open', options ?? {})
 }
 
 export function createRemoteHistoryService(): HistoryPanelService {

@@ -7,6 +7,7 @@ import {
   PlusIcon,
   ZapIcon,
 } from '@/components'
+import type { Result } from '@/types'
 import type { EndpointInfo } from '@/adapters'
 import { MethodTag } from '@/modules/request/EndpointPicker'
 import type { ExtractionRule, ExtractionRuleInput } from './extraction-rules-types'
@@ -18,7 +19,7 @@ export interface ExtractionRulesListProps {
   onToggleRule: (id: string, enabled: boolean) => Promise<void>
   onDeleteRule: (id: string) => Promise<void>
   onAddRule: (rule: ExtractionRuleInput) => Promise<void>
-  onOpenAddModal?: () => void
+  onOpenAddModal?: () => Promise<boolean | Result<void> | void> | boolean | Result<void> | void
 }
 
 export function ExtractionRulesList({
@@ -31,9 +32,19 @@ export function ExtractionRulesList({
 }: ExtractionRulesListProps) {
   const [modalOpen, setModalOpen] = useState(false)
 
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     if (onOpenAddModal) {
-      onOpenAddModal()
+      try {
+        const res = await onOpenAddModal()
+        if (
+          res === false ||
+          (res && typeof res === 'object' && 'ok' in res && !res.ok)
+        ) {
+          setModalOpen(true)
+        }
+      } catch {
+        setModalOpen(true)
+      }
     } else {
       setModalOpen(true)
     }

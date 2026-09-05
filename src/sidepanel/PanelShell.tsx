@@ -22,6 +22,7 @@ import type { CollectionsPanelService } from '@/modules/collections'
 import type { DocStats } from '@/sidebar/Dashboard'
 import { PanelOutlet } from '@/sidebar/PanelOutlet'
 import { TABS, DEFAULT_TAB } from '@/sidebar/tabs'
+import type { Result } from '@/types'
 import type { ExtractionRuleModalOpenOptions } from './bridge'
 
 const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
@@ -47,7 +48,9 @@ export interface PanelShellProps {
   /** Opens the request detail overlay in the PAGE (see `openPageHistoryDetail`). */
   onOpenHistoryDetail?: (historyId: string) => void
   /** Opens the auto-extraction rule modal overlay in the PAGE (see `openPageExtractionRuleModal`). */
-  onOpenExtractionRuleModal?: (options?: ExtractionRuleModalOpenOptions) => void
+  onOpenExtractionRuleModal?: (
+    options?: ExtractionRuleModalOpenOptions,
+  ) => Promise<Result<void>> | Result<void> | void
   /** The page is running an older build of the agent; it needs a refresh. */
   staleTab?: boolean
   authService: AuthPanelService

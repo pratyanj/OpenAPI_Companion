@@ -58,26 +58,35 @@ export function mountExtractionRuleModal(
   let currentOptions: ExtractionRuleModalOpenOptions = {}
 
   function paint(): void {
+    const opts = currentOptions ?? {}
+    let endpointsList: EndpointInfo[] = []
+    try {
+      endpointsList = (getEndpoints && getEndpoints()) || []
+    } catch {
+      endpointsList = []
+    }
+
     root.render(
       open ? (
         <StrictMode>
           <ExtractionRuleModal
             key={`extraction-rule-${openCount}`}
-            endpoints={getEndpoints()}
-            initialEndpointId={currentOptions.endpointId}
-            initialProperty={currentOptions.property}
-            initialTargetVariable={currentOptions.targetVariable}
-            initialIsSecret={currentOptions.isSecret}
+            endpoints={endpointsList}
+            initialEndpointId={opts.endpointId}
+            initialProperty={opts.property}
+            initialTargetVariable={opts.targetVariable}
+            initialIsSecret={opts.isSecret}
             onClose={closeModal}
             onSave={async (rule) => {
               if (envService.saveRule) {
                 const res = await envService.saveRule(rule)
-                if (res.ok) {
-                  bus.publish('NOTIFY', {
-                    message: `⚡ Auto-extraction rule added for ${rule.endpointId}`,
-                    kind: 'success',
-                  })
+                if (!res.ok) {
+                  throw new Error(res.error.message || 'Failed to save rule')
                 }
+                bus.publish('NOTIFY', {
+                  message: `⚡ Auto-extraction rule added for ${rule.endpointId}`,
+                  kind: 'success',
+                })
               }
               closeModal()
             }}
@@ -94,9 +103,9 @@ export function mountExtractionRuleModal(
   }
 
   return {
-    open: (options: ExtractionRuleModalOpenOptions = {}) => {
+    open: (options?: ExtractionRuleModalOpenOptions) => {
       openCount++
-      currentOptions = options
+      currentOptions = options ?? {}
       open = true
       paint()
     },
