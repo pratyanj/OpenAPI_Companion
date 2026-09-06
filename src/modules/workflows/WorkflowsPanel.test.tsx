@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { WorkflowsPanel } from './WorkflowsPanel'
+import { WorkflowRunnerModal } from './WorkflowRunnerModal'
 import type { WorkflowsPanelService, Workflow } from './types'
 import { EventBus } from '@/core/events'
 import { ok, type Result } from '@/types'
@@ -73,15 +74,22 @@ describe('WorkflowsPanel', () => {
     expect(screen.getByText(/Passed \(420ms\)/)).toBeInTheDocument()
   })
 
-  it('opens create modal when clicking New Workflow', async () => {
-    render(<WorkflowsPanel service={mockService()} bus={new EventBus()} environmentId="default" />)
+  it('triggers onOpenWorkflowEditor when clicking New Workflow', async () => {
+    const onOpenWorkflowEditor = vi.fn()
+    render(
+      <WorkflowsPanel
+        service={mockService()}
+        bus={new EventBus()}
+        environmentId="default"
+        onOpenWorkflowEditor={onOpenWorkflowEditor}
+      />,
+    )
     expect(await screen.findByText('No Workflows Yet')).toBeInTheDocument()
 
     const newBtn = screen.getByText('New Workflow')
     fireEvent.click(newBtn)
 
-    expect(await screen.findByText('Create New Workflow')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('e.g. Smoke Test User Flow')).toBeInTheDocument()
+    expect(onOpenWorkflowEditor).toHaveBeenCalledWith({ workflow: null })
   })
 
   it('triggers duplicate action on workflow card', async () => {
@@ -102,17 +110,57 @@ describe('WorkflowsPanel', () => {
     })
   })
 
-  it('opens runner modal when clicking Run button', async () => {
+  it('triggers onOpenWorkflowRunner when clicking Run button', async () => {
+    const onOpenWorkflowRunner = vi.fn()
     const service = mockService({
       list: vi.fn(async () => ok([sampleWorkflow])),
     })
 
-    render(<WorkflowsPanel service={service} bus={new EventBus()} environmentId="default" />)
+    render(
+      <WorkflowsPanel
+        service={service}
+        bus={new EventBus()}
+        environmentId="default"
+        onOpenWorkflowRunner={onOpenWorkflowRunner}
+      />,
+    )
     expect(await screen.findByText('User Onboarding Flow')).toBeInTheDocument()
 
     const runBtn = screen.getByText('Run')
     fireEvent.click(runBtn)
 
-    expect(await screen.findByText('Workflow Runner: User Onboarding Flow')).toBeInTheDocument()
+    expect(onOpenWorkflowRunner).toHaveBeenCalledWith({
+      workflow: sampleWorkflow,
+      environmentId: 'default',
+    })
+  })
+
+  it('renders WorkflowRunnerModal dialog with controls and step details', async () => {
+    const onRun = vi.fn(async () =>
+      ok({
+        workflowId: 'wf_1',
+        status: 'success' as const,
+        totalSteps: 2,
+        completedSteps: 2,
+        results: [],
+        startedAt: 1_700_000_000_000,
+        durationMs: 420,
+      }),
+    )
+    const onClose = vi.fn()
+
+    render(
+      <WorkflowRunnerModal
+        isOpen={true}
+        workflow={sampleWorkflow}
+        onRun={onRun}
+        onClose={onClose}
+      />,
+    )
+
+    expect(await screen.findByRole('dialog', { name: /Workflow Runner/i })).toBeInTheDocument()
+    expect(screen.getByText('Create User')).toBeInTheDocument()
+    expect(screen.getByText('Get Profile')).toBeInTheDocument()
+    expect(onRun).toHaveBeenCalledWith('wf_1', expect.anything())
   })
 })

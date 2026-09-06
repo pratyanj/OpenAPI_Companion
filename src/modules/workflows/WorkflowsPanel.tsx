@@ -6,6 +6,9 @@ import {
   EmptyState,
   WorkflowIcon,
   RunIcon,
+  PlayIcon,
+  CalendarIcon,
+  PinIcon,
   EditIcon,
   DeleteIcon,
   CopyIcon,
@@ -41,6 +44,26 @@ export interface WorkflowsPanelProps {
   environmentService?: EnvironmentPanelService
   onOpenWorkflowEditor?: (options?: { workflow?: Workflow | null }) => void
   onOpenWorkflowRunner?: (options: { workflow: Workflow; environmentId?: string }) => void
+}
+
+function formatTimeAgo(timestamp?: number): string {
+  if (!timestamp) return 'Never run'
+  const diffMs = Date.now() - timestamp
+  if (diffMs < 0) return 'Just now'
+  const seconds = Math.floor(diffMs / 1000)
+  if (seconds < 60) return 'Just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return '1 day ago'
+  if (days < 30) return `${days} days ago`
+  const months = Math.floor(days / 30)
+  if (months === 1) return '1 month ago'
+  if (months < 12) return `${months} months ago`
+  const years = Math.floor(days / 365)
+  return `${years}y ago`
 }
 
 export function WorkflowsPanel({
@@ -192,12 +215,17 @@ export function WorkflowsPanel({
     }
   }
 
-  const handleRun = (wf: Workflow) => {
+  const handleRun = async (wf: Workflow) => {
     if (onOpenWorkflowRunner) {
       onOpenWorkflowRunner({ workflow: wf, environmentId })
       return
     }
-    setRunningWorkflow(wf)
+    try {
+      const fresh = await service.get(wf.id)
+      setRunningWorkflow(fresh.ok && fresh.value ? fresh.value : wf)
+    } catch {
+      setRunningWorkflow(wf)
+    }
     setIsRunnerOpen(true)
   }
 
@@ -223,7 +251,7 @@ export function WorkflowsPanel({
   }, [workflows, searchQuery])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden text-text">
+    <div className="relative flex flex-col h-full overflow-hidden text-text">
       {/* Header with Search & Create Button */}
       <div className="p-3 border-b border-border space-y-2.5 shrink-0 bg-surface/50">
         <div className="flex items-center justify-between gap-2">
@@ -293,104 +321,118 @@ export function WorkflowsPanel({
         ) : (
           filteredWorkflows.map((wf) => {
             const hasRun = wf.lastRunAt != null
+            const accentColor =
+              wf.lastRunStatus === 'failed'
+                ? 'bg-danger'
+                : wf.lastRunStatus === 'cancelled'
+                  ? 'bg-warning'
+                  : 'bg-primary'
+
             return (
               <div
                 key={wf.id}
-                className="rounded-lg border border-border bg-surface hover:border-border-strong transition-colors p-3.5 flex flex-col justify-between gap-3 group"
+                className="relative overflow-hidden rounded-xl border border-border bg-surface/60 hover:border-primary/50 transition-all pl-5 pr-4 py-3.5 flex flex-col gap-3 group"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-xs font-semibold text-text truncate group-hover:text-primary transition-colors">
-                        {wf.name}
-                      </h3>
-                      {wf.description && (
-                        <p className="text-[11px] text-muted mt-0.5 line-clamp-2">
-                          {wf.description}
-                        </p>
-                      )}
-                    </div>
+                {/* Left vertical accent bar */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${accentColor}`} />
 
-                    <Button
-                      variant="primary"
-                      onClick={() => handleRun(wf)}
-                      className="flex items-center gap-1 py-1 px-2.5 text-xs shrink-0"
-                    >
-                      <RunIcon className="h-3.5 w-3.5" />
-                      <span>Run</span>
-                    </Button>
+                {/* Top row: Title + Description & Run Button */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-text truncate group-hover:text-primary transition-colors">
+                      {wf.name}
+                    </h3>
+                    {wf.description && (
+                      <p className="text-xs text-muted mt-0.5 line-clamp-1">
+                        {wf.description}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Metadata tags */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                    <Badge kind="neutral">
-                      {wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}
-                    </Badge>
-
-                    <Badge kind={wf.mode === 'stop-on-failure' ? 'warning' : 'info'}>
-                      {wf.mode === 'stop-on-failure' ? 'Stop on fail' : 'Continue on fail'}
-                    </Badge>
-
-                    {hasRun && wf.lastRunStatus === 'success' && (
-                      <Badge kind="success">
-                        <span className="flex items-center gap-1">
-                          <ToastSuccessIcon className="h-2.5 w-2.5" />
-                          <span>Passed ({wf.lastRunDurationMs ?? 0}ms)</span>
-                        </span>
-                      </Badge>
-                    )}
-
-                    {hasRun && wf.lastRunStatus === 'failed' && (
-                      <Badge kind="error">
-                        <span className="flex items-center gap-1">
-                          <ToastErrorIcon className="h-2.5 w-2.5" />
-                          <span>Failed ({wf.lastRunDurationMs ?? 0}ms)</span>
-                        </span>
-                      </Badge>
-                    )}
-
-                    {hasRun && wf.lastRunStatus === 'cancelled' && (
-                      <Badge kind="warning">
-                        <span className="flex items-center gap-1">
-                          <ClockIcon className="h-2.5 w-2.5" />
-                          <span>Cancelled</span>
-                        </span>
-                      </Badge>
-                    )}
-
-                    {!hasRun && <Badge kind="neutral">Never run</Badge>}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRun(wf)}
+                    className="bg-primary hover:opacity-90 active:scale-95 text-white font-semibold rounded-lg px-3.5 py-1.5 flex items-center gap-1.5 text-xs shadow-sm transition-all shrink-0 cursor-pointer"
+                  >
+                    <PlayIcon className="h-3 w-3 fill-current" />
+                    <span>Run</span>
+                  </button>
                 </div>
 
-                {/* Footer action buttons */}
-                <div className="flex items-center justify-end gap-1.5 border-t border-border/60 pt-2">
+                {/* Middle row: Metadata tags / info */}
+                <div className="flex flex-wrap items-center gap-3.5 text-xs">
+                  {/* Relative time */}
+                  <div className="flex items-center gap-1.5 text-muted">
+                    <ClockIcon className="h-3.5 w-3.5 text-muted" />
+                    <span>{formatTimeAgo(wf.lastRunAt || wf.createdAt)}</span>
+                  </div>
+
+                  {/* Execution Mode / Scheduled rule */}
+                  <div className="flex items-center gap-1.5 text-warning font-medium">
+                    <CalendarIcon className="h-3.5 w-3.5 text-warning" />
+                    <span>{wf.mode === 'stop-on-failure' ? 'Stop on fail' : 'Continue on fail'}</span>
+                  </div>
+
+                  {/* Steps count */}
+                  <div className="flex items-center gap-1.5 text-muted font-medium">
+                    <PinIcon className="h-3.5 w-3.5 text-primary" />
+                    <span>
+                      {wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}
+                    </span>
+                  </div>
+
+                  {/* Status chip if executed */}
+                  {hasRun && wf.lastRunStatus === 'success' && (
+                    <div className="flex items-center gap-1 text-[11px] text-success bg-success/15 px-2 py-0.5 rounded-full font-medium">
+                      <ToastSuccessIcon className="h-3 w-3 text-success" />
+                      <span>Passed ({wf.lastRunDurationMs ?? 0}ms)</span>
+                    </div>
+                  )}
+
+                  {hasRun && wf.lastRunStatus === 'failed' && (
+                    <div className="flex items-center gap-1 text-[11px] text-danger bg-danger/15 px-2 py-0.5 rounded-full font-medium">
+                      <ToastErrorIcon className="h-3 w-3 text-danger" />
+                      <span>Failed ({wf.lastRunDurationMs ?? 0}ms)</span>
+                    </div>
+                  )}
+
+                  {hasRun && wf.lastRunStatus === 'cancelled' && (
+                    <div className="flex items-center gap-1 text-[11px] text-warning bg-warning/15 px-2 py-0.5 rounded-full font-medium">
+                      <ClockIcon className="h-3 w-3 text-warning" />
+                      <span>Cancelled</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom row: Action links aligned to the right */}
+                <div className="flex items-center justify-end gap-3.5 pt-0.5 text-xs text-muted">
                   <button
                     type="button"
                     onClick={() => handleEdit(wf)}
-                    className="p-1 text-muted hover:text-text rounded hover:bg-surface-hover transition-colors text-xs flex items-center gap-1 px-2"
+                    className="flex items-center gap-1.5 hover:text-text transition-colors cursor-pointer"
                     title="Edit workflow"
                   >
-                    <EditIcon className="h-3 w-3" />
+                    <EditIcon className="h-3.5 w-3.5" />
                     <span>Edit</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleDuplicate(wf.id)}
-                    className="p-1 text-muted hover:text-text rounded hover:bg-surface-hover transition-colors text-xs flex items-center gap-1 px-2"
+                    className="flex items-center gap-1.5 hover:text-text transition-colors cursor-pointer"
                     title="Duplicate workflow"
                   >
-                    <CopyIcon className="h-3 w-3" />
+                    <CopyIcon className="h-3.5 w-3.5" />
                     <span>Duplicate</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleDelete(wf.id, wf.name)}
-                    className="p-1 text-danger/80 hover:text-danger rounded hover:bg-danger/10 transition-colors text-xs flex items-center gap-1 px-2"
+                    className="flex items-center gap-1.5 hover:text-danger transition-colors cursor-pointer"
                     title="Delete workflow"
                   >
-                    <DeleteIcon className="h-3 w-3" />
+                    <DeleteIcon className="h-3.5 w-3.5" />
                     <span>Delete</span>
                   </button>
                 </div>
@@ -413,10 +455,13 @@ export function WorkflowsPanel({
           endpoints={availableEndpoints}
           variables={activeVars}
           templates={templates}
+          requestService={requestService}
+          getSwaggerDefaults={(epId) => requestService?.getSwaggerDefaults?.(epId)}
+          getSwaggerDefaultsAsync={(epId) => requestService?.getSwaggerDefaultsAsync?.(epId)}
         />
       )}
 
-      {/* Runner Modal */}
+      {/* Workflow Runner Dialog Modal in Sidebar */}
       {isRunnerOpen && runningWorkflow && (
         <WorkflowRunnerModal
           isOpen={isRunnerOpen}
@@ -430,6 +475,7 @@ export function WorkflowsPanel({
             service.cancelActiveExecution?.()
           }}
           environmentId={environmentId}
+          bus={bus}
         />
       )}
     </div>
