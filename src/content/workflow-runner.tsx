@@ -63,6 +63,7 @@ export function mountWorkflowRunner(
             onCancel={() => {
               workflowsService.cancelActiveExecution?.()
             }}
+            bus={_bus}
           />
         </StrictMode>
       ) : null,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Dialog,
   Button,
@@ -11,6 +11,7 @@ import {
 } from '@/components'
 import { MethodTag } from '@/modules/request/EndpointPicker'
 import type { Result } from '@/types'
+import type { EventBus } from '@/core/events'
 import type { Workflow, WorkflowRunSummary, StepRunResult, WorkflowExecutionOptions } from './types'
 
 export interface WorkflowRunnerModalProps {
@@ -23,6 +24,8 @@ export interface WorkflowRunnerModalProps {
   ) => Promise<Result<WorkflowRunSummary>>
   onCancel?: () => void | Promise<void>
   environmentId?: string
+  embedded?: boolean
+  bus?: EventBus
 }
 
 export function WorkflowRunnerModal({
@@ -32,6 +35,7 @@ export function WorkflowRunnerModal({
   onRun,
   onCancel,
   environmentId,
+  bus,
 }: WorkflowRunnerModalProps) {
   const [isRunning, setIsRunning] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1)
@@ -39,6 +43,61 @@ export function WorkflowRunnerModal({
   const [summary, setSummary] = useState<WorkflowRunSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Listen for real-time step start from EventBus
+  useEffect(() => {
+    if (!bus || !workflow) return
+    const unsub = bus.subscribe('WORKFLOW_STEP_STARTED', (payload) => {
+      if (payload.workflowId === workflow.id) {
+        setCurrentStepIndex(payload.stepIndex)
+      }
+    })
+    return unsub
+  }, [bus, workflow?.id])
+
+  // Listen for real-time step completion from EventBus
+  useEffect(() => {
+    if (!bus || !workflow) return
+    const unsub = bus.subscribe('WORKFLOW_STEP_COMPLETED', (payload) => {
+      if (payload.workflowId === workflow.id) {
+        setStepResults((prev) => {
+          const next = [...prev]
+          const existingIdx = next.findIndex(
+            (r) =>
+              r.stepId === payload.stepId ||
+              r.endpointId.toLowerCase() === payload.endpointId.toLowerCase(),
+          )
+          const stepResult: StepRunResult = {
+            stepId: payload.stepId,
+            endpointId: payload.endpointId,
+            status: payload.status,
+            durationMs: payload.durationMs,
+            error: payload.error,
+            success: payload.success,
+          }
+          if (existingIdx >= 0) {
+            next[existingIdx] = stepResult
+          } else {
+            next.push(stepResult)
+          }
+          return next
+        })
+      }
+    })
+    return unsub
+  }, [bus, workflow?.id])
+
+  // Listen for workflow completion from EventBus
+  useEffect(() => {
+    if (!bus || !workflow) return
+    const unsub = bus.subscribe('WORKFLOW_COMPLETED', (payload) => {
+      if (payload.workflowId === workflow.id) {
+        setCurrentStepIndex(-1)
+        setIsRunning(false)
+      }
+    })
+    return unsub
+  }, [bus, workflow?.id])
 
   const startExecution = async () => {
     if (!workflow || isRunning) return
@@ -60,12 +119,24 @@ export function WorkflowRunnerModal({
           setCurrentStepIndex(idx)
         },
         onStepProgress: (_idx, _total, result) => {
-          setStepResults((prev) => [...prev, result])
+          setStepResults((prev) => {
+            const next = [...prev]
+            const existingIdx = next.findIndex((r) => r.stepId === result.stepId)
+            if (existingIdx >= 0) {
+              next[existingIdx] = result
+            } else {
+              next.push(result)
+            }
+            return next
+          })
         },
       })
 
       if (res.ok) {
         setSummary(res.value)
+        if (res.value.results && res.value.results.length > 0) {
+          setStepResults(res.value.results)
+        }
       } else {
         setError(res.error.message)
       }
@@ -81,7 +152,10 @@ export function WorkflowRunnerModal({
   // Auto-start execution when modal opens
   useEffect(() => {
     if (isOpen && workflow && !isRunning && !summary) {
-      void startExecution()
+      const t = setTimeout(() => {
+        void startExecution()
+      }, 0)
+      return () => clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, workflow?.id])
@@ -114,9 +188,22 @@ export function WorkflowRunnerModal({
 
   if (!isOpen || !workflow) return null
 
+  // Ensure effective results always prefers summary.results if completed
+  const effectiveResults = useMemo(() => {
+    if (summary?.results && summary.results.length > 0) {
+      return summary.results
+    }
+    return stepResults
+  }, [summary, stepResults])
+
   const totalSteps = workflow.steps.length
-  const completedCount = stepResults.length
-  const progressPercent = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0
+  const completedCount = summary ? summary.completedSteps : effectiveResults.length
+  const progressPercent =
+    totalSteps > 0
+      ? summary && summary.status === 'success'
+        ? 100
+        : Math.min(100, Math.round((completedCount / totalSteps) * 100))
+      : 0
 
   return (
     <Dialog
@@ -124,10 +211,18 @@ export function WorkflowRunnerModal({
       onClose={() => {
         if (!isRunning) onClose()
       }}
-      size="xl"
+      size="lg"
+      actions={
+        isRunning ? (
+          <div className="flex items-center gap-1.5 text-xs text-primary font-medium mr-1">
+            <Spinner className="h-3 w-3" />
+            <span className="hidden sm:inline">Running</span>
+          </div>
+        ) : null
+      }
     >
-      <div className="flex flex-col flex-1 overflow-hidden space-y-4 text-sm">
-        {/* Progress header */}
+      <div className="flex flex-col gap-3 text-sm">
+        {/* Progress header card */}
         <div className="rounded-lg border border-border bg-surface p-3.5 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-text">
@@ -137,7 +232,7 @@ export function WorkflowRunnerModal({
                   ? `Completed (${summary.status})`
                   : 'Ready to run'}
             </span>
-            <span className="text-muted font-mono">{progressPercent}%</span>
+            <span className="text-muted font-mono font-bold">{progressPercent}%</span>
           </div>
 
           <div className="w-full bg-border rounded-full h-2 overflow-hidden">
@@ -147,24 +242,28 @@ export function WorkflowRunnerModal({
                   ? 'bg-danger'
                   : summary?.status === 'cancelled'
                     ? 'bg-warning'
-                    : 'bg-primary'
+                    : summary?.status === 'success'
+                      ? 'bg-success'
+                      : 'bg-primary'
               }`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-muted pt-1">
-            <span>
-              Mode:{' '}
-              {workflow.mode === 'stop-on-failure' ? 'Stop on failure' : 'Continue on failure'}
-            </span>
+          <div className="flex items-center justify-between text-[11px] text-muted pt-0.5">
+            <div className="flex items-center gap-1">
+              <span>Failure Strategy:</span>
+              <span className="font-medium text-text">
+                {workflow.mode === 'continue-on-failure' ? 'Continue on failure' : 'Stop on failure'}
+              </span>
+            </div>
             {summary && <span>Total Duration: {summary.durationMs}ms</span>}
           </div>
         </div>
 
         {/* Global Error Banner */}
         {error && (
-          <div className="rounded border border-danger/40 bg-danger/10 p-3 text-xs text-danger">
+          <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger">
             {error}
           </div>
         )}
@@ -187,8 +286,8 @@ export function WorkflowRunnerModal({
             ) : (
               <ClockIcon className="h-4 w-4 shrink-0" />
             )}
-            <div>
-              <span className="font-semibold">
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold block truncate">
                 {summary.status === 'success'
                   ? 'Workflow completed successfully!'
                   : summary.status === 'failed'
@@ -203,10 +302,15 @@ export function WorkflowRunnerModal({
           </div>
         )}
 
-        {/* Steps Timeline */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-2">
+        {/* Steps Timeline (flows naturally without nested scrollbar) */}
+        <div className="space-y-2">
           {workflow.steps.map((step, idx) => {
-            const result = stepResults.find((r) => r.stepId === step.id)
+            const result =
+              effectiveResults.find((r) => r.stepId === step.id) ??
+              effectiveResults.find(
+                (r) => r.endpointId.toLowerCase() === step.endpointId.toLowerCase(),
+              ) ??
+              effectiveResults[idx]
             const isCurrent = isRunning && currentStepIndex === idx
             const isPending = !result && !isCurrent
             const [method] = step.endpointId.split(' ')
@@ -221,12 +325,14 @@ export function WorkflowRunnerModal({
                       ? 'border-success/30 bg-surface'
                       : result && !result.success
                         ? 'border-danger/30 bg-danger/5'
-                        : 'border-border/70 bg-surface/50 opacity-70'
+                        : 'border-border/70 bg-surface/50 opacity-75'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span className="font-mono text-xs font-bold text-muted w-5">#{idx + 1}</span>
+                    <span className="font-mono text-xs font-bold text-muted w-5 shrink-0">
+                      #{idx + 1}
+                    </span>
 
                     <MethodTag method={method || 'GET'} />
 
@@ -242,10 +348,10 @@ export function WorkflowRunnerModal({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {isCurrent && (
                       <Badge kind="info">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-[11px]">
                           <Spinner className="h-3 w-3" />
                           Running
                         </span>
@@ -292,7 +398,7 @@ export function WorkflowRunnerModal({
                 </div>
 
                 {result?.error && (
-                  <div className="mt-2 text-[11px] text-danger bg-danger/10 rounded px-2.5 py-1 font-mono">
+                  <div className="mt-2 text-[11px] text-danger bg-danger/10 rounded px-2.5 py-1 font-mono break-all">
                     {result.error}
                   </div>
                 )}
@@ -301,8 +407,8 @@ export function WorkflowRunnerModal({
           })}
         </div>
 
-        {/* Footer controls */}
-        <div className="flex items-center justify-between border-t border-border pt-3">
+        {/* Sticky footer controls pinned at the bottom with single scrollbar */}
+        <div className="sticky -bottom-4 -mx-4 px-4 py-3 bg-bg border-t border-border flex items-center justify-between z-10 mt-2">
           <div>
             {isRunning && (
               <Button type="button" variant="danger" onClick={handleCancel}>
@@ -320,11 +426,11 @@ export function WorkflowRunnerModal({
                 className="flex items-center gap-1"
               >
                 <RunIcon className="h-3.5 w-3.5 text-primary" />
-                Re-run
+                <span>Re-run</span>
               </Button>
             )}
             <Button type="button" variant="primary" onClick={onClose} disabled={isRunning}>
-              Close
+              Done
             </Button>
           </div>
         </div>

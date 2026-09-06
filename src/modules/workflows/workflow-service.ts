@@ -359,6 +359,15 @@ export class WorkflowService {
 
         options?.onStepStart?.(i, totalSteps, step)
 
+        this.bus?.publish('WORKFLOW_STEP_STARTED', {
+          projectId: this.projectId,
+          workflowId,
+          stepIndex: i,
+          total: totalSteps,
+          stepId: step.id,
+          endpointId: step.endpointId,
+        })
+
         const stepStartTime = this.now()
         let execResult: {
           status?: number

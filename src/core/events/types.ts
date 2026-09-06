@@ -56,6 +56,14 @@ export interface EventPayload {
   WORKFLOW_SAVED: { projectId: string; workflowId: string }
   WORKFLOW_DELETED: { projectId: string; workflowId: string }
   WORKFLOW_STARTED: { projectId: string; workflowId: string }
+  WORKFLOW_STEP_STARTED: {
+    projectId: string
+    workflowId: string
+    stepIndex: number
+    total: number
+    stepId: string
+    endpointId: string
+  }
   WORKFLOW_STEP_COMPLETED: {
     projectId: string
     workflowId: string
