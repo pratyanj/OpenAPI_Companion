@@ -112,8 +112,9 @@ export class SwaggerUiAdapter implements SwaggerAdapter {
     body?: string,
     path?: Record<string, string>,
     query?: Record<string, string>,
+    headers?: Record<string, string>,
   ): Result<void> {
-    const started = autoExecute(document, endpointId, { body, path, query })
+    const started = autoExecute(document, endpointId, { body, path, query, headers })
     return started ? ok(undefined) : err(this.notFound(endpointId))
   }
 

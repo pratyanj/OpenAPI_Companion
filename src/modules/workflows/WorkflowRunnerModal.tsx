@@ -21,6 +21,7 @@ export interface WorkflowRunnerModalProps {
     workflowId: string,
     options?: WorkflowExecutionOptions,
   ) => Promise<Result<WorkflowRunSummary>>
+  onCancel?: () => void | Promise<void>
   environmentId?: string
 }
 
@@ -29,6 +30,7 @@ export function WorkflowRunnerModal({
   onClose,
   workflow,
   onRun,
+  onCancel,
   environmentId,
 }: WorkflowRunnerModalProps) {
   const [isRunning, setIsRunning] = useState(false)
@@ -84,10 +86,30 @@ export function WorkflowRunnerModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, workflow?.id])
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
+    try {
+      await onCancel?.()
+    } catch {
+      // ignore
+    }
+    setIsRunning(false)
+    setCurrentStepIndex(-1)
+    setSummary((prev) =>
+      prev
+        ? { ...prev, status: 'cancelled' }
+        : {
+            workflowId: workflow?.id ?? '',
+            status: 'cancelled',
+            totalSteps: workflow?.steps.length ?? 0,
+            completedSteps: stepResults.length,
+            results: stepResults,
+            startedAt: Date.now(),
+            durationMs: 0,
+          },
+    )
   }
 
   if (!isOpen || !workflow) return null

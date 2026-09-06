@@ -87,6 +87,7 @@ export interface SwaggerAdapter {
     body?: string,
     path?: Record<string, string>,
     query?: Record<string, string>,
+    headers?: Record<string, string>,
   ): Result<void>
   /** True if the operation is open with an empty body — safe to auto-restore. */
   isRequestBodyEmpty(endpointId: string): boolean

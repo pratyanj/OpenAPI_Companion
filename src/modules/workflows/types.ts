@@ -59,7 +59,10 @@ export interface StepExecutionPayload {
   resolvedHeaders?: Record<string, string>
 }
 
-export type StepExecutor = (payload: StepExecutionPayload) => Promise<{
+export type StepExecutor = (
+  payload: StepExecutionPayload,
+  signal?: AbortSignal,
+) => Promise<{
   status?: number
   error?: string
   success: boolean
@@ -88,6 +91,7 @@ export interface WorkflowsPanelService {
     workflowId: string,
     options?: WorkflowExecutionOptions,
   ): Promise<Result<WorkflowRunSummary>>
+  cancelActiveExecution?(): boolean
   listEndpoints?(): EndpointInfo[]
   openEndpoint?(endpointId: string): void
 }

@@ -36,6 +36,8 @@ import type {
   ExtractionRuleModalHandle,
   ExtractionRuleModalOpenOptions,
 } from './extraction-rule-modal'
+import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
+import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -255,6 +257,64 @@ async function boot(): Promise<void> {
       return extractionRuleModal
     } catch (cause) {
       console.warn(`${LOG} could not load the in-page extraction rule modal.`, cause)
+      return null
+    }
+  }
+
+  let workflowEditor: WorkflowEditorHandle | null = null
+  const withWorkflowEditor = async (): Promise<WorkflowEditorHandle | null> => {
+    if (workflowEditor) return workflowEditor
+    try {
+      const { mountWorkflowEditor } = await import('./workflow-editor')
+      const requestPanelService: RequestPanelService = {
+        listTemplates: () => requests.listTemplates(),
+        saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
+        createCustomTemplate: (input) => requests.createCustomTemplate(input),
+        updateTemplate: (id, updates) => requests.updateTemplate(id, updates),
+        deleteTemplate: (id) => requests.deleteTemplate(id),
+        applyTemplate: (id, envId) => requests.applyTemplate(id, envId),
+        locateAndFill: (id, envId) => requests.locateAndFill(id, envId),
+        listEndpoints: () => adapter.listEndpoints(),
+        getOpenRequests: () => adapter.readOpenRequests(),
+        getSwaggerDefaults: (epId) => requests.getSwaggerDefaults(epId),
+      }
+      workflowEditor = mountWorkflowEditor(
+        workflows,
+        requestPanelService,
+        environments,
+        () => adapter.listEndpoints(),
+        bus,
+      )
+      const editorTheme = new ThemeManager({ storage, root: workflowEditor.themeRoot, bus })
+      await editorTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void editorTheme.init()
+        }
+      })
+      return workflowEditor
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page workflow editor overlay.`, cause)
+      return null
+    }
+  }
+
+  let workflowRunner: WorkflowRunnerHandle | null = null
+  const withWorkflowRunner = async (): Promise<WorkflowRunnerHandle | null> => {
+    if (workflowRunner) return workflowRunner
+    try {
+      const { mountWorkflowRunner } = await import('./workflow-runner')
+      workflowRunner = mountWorkflowRunner(workflows, bus)
+      const runnerTheme = new ThemeManager({ storage, root: workflowRunner.themeRoot, bus })
+      await runnerTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void runnerTheme.init()
+        }
+      })
+      return workflowRunner
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page workflow runner overlay.`, cause)
       return null
     }
   }
@@ -529,6 +589,31 @@ async function boot(): Promise<void> {
     'workflows.duplicate': ([id]) => workflows.duplicate(id as string),
     'workflows.execute': ([id, envId]) =>
       workflows.execute(id as string, { environmentId: envId as string }),
+    'workflows.cancel': () => ok(workflows.cancelActiveExecution()),
+    'workflowEditor.open': async ([options]) => {
+      const editor = await withWorkflowEditor()
+      if (editor) {
+        editor.open(options as WorkflowEditorOpenOptions)
+        return ok(undefined)
+      }
+      return err({
+        code: 'WORKFLOW_EDITOR_MOUNT_FAILED',
+        message: 'Could not open workflow editor overlay',
+        recoverable: true,
+      })
+    },
+    'workflowRunner.open': async ([options]) => {
+      const runner = await withWorkflowRunner()
+      if (runner) {
+        runner.open(options as WorkflowRunnerOpenOptions)
+        return ok(undefined)
+      }
+      return err({
+        code: 'WORKFLOW_RUNNER_MOUNT_FAILED',
+        message: 'Could not open workflow runner overlay',
+        recoverable: true,
+      })
+    },
   }
 
   chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {

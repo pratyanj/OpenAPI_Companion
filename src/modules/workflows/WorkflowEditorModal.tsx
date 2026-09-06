@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
   Button,
@@ -10,9 +10,12 @@ import {
   PlusIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ZapIcon,
 } from '@/components'
 import { EndpointPicker, MethodTag } from '@/modules/request/EndpointPicker'
+import { extractPathParams, formatJsonSafe } from '@/modules/request/json-utils'
 import type { EndpointInfo } from '@/adapters'
+import type { RequestTemplate } from '@/modules/request/types'
 import type { Workflow, WorkflowInput, WorkflowStep, WorkflowFailureMode } from './types'
 
 export interface WorkflowEditorModalProps {
@@ -22,6 +25,429 @@ export interface WorkflowEditorModalProps {
   workflow?: Workflow | null
   endpoints: EndpointInfo[]
   variables?: Record<string, string>
+  templates?: RequestTemplate[]
+}
+
+type StepTab = 'body' | 'query' | 'path' | 'headers'
+
+interface StepParametersEditorProps {
+  step: WorkflowStep
+  onChange: (patch: Partial<WorkflowStep>) => void
+  endpoints: EndpointInfo[]
+  variables?: Record<string, string>
+  templates?: RequestTemplate[]
+}
+
+function StepParametersEditor({
+  step,
+  onChange,
+  variables = {},
+  templates = [],
+}: StepParametersEditorProps) {
+  const [method] = (step.endpointId || '').split(' ')
+  const isBodyMethod = ['post', 'put', 'patch', 'delete'].includes((method || '').toLowerCase())
+
+  const [activeTab, setActiveTab] = useState<StepTab>(isBodyMethod ? 'body' : 'query')
+
+  // Available matching templates for this step's endpoint
+  const matchingPresets = useMemo(() => {
+    return templates.filter((t) => t.endpointId.toLowerCase() === step.endpointId.toLowerCase())
+  }, [templates, step.endpointId])
+
+  // Extract detected path tokens (e.g. /users/{userId} -> ["userId"])
+  const detectedTokens = useMemo(() => extractPathParams(step.endpointId), [step.endpointId])
+
+  // Query parameters array
+  const queryEntries = Object.entries(step.queryParams ?? {})
+  const headerEntries = Object.entries(step.headerParams ?? {})
+
+  // Merged path parameters: detected tokens + any custom keys
+  const pathParamsMap = step.pathParams ?? {}
+  const allPathKeys = Array.from(new Set([...detectedTokens, ...Object.keys(pathParamsMap)]))
+
+  const handleSelectPreset = (templateId: string) => {
+    const found = matchingPresets.find((t) => t.templateId === templateId)
+    if (!found) return
+    onChange({
+      templateId: found.templateId,
+      name: step.name || found.name,
+      body: found.body ? formatJsonSafe(found.body).formatted : '',
+      queryParams: found.query ? { ...found.query } : {},
+      pathParams: found.path ? { ...found.path } : {},
+      headerParams: found.headers ? { ...found.headers } : {},
+    })
+  }
+
+  const handleAddQueryParam = () => {
+    const nextKey = `param_${queryEntries.length + 1}`
+    onChange({
+      queryParams: { ...(step.queryParams ?? {}), [nextKey]: '' },
+    })
+  }
+
+  const handleUpdateQueryParam = (oldKey: string, newKey: string, val: string) => {
+    const current = { ...(step.queryParams ?? {}) }
+    if (oldKey !== newKey) {
+      delete current[oldKey]
+    }
+    current[newKey] = val
+    onChange({ queryParams: current })
+  }
+
+  const handleRemoveQueryParam = (keyToRemove: string) => {
+    const current = { ...(step.queryParams ?? {}) }
+    delete current[keyToRemove]
+    onChange({ queryParams: current })
+  }
+
+  const handleAddHeader = () => {
+    const nextKey = `Header-${headerEntries.length + 1}`
+    onChange({
+      headerParams: { ...(step.headerParams ?? {}), [nextKey]: '' },
+    })
+  }
+
+  const handleUpdateHeader = (oldKey: string, newKey: string, val: string) => {
+    const current = { ...(step.headerParams ?? {}) }
+    if (oldKey !== newKey) {
+      delete current[oldKey]
+    }
+    current[newKey] = val
+    onChange({ headerParams: current })
+  }
+
+  const handleRemoveHeader = (keyToRemove: string) => {
+    const current = { ...(step.headerParams ?? {}) }
+    delete current[keyToRemove]
+    onChange({ headerParams: current })
+  }
+
+  const handleUpdatePathParam = (key: string, val: string) => {
+    onChange({
+      pathParams: { ...(step.pathParams ?? {}), [key]: val },
+    })
+  }
+
+  const handleRemoveCustomPathParam = (keyToRemove: string) => {
+    const current = { ...(step.pathParams ?? {}) }
+    delete current[keyToRemove]
+    onChange({ pathParams: current })
+  }
+
+  const handleAddCustomPathParam = () => {
+    const nextKey = `param_${allPathKeys.length + 1}`
+    onChange({
+      pathParams: { ...(step.pathParams ?? {}), [nextKey]: '' },
+    })
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/70 space-y-3">
+      {/* 1-Click Load from Saved Preset */}
+      {matchingPresets.length > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs">
+          <span className="flex items-center gap-1 font-semibold text-primary shrink-0">
+            <ZapIcon className="h-3.5 w-3.5 text-primary" />
+            Quick Load Saved Preset:
+          </span>
+          <select
+            value={step.templateId ?? ''}
+            onChange={(e) => handleSelectPreset(e.target.value)}
+            className="flex-1 rounded border border-border bg-surface px-2.5 py-1 text-xs text-text focus:border-primary focus:outline-none"
+          >
+            <option value="">-- Select a preset to auto-fill body &amp; parameters --</option>
+            {matchingPresets.map((t) => (
+              <option key={t.templateId} value={t.templateId}>
+                {t.name} ({t.method.toUpperCase()} {t.endpointId})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Sub-Tabs: Body, Query Params, Path Params, Headers */}
+      <div className="flex items-center border-b border-border text-xs gap-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('body')}
+          className={`px-3 py-1.5 font-medium border-b-2 transition-colors flex items-center gap-1 ${
+            activeTab === 'body'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <span>Request Body</span>
+          {step.body?.trim() && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('query')}
+          className={`px-3 py-1.5 font-medium border-b-2 transition-colors flex items-center gap-1 ${
+            activeTab === 'query'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <span>Query Params</span>
+          {queryEntries.length > 0 && (
+            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] text-text font-mono">
+              {queryEntries.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('path')}
+          className={`px-3 py-1.5 font-medium border-b-2 transition-colors flex items-center gap-1 ${
+            activeTab === 'path'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <span>Path Params</span>
+          {allPathKeys.length > 0 && (
+            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] text-text font-mono">
+              {allPathKeys.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('headers')}
+          className={`px-3 py-1.5 font-medium border-b-2 transition-colors flex items-center gap-1 ${
+            activeTab === 'headers'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <span>Headers</span>
+          {headerEntries.length > 0 && (
+            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] text-text font-mono">
+              {headerEntries.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Tab Content: Request Body */}
+      {activeTab === 'body' && (
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-semibold text-text flex items-center gap-1.5">
+              <span>JSON or Raw Text Payload</span>
+              <span className="text-muted font-normal">
+                (Type <code className="text-primary font-mono">&#123;&#123;</code> for variable suggestions)
+              </span>
+            </label>
+            {step.body?.trim() && (
+              <button
+                type="button"
+                onClick={() => {
+                  const { formatted } = formatJsonSafe(step.body)
+                  onChange({ body: formatted })
+                }}
+                className="text-[11px] text-primary hover:underline"
+              >
+                Beautify JSON
+              </button>
+            )}
+          </div>
+
+          {/* Authentication & Post Tip */}
+          {isBodyMethod && (
+            <div className="rounded border border-primary/20 bg-primary/5 p-2 text-[11px] text-muted leading-relaxed">
+              <strong className="text-text font-semibold">💡 Authentication Tip:</strong> For login
+              endpoints, enter your credentials in JSON format (e.g.{' '}
+              <code className="text-primary font-mono">&#123;&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;secret&quot;&#125;</code>
+              ) or inject variables (e.g.{' '}
+              <code className="text-primary font-mono">&#123;&quot;token&quot;: &quot;&#123;&#123;AUTH_TOKEN&#125;&#125;&quot;&#125;</code>
+              ).
+            </div>
+          )}
+
+          <VariableTextarea
+            value={step.body ?? ''}
+            onChange={(e) => onChange({ body: e.target.value })}
+            projectVariables={variables}
+            placeholder={'{\n  "email": "user@example.com",\n  "password": "your-password"\n}'}
+            rows={5}
+            className="font-mono text-xs w-full bg-surface"
+          />
+        </div>
+      )}
+
+      {/* Tab Content: Query Params */}
+      {activeTab === 'query' && (
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-text">
+              URL Query Parameters (e.g. ?page=1&amp;limit=10)
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddQueryParam}
+              className="py-0.5 px-2 text-[11px] flex items-center gap-1"
+            >
+              <PlusIcon className="h-3 w-3" />
+              Add Query Param
+            </Button>
+          </div>
+
+          {queryEntries.length === 0 ? (
+            <div className="rounded border border-dashed border-border p-4 text-center text-muted text-xs">
+              No query parameters configured. Click &quot;Add Query Param&quot; if this endpoint
+              requires URL query strings.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {queryEntries.map(([key, val], idx) => (
+                <div key={`q_${idx}`} className="flex items-center gap-2">
+                  <Input
+                    value={key}
+                    onChange={(e) => handleUpdateQueryParam(key, e.target.value, val)}
+                    placeholder="Parameter name"
+                    className="w-1/3 text-xs"
+                  />
+                  <Input
+                    value={val}
+                    onChange={(e) => handleUpdateQueryParam(key, key, e.target.value)}
+                    placeholder="Value (supports {{VAR}})"
+                    className="flex-1 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveQueryParam(key)}
+                    className="p-1 text-danger/70 hover:text-danger rounded hover:bg-danger/10"
+                    title="Remove parameter"
+                  >
+                    <DeleteIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content: Path Params */}
+      {activeTab === 'path' && (
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-text">
+              URL Path Parameters (replaces &#123;param&#125; in the URL)
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddCustomPathParam}
+              className="py-0.5 px-2 text-[11px] flex items-center gap-1"
+            >
+              <PlusIcon className="h-3 w-3" />
+              Add Path Param
+            </Button>
+          </div>
+
+          {allPathKeys.length === 0 ? (
+            <div className="rounded border border-dashed border-border p-4 text-center text-muted text-xs">
+              No path parameters detected in this endpoint URL (e.g. /users/&#123;id&#125;).
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {allPathKeys.map((key) => {
+                const isDetected = detectedTokens.includes(key)
+                const val = pathParamsMap[key] ?? ''
+                return (
+                  <div key={key} className="flex items-center gap-2">
+                    <div className="w-1/3 flex items-center gap-1 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-text">
+                      <span className="truncate">{key}</span>
+                      {isDetected && (
+                        <span className="text-[9px] text-primary px-1 rounded bg-primary/10 ml-auto shrink-0">
+                          URL token
+                        </span>
+                      )}
+                    </div>
+                    <Input
+                      value={val}
+                      onChange={(e) => handleUpdatePathParam(key, e.target.value)}
+                      placeholder={`Value for {${key}} (e.g. {{USER_ID}})`}
+                      className="flex-1 text-xs font-mono"
+                    />
+                    {!isDetected && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomPathParam(key)}
+                        className="p-1 text-danger/70 hover:text-danger rounded hover:bg-danger/10"
+                        title="Remove custom path parameter"
+                      >
+                        <DeleteIcon className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content: Headers */}
+      {activeTab === 'headers' && (
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-text">
+              Custom Step Headers (e.g. Authorization: Bearer &#123;&#123;TOKEN&#125;&#125;)
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddHeader}
+              className="py-0.5 px-2 text-[11px] flex items-center gap-1"
+            >
+              <PlusIcon className="h-3 w-3" />
+              Add Header
+            </Button>
+          </div>
+
+          {headerEntries.length === 0 ? (
+            <div className="rounded border border-dashed border-border p-4 text-center text-muted text-xs">
+              No custom headers added. Standard Swagger UI headers will be sent by default.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {headerEntries.map(([key, val], idx) => (
+                <div key={`h_${idx}`} className="flex items-center gap-2">
+                  <Input
+                    value={key}
+                    onChange={(e) => handleUpdateHeader(key, e.target.value, val)}
+                    placeholder="Header name (e.g. Authorization)"
+                    className="w-1/3 text-xs"
+                  />
+                  <Input
+                    value={val}
+                    onChange={(e) => handleUpdateHeader(key, key, e.target.value)}
+                    placeholder="Header value (supports {{TOKEN}})"
+                    className="flex-1 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveHeader(key)}
+                    className="p-1 text-danger/70 hover:text-danger rounded hover:bg-danger/10"
+                    title="Remove header"
+                  >
+                    <DeleteIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function WorkflowEditorModal({
@@ -31,6 +457,7 @@ export function WorkflowEditorModal({
   workflow,
   endpoints,
   variables = {},
+  templates = [],
 }: WorkflowEditorModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -45,21 +472,26 @@ export function WorkflowEditorModal({
       setName(workflow.name)
       setDescription(workflow.description ?? '')
       setMode(workflow.mode ?? 'stop-on-failure')
-      setSteps(
-        workflow.steps.map((s) => ({
-          ...s,
-          pathParams: s.pathParams ? { ...s.pathParams } : {},
-          queryParams: s.queryParams ? { ...s.queryParams } : {},
-          headerParams: s.headerParams ? { ...s.headerParams } : {},
-        })),
-      )
+      const initialSteps = workflow.steps.map((s) => ({
+        ...s,
+        pathParams: s.pathParams ? { ...s.pathParams } : {},
+        queryParams: s.queryParams ? { ...s.queryParams } : {},
+        headerParams: s.headerParams ? { ...s.headerParams } : {},
+      }))
+      setSteps(initialSteps)
+      // Auto-expand all steps when opened for editing
+      const expanded: Record<string, boolean> = {}
+      for (const s of initialSteps) {
+        expanded[s.id] = true
+      }
+      setExpandedSteps(expanded)
     } else {
       setName('')
       setDescription('')
       setMode('stop-on-failure')
       setSteps([])
+      setExpandedSteps({})
     }
-    setExpandedSteps({})
     setError(null)
   }, [workflow, isOpen])
 
@@ -148,7 +580,7 @@ export function WorkflowEditorModal({
   return (
     <Dialog title={workflow ? 'Edit Workflow' : 'Create New Workflow'} onClose={onClose} size="xl">
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-sm">
+        <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-sm max-h-[72vh]">
           {error && (
             <div className="rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
               {error}
@@ -238,15 +670,15 @@ export function WorkflowEditorModal({
                 No steps added yet. Click &quot;Add Step&quot; to build your sequence.
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {steps.map((step, idx) => {
-                  const isExpanded = expandedSteps[step.id] ?? false
+                  const isExpanded = expandedSteps[step.id] ?? true
                   const [method] = step.endpointId.split(' ')
 
                   return (
                     <div
                       key={step.id}
-                      className="rounded-lg border border-border bg-surface/70 hover:border-border-strong transition-colors p-3"
+                      className="rounded-lg border border-border bg-surface/70 hover:border-border-strong transition-colors p-3.5"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -305,31 +737,20 @@ export function WorkflowEditorModal({
                       </div>
 
                       {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-border/60 space-y-3 pl-6">
-                          <div>
-                            <label className="block text-[11px] font-medium text-muted mb-1">
-                              Step Label (optional)
-                            </label>
-                            <Input
-                              value={step.name ?? ''}
-                              onChange={(e) => handleStepChange(step.id, { name: e.target.value })}
-                              placeholder="e.g. Login with Admin Account"
-                              className="w-full text-xs"
-                            />
-                          </div>
+                        <div className="mt-3 pt-3 border-t border-border/60 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-medium text-muted mb-1">
+                                Step Label (optional)
+                              </label>
+                              <Input
+                                value={step.name ?? ''}
+                                onChange={(e) => handleStepChange(step.id, { name: e.target.value })}
+                                placeholder="e.g. Login with Admin Account"
+                                className="w-full text-xs"
+                              />
+                            </div>
 
-                          <div>
-                            <label className="block text-[11px] font-medium text-muted mb-1">
-                              Target Endpoint
-                            </label>
-                            <EndpointPicker
-                              endpoints={endpoints}
-                              selectedEndpointId={step.endpointId}
-                              onSelect={(ep) => handleStepChange(step.id, { endpointId: ep })}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[11px] font-medium text-muted mb-1">
                                 Pre-Execution Delay (ms)
@@ -351,18 +772,23 @@ export function WorkflowEditorModal({
 
                           <div>
                             <label className="block text-[11px] font-medium text-muted mb-1">
-                              Request Body Payload (JSON or text, supports
-                              &#123;&#123;VARIABLE&#125;&#125;)
+                              Target Endpoint
                             </label>
-                            <VariableTextarea
-                              value={step.body ?? ''}
-                              onChange={(e) => handleStepChange(step.id, { body: e.target.value })}
-                              projectVariables={variables}
-                              placeholder='{"query": "value", "token": "{{TOKEN}}"}'
-                              rows={3}
-                              className="font-mono text-xs w-full"
+                            <EndpointPicker
+                              endpoints={endpoints}
+                              selectedEndpointId={step.endpointId}
+                              onSelect={(ep) => handleStepChange(step.id, { endpointId: ep })}
                             />
                           </div>
+
+                          {/* Full Parameter & Body Tabs Editor */}
+                          <StepParametersEditor
+                            step={step}
+                            onChange={(patch) => handleStepChange(step.id, patch)}
+                            endpoints={endpoints}
+                            variables={variables}
+                            templates={templates}
+                          />
                         </div>
                       )}
                     </div>

@@ -10,7 +10,12 @@ export async function executeWorkflowStep(
   payload: StepExecutionPayload,
   timeoutMs = 30000,
   pollMs = 100,
+  signal?: AbortSignal,
 ): Promise<{ status?: number; error?: string; success: boolean; responseBody?: string }> {
+  if (signal?.aborted) {
+    return { success: false, error: 'Execution cancelled' }
+  }
+
   const endpointId = payload.step.endpointId
 
   // Snapshot recent responses to detect when a fresh one renders
@@ -25,6 +30,7 @@ export async function executeWorkflowStep(
     payload.resolvedBody,
     payload.resolvedPathParams,
     payload.resolvedQueryParams,
+    payload.resolvedHeaders,
   )
 
   if (!replayed.ok) {
@@ -36,13 +42,38 @@ export async function executeWorkflowStep(
 
   const startTime = Date.now()
   return new Promise((resolve) => {
+    let timerId: ReturnType<typeof setTimeout> | null = null
+
+    const cleanup = () => {
+      if (timerId) clearTimeout(timerId)
+      if (signal) signal.removeEventListener('abort', onAbort)
+    }
+
+    const onAbort = () => {
+      cleanup()
+      resolve({
+        success: false,
+        error: 'Execution cancelled',
+      })
+    }
+
+    if (signal) {
+      signal.addEventListener('abort', onAbort, { once: true })
+    }
+
     const check = () => {
+      if (signal?.aborted) {
+        onAbort()
+        return
+      }
+
       const currentResponses = adapter.readExecutedResponses()
       for (const res of currentResponses) {
         if (res.endpointId.toLowerCase() !== endpointId.toLowerCase()) continue
         const sig = `${res.status}:${res.responseBody ?? ''}`
         if (before.get(endpointId.toLowerCase()) === sig) continue // still previous response
 
+        cleanup()
         const success = res.status >= 200 && res.status < 400
         resolve({
           status: res.status,
@@ -54,6 +85,7 @@ export async function executeWorkflowStep(
       }
 
       if (Date.now() - startTime > timeoutMs) {
+        cleanup()
         resolve({
           success: false,
           error: `Execution timed out waiting for response (${timeoutMs / 1000}s)`,
@@ -61,9 +93,9 @@ export async function executeWorkflowStep(
         return
       }
 
-      setTimeout(check, pollMs)
+      timerId = setTimeout(check, pollMs)
     }
 
-    setTimeout(check, pollMs)
+    timerId = setTimeout(check, pollMs)
   })
 }

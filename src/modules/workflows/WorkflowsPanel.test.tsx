@@ -75,7 +75,9 @@ describe('WorkflowsPanel', () => {
 
   it('opens create modal when clicking New Workflow', async () => {
     render(<WorkflowsPanel service={mockService()} bus={new EventBus()} environmentId="default" />)
-    const newBtn = await screen.findByText('New Workflow')
+    expect(await screen.findByText('No Workflows Yet')).toBeInTheDocument()
+
+    const newBtn = screen.getByText('New Workflow')
     fireEvent.click(newBtn)
 
     expect(await screen.findByText('Create New Workflow')).toBeInTheDocument()

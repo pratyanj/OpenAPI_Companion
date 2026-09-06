@@ -80,6 +80,17 @@ export class WorkflowService {
   private readonly defaultExecutor: StepExecutor | undefined
   private readonly now: () => number
   private readonly delayFn: (ms: number, signal?: AbortSignal) => Promise<void>
+  private activeAbortController: AbortController | null = null
+
+  /** Cancel any actively running workflow execution */
+  cancelActiveExecution(): boolean {
+    if (this.activeAbortController) {
+      this.activeAbortController.abort()
+      this.activeAbortController = null
+      return true
+    }
+    return false
+  }
 
   constructor(options: WorkflowServiceOptions) {
     this.storage = options.storage
@@ -282,6 +293,17 @@ export class WorkflowService {
       options?.environmentId ??
       (this.environmentService ? await this.environmentService.getActiveId() : '')
 
+    const localAbort = new AbortController()
+    this.activeAbortController = localAbort
+    if (options?.signal) {
+      if (options.signal.aborted) {
+        localAbort.abort()
+      } else {
+        options.signal.addEventListener('abort', () => localAbort.abort(), { once: true })
+      }
+    }
+    const runSignal = localAbort.signal
+
     const startedAt = this.now()
     this.bus?.publish('WORKFLOW_STARTED', { projectId: this.projectId, workflowId })
 
@@ -290,106 +312,122 @@ export class WorkflowService {
     let cancelled = false
     let hasFailure = false
 
-    for (let i = 0; i < totalSteps; i++) {
-      if (options?.signal?.aborted) {
-        cancelled = true
-        break
-      }
-
-      const step = workflow.steps[i]!
-
-      // Optional delay before step
-      if (step.delayMs && step.delayMs > 0) {
-        try {
-          await this.delayFn(step.delayMs, options?.signal)
-        } catch {
+    try {
+      for (let i = 0; i < totalSteps; i++) {
+        if (runSignal.aborted) {
           cancelled = true
           break
         }
-      }
 
-      // 1. Variable substitution for step parameters and body
-      let resolvedBody = step.body
-      if (resolvedBody && this.environmentService && envId) {
-        const bodyRes = await this.environmentService.resolve(resolvedBody, envId)
-        if (bodyRes.ok) {
-          resolvedBody = bodyRes.value.text
+        const step = workflow.steps[i]!
+
+        // Optional delay before step
+        if (step.delayMs && step.delayMs > 0) {
+          try {
+            await this.delayFn(step.delayMs, runSignal)
+          } catch {
+            cancelled = true
+            break
+          }
         }
-      }
 
-      const resolvedPathParams = await this.resolveRecord(step.pathParams, envId)
-      const resolvedQueryParams = await this.resolveRecord(step.queryParams, envId)
-      const resolvedHeaders = await this.resolveRecord(step.headerParams, envId)
-
-      const payload: StepExecutionPayload = {
-        step,
-        resolvedBody,
-        resolvedPathParams,
-        resolvedQueryParams,
-        resolvedHeaders,
-      }
-
-      options?.onStepStart?.(i, totalSteps, step)
-
-      const stepStartTime = this.now()
-      let execResult: {
-        status?: number
-        error?: string
-        success: boolean
-        responseBody?: string
-      }
-
-      try {
-        execResult = await executor(payload)
-      } catch (err: unknown) {
-        execResult = {
-          success: false,
-          error: err instanceof Error ? err.message : String(err),
-        }
-      }
-
-      const durationMs = Math.max(0, this.now() - stepStartTime)
-
-      // Automatically trigger response auto-extraction if response body is returned
-      if (execResult.responseBody && this.environmentService?.applyExtraction) {
-        try {
-          await this.environmentService.applyExtraction(step.endpointId, execResult.responseBody)
-        } catch {
-          // Extraction failures shouldn't crash the workflow runner
-        }
-      }
-
-      const stepRunResult: StepRunResult = {
-        stepId: step.id,
-        endpointId: step.endpointId,
-        status: execResult.status,
-        durationMs,
-        error: execResult.error,
-        success: execResult.success,
-      }
-
-      results.push(stepRunResult)
-
-      this.bus?.publish('WORKFLOW_STEP_COMPLETED', {
-        projectId: this.projectId,
-        workflowId,
-        stepIndex: i,
-        total: totalSteps,
-        stepId: step.id,
-        endpointId: step.endpointId,
-        status: execResult.status,
-        durationMs,
-        error: execResult.error,
-        success: execResult.success,
-      })
-
-      options?.onStepProgress?.(i, totalSteps, stepRunResult)
-
-      if (!execResult.success) {
-        hasFailure = true
-        if (workflow.mode === 'stop-on-failure') {
+        if (runSignal.aborted) {
+          cancelled = true
           break
         }
+
+        // 1. Variable substitution for step parameters and body
+        let resolvedBody = step.body
+        if (resolvedBody && this.environmentService && envId) {
+          const bodyRes = await this.environmentService.resolve(resolvedBody, envId)
+          if (bodyRes.ok) {
+            resolvedBody = bodyRes.value.text
+          }
+        }
+
+        const resolvedPathParams = await this.resolveRecord(step.pathParams, envId)
+        const resolvedQueryParams = await this.resolveRecord(step.queryParams, envId)
+        const resolvedHeaders = await this.resolveRecord(step.headerParams, envId)
+
+        const payload: StepExecutionPayload = {
+          step,
+          resolvedBody,
+          resolvedPathParams,
+          resolvedQueryParams,
+          resolvedHeaders,
+        }
+
+        options?.onStepStart?.(i, totalSteps, step)
+
+        const stepStartTime = this.now()
+        let execResult: {
+          status?: number
+          error?: string
+          success: boolean
+          responseBody?: string
+        }
+
+        try {
+          execResult = await executor(payload, runSignal)
+        } catch (err: unknown) {
+          execResult = {
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          }
+        }
+
+        const durationMs = Math.max(0, this.now() - stepStartTime)
+
+        // Automatically trigger response auto-extraction if response body is returned
+        if (execResult.responseBody && this.environmentService?.applyExtraction) {
+          try {
+            await this.environmentService.applyExtraction(step.endpointId, execResult.responseBody)
+          } catch {
+            // Extraction failures shouldn't crash the workflow runner
+          }
+        }
+
+        const stepRunResult: StepRunResult = {
+          stepId: step.id,
+          endpointId: step.endpointId,
+          status: execResult.status,
+          durationMs,
+          error: execResult.error,
+          success: execResult.success,
+        }
+
+        results.push(stepRunResult)
+
+        this.bus?.publish('WORKFLOW_STEP_COMPLETED', {
+          projectId: this.projectId,
+          workflowId,
+          stepIndex: i,
+          total: totalSteps,
+          stepId: step.id,
+          endpointId: step.endpointId,
+          status: execResult.status,
+          durationMs,
+          error: execResult.error,
+          success: execResult.success,
+        })
+
+        options?.onStepProgress?.(i, totalSteps, stepRunResult)
+
+        if (runSignal.aborted) {
+          cancelled = true
+          break
+        }
+
+        if (!execResult.success) {
+          hasFailure = true
+          if (workflow.mode === 'stop-on-failure') {
+            break
+          }
+        }
+      }
+    } finally {
+      if (this.activeAbortController === localAbort) {
+        this.activeAbortController = null
       }
     }
 

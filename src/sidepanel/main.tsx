@@ -21,6 +21,8 @@ import {
   openPagePresetEditor,
   openPageHistoryDetail,
   openPageExtractionRuleModal,
+  openPageWorkflowEditor,
+  openPageWorkflowRunner,
   RemoteSwaggerAdapter,
   createRemoteAuthService,
   createRemoteRequestService,
@@ -130,6 +132,8 @@ async function render(root: Root): Promise<void> {
         onOpenPresetEditor={openPagePresetEditor}
         onOpenHistoryDetail={openPageHistoryDetail}
         onOpenExtractionRuleModal={openPageExtractionRuleModal}
+        onOpenWorkflowEditor={openPageWorkflowEditor}
+        onOpenWorkflowRunner={openPageWorkflowRunner}
         authService={createRemoteAuthService()}
         requestService={createRemoteRequestService()}
         environmentService={createRemoteEnvironmentService()}

@@ -71,3 +71,17 @@ export function extractPathParams(path: string): string[] {
   const names = matches.map((m) => m[1]?.trim()).filter((n): n is string => Boolean(n))
   return Array.from(new Set(names))
 }
+
+/**
+ * Safely parses and beautifies JSON with indentation. If invalid JSON, preserves raw string.
+ */
+export function formatJsonSafe(raw: string | undefined): { formatted: string; isValid: boolean } {
+  if (!raw || !raw.trim()) return { formatted: '', isValid: true }
+  try {
+    const parsed = JSON.parse(raw)
+    return { formatted: JSON.stringify(parsed, null, 2), isValid: true }
+  } catch {
+    return { formatted: raw, isValid: false }
+  }
+}
+

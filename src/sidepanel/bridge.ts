@@ -13,7 +13,7 @@ import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/req
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { CollectionsPanelService } from '@/modules/collections'
-import type { WorkflowsPanelService } from '@/modules/workflows'
+import type { WorkflowsPanelService, Workflow } from '@/modules/workflows'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -297,6 +297,31 @@ export async function openPageExtractionRuleModal(
   return await rpcResult<void>('extractionRuleModal.open', options ?? {})
 }
 
+export interface WorkflowEditorBridgeOpenOptions {
+  workflow?: Workflow | null
+}
+
+export interface WorkflowRunnerBridgeOpenOptions {
+  workflow: Workflow
+  environmentId?: string
+}
+
+/**
+ * Ask the page to open its Workflow Editor overlay.
+ * Lives in the page (top-centered, 672px+ wide) for ample room to edit steps.
+ */
+export function openPageWorkflowEditor(options?: WorkflowEditorBridgeOpenOptions): void {
+  void rpcResult('workflowEditor.open', options ?? {})
+}
+
+/**
+ * Ask the page to open its Workflow Runner overlay.
+ * Lives in the page (top-centered, 672px+ wide) for live scenario execution.
+ */
+export function openPageWorkflowRunner(options: WorkflowRunnerBridgeOpenOptions): void {
+  void rpcResult('workflowRunner.open', options)
+}
+
 export function createRemoteHistoryService(): HistoryPanelService {
   return {
     list: (query) => rpcResult('history.list', query),
@@ -352,6 +377,10 @@ export function createRemoteWorkflowsService(): WorkflowsPanelService {
     duplicate: (id) => rpcResult('workflows.duplicate', id),
     execute: (workflowId, options) =>
       rpcResult('workflows.execute', workflowId, options?.environmentId),
+    cancelActiveExecution: () => {
+      void rpcResult('workflows.cancel')
+      return true
+    },
     listEndpoints: () => latestState.adapter.endpoints,
     openEndpoint: (endpointId) => {
       void rpcResult('adapter.openEndpoint', endpointId)

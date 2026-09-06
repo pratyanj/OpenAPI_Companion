@@ -28,6 +28,8 @@ import type {
 import { WorkflowEditorModal } from './WorkflowEditorModal'
 import { WorkflowRunnerModal } from './WorkflowRunnerModal'
 import type { Result } from '@/types'
+import type { RequestPanelService, RequestTemplate } from '@/modules/request/types'
+import type { EnvironmentPanelService } from '@/modules/environment'
 
 export interface WorkflowsPanelProps {
   service: WorkflowsPanelService
@@ -35,6 +37,10 @@ export interface WorkflowsPanelProps {
   environmentId?: string
   variables?: Record<string, string>
   endpoints?: EndpointInfo[]
+  requestService?: RequestPanelService
+  environmentService?: EnvironmentPanelService
+  onOpenWorkflowEditor?: (options?: { workflow?: Workflow | null }) => void
+  onOpenWorkflowRunner?: (options: { workflow: Workflow; environmentId?: string }) => void
 }
 
 export function WorkflowsPanel({
@@ -43,11 +49,58 @@ export function WorkflowsPanel({
   environmentId,
   variables = {},
   endpoints: propEndpoints,
+  requestService,
+  environmentService,
+  onOpenWorkflowEditor,
+  onOpenWorkflowRunner,
 }: WorkflowsPanelProps) {
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Presets and active variables
+  const [templates, setTemplates] = useState<RequestTemplate[]>([])
+  const [activeVars, setActiveVars] = useState<Record<string, string>>(variables)
+
+  useEffect(() => {
+    setActiveVars(variables)
+  }, [variables])
+
+  useEffect(() => {
+    if (!environmentService) return
+    let active = true
+    void (async () => {
+      try {
+        const activeId = environmentId || (await environmentService.getActiveId())
+        const envsRes = await environmentService.list()
+        if (envsRes.ok && active) {
+          const found = envsRes.value.find((e) => e.id === activeId) ?? envsRes.value[0]
+          if (found) {
+            setActiveVars(found.variables)
+          }
+        }
+      } catch {
+        // ignore load errors
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [environmentService, environmentId])
+
+  useEffect(() => {
+    if (!requestService) return
+    let active = true
+    void requestService.listTemplates().then((res) => {
+      if (res.ok && active) {
+        setTemplates(res.value)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [requestService])
 
   // Modals state
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null)
@@ -84,11 +137,19 @@ export function WorkflowsPanel({
   useEventBus(bus, 'WORKFLOW_COMPLETED', () => void refreshWorkflows())
 
   const handleCreate = () => {
+    if (onOpenWorkflowEditor) {
+      onOpenWorkflowEditor({ workflow: null })
+      return
+    }
     setEditingWorkflow(null)
     setIsEditorOpen(true)
   }
 
   const handleEdit = (wf: Workflow) => {
+    if (onOpenWorkflowEditor) {
+      onOpenWorkflowEditor({ workflow: wf })
+      return
+    }
     setEditingWorkflow(wf)
     setIsEditorOpen(true)
   }
@@ -132,6 +193,10 @@ export function WorkflowsPanel({
   }
 
   const handleRun = (wf: Workflow) => {
+    if (onOpenWorkflowRunner) {
+      onOpenWorkflowRunner({ workflow: wf, environmentId })
+      return
+    }
     setRunningWorkflow(wf)
     setIsRunnerOpen(true)
   }
@@ -346,7 +411,8 @@ export function WorkflowsPanel({
           onSave={handleSaveWorkflow}
           workflow={editingWorkflow}
           endpoints={availableEndpoints}
-          variables={variables}
+          variables={activeVars}
+          templates={templates}
         />
       )}
 
@@ -360,6 +426,9 @@ export function WorkflowsPanel({
           }}
           workflow={runningWorkflow}
           onRun={handleExecuteRunner}
+          onCancel={() => {
+            service.cancelActiveExecution?.()
+          }}
           environmentId={environmentId}
         />
       )}
