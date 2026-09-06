@@ -97,6 +97,9 @@ export function mountWorkflowEditor(
             endpoints={endpointsList}
             variables={cachedVars}
             templates={cachedTemplates}
+            requestService={requestService}
+            getSwaggerDefaults={(epId) => requestService?.getSwaggerDefaults?.(epId)}
+            getSwaggerDefaultsAsync={(epId) => requestService?.getSwaggerDefaultsAsync?.(epId)}
             onClose={closeEditor}
             onSave={async (input) => {
               if (currentOptions.workflow) {

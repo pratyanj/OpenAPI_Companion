@@ -102,7 +102,7 @@ export function PanelOutlet({
   onOpenHistoryDetail,
   onOpenExtractionRuleModal,
   onOpenWorkflowEditor,
-  onOpenWorkflowRunner,
+  onOpenWorkflowRunner: _onOpenWorkflowRunner,
   onNavigate,
   swagger,
 }: PanelOutletProps) {
@@ -203,7 +203,6 @@ export function PanelOutlet({
         environmentId={environmentId}
         endpoints={requestService?.listEndpoints?.() ?? []}
         onOpenWorkflowEditor={onOpenWorkflowEditor}
-        onOpenWorkflowRunner={onOpenWorkflowRunner}
       />
     )
   }

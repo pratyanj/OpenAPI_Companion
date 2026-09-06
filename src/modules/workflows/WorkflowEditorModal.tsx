@@ -6,6 +6,7 @@ import {
   VariableTextarea,
   ArrowUpIcon,
   ArrowDownIcon,
+  GripVerticalIcon,
   DeleteIcon,
   PlusIcon,
   ChevronDownIcon,
@@ -15,8 +16,19 @@ import {
 import { EndpointPicker, MethodTag } from '@/modules/request/EndpointPicker'
 import { extractPathParams, formatJsonSafe } from '@/modules/request/json-utils'
 import type { EndpointInfo } from '@/adapters'
-import type { RequestTemplate } from '@/modules/request/types'
+import type { RequestTemplate, RequestPanelService } from '@/modules/request/types'
 import type { Workflow, WorkflowInput, WorkflowStep, WorkflowFailureMode } from './types'
+
+export interface SwaggerDefaultsResult {
+  exampleBody?: string
+  path?: Record<string, string>
+  query?: Record<string, string>
+}
+
+export function isAuthEndpoint(endpointId: string, summary?: string, name?: string): boolean {
+  const text = `${endpointId} ${summary ?? ''} ${name ?? ''}`.toLowerCase()
+  return /(login|signin|sign-in|auth|token|signup|sign-up|register|authenticate|oauth)/i.test(text)
+}
 
 export interface WorkflowEditorModalProps {
   isOpen: boolean
@@ -26,6 +38,9 @@ export interface WorkflowEditorModalProps {
   endpoints: EndpointInfo[]
   variables?: Record<string, string>
   templates?: RequestTemplate[]
+  requestService?: RequestPanelService
+  getSwaggerDefaults?: (endpointId: string) => SwaggerDefaultsResult | undefined
+  getSwaggerDefaultsAsync?: (endpointId: string) => Promise<SwaggerDefaultsResult | undefined>
 }
 
 type StepTab = 'body' | 'query' | 'path' | 'headers'
@@ -36,16 +51,27 @@ interface StepParametersEditorProps {
   endpoints: EndpointInfo[]
   variables?: Record<string, string>
   templates?: RequestTemplate[]
+  getSwaggerDefaults?: (endpointId: string) => SwaggerDefaultsResult | undefined
+  getSwaggerDefaultsAsync?: (endpointId: string) => Promise<SwaggerDefaultsResult | undefined>
 }
 
 function StepParametersEditor({
   step,
   onChange,
+  endpoints = [],
   variables = {},
   templates = [],
+  getSwaggerDefaults,
+  getSwaggerDefaultsAsync,
 }: StepParametersEditorProps) {
   const [method] = (step.endpointId || '').split(' ')
   const isBodyMethod = ['post', 'put', 'patch', 'delete'].includes((method || '').toLowerCase())
+
+  const currentEndpoint = useMemo(() => {
+    return endpoints.find((e) => e.endpointId.toLowerCase() === step.endpointId.toLowerCase())
+  }, [endpoints, step.endpointId])
+
+  const showAuthTip = isBodyMethod && isAuthEndpoint(step.endpointId, currentEndpoint?.summary, step.name)
 
   const [activeTab, setActiveTab] = useState<StepTab>(isBodyMethod ? 'body' : 'query')
 
@@ -242,22 +268,43 @@ function StepParametersEditor({
                 (Type <code className="text-primary font-mono">&#123;&#123;</code> for variable suggestions)
               </span>
             </label>
-            {step.body?.trim() && (
-              <button
-                type="button"
-                onClick={() => {
-                  const { formatted } = formatJsonSafe(step.body)
-                  onChange({ body: formatted })
-                }}
-                className="text-[11px] text-primary hover:underline"
-              >
-                Beautify JSON
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {(getSwaggerDefaults || getSwaggerDefaultsAsync) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const defs =
+                      (await getSwaggerDefaultsAsync?.(step.endpointId)) ??
+                      getSwaggerDefaults?.(step.endpointId)
+                    if (defs?.exampleBody) {
+                      const { formatted } = formatJsonSafe(defs.exampleBody)
+                      onChange({ body: formatted })
+                    }
+                  }}
+                  className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  title="Load request body example from Swagger"
+                >
+                  <ZapIcon className="h-3 w-3" />
+                  <span>Load from Swagger</span>
+                </button>
+              )}
+              {step.body?.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { formatted } = formatJsonSafe(step.body)
+                    onChange({ body: formatted })
+                  }}
+                  className="text-[11px] text-primary hover:underline cursor-pointer"
+                >
+                  Beautify JSON
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Authentication & Post Tip */}
-          {isBodyMethod && (
+          {/* Authentication Tip - ONLY shown for Login / Signup / Auth endpoints */}
+          {showAuthTip && (
             <div className="rounded border border-primary/20 bg-primary/5 p-2 text-[11px] text-muted leading-relaxed">
               <strong className="text-text font-semibold">💡 Authentication Tip:</strong> For login
               endpoints, enter your credentials in JSON format (e.g.{' '}
@@ -272,7 +319,11 @@ function StepParametersEditor({
             value={step.body ?? ''}
             onChange={(e) => onChange({ body: e.target.value })}
             projectVariables={variables}
-            placeholder={'{\n  "email": "user@example.com",\n  "password": "your-password"\n}'}
+            placeholder={
+              showAuthTip
+                ? '{\n  "email": "user@example.com",\n  "password": "your-password"\n}'
+                : '{\n  "key": "value"\n}'
+            }
             rows={5}
             className="font-mono text-xs w-full bg-surface"
           />
@@ -286,15 +337,38 @@ function StepParametersEditor({
             <span className="text-[11px] font-semibold text-text">
               URL Query Parameters (e.g. ?page=1&amp;limit=10)
             </span>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleAddQueryParam}
-              className="py-0.5 px-2 text-[11px] flex items-center gap-1"
-            >
-              <PlusIcon className="h-3 w-3" />
-              Add Query Param
-            </Button>
+            <div className="flex items-center gap-2">
+              {(getSwaggerDefaults || getSwaggerDefaultsAsync) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={async () => {
+                    const defs =
+                      (await getSwaggerDefaultsAsync?.(step.endpointId)) ??
+                      getSwaggerDefaults?.(step.endpointId)
+                    if (defs?.query && Object.keys(defs.query).length > 0) {
+                      onChange({
+                        queryParams: { ...(step.queryParams ?? {}), ...defs.query },
+                      })
+                    }
+                  }}
+                  className="py-0.5 px-2 text-[11px] flex items-center gap-1"
+                  title="Load query parameters declared in Swagger"
+                >
+                  <ZapIcon className="h-3 w-3" />
+                  Load Swagger Params
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleAddQueryParam}
+                className="py-0.5 px-2 text-[11px] flex items-center gap-1"
+              >
+                <PlusIcon className="h-3 w-3" />
+                Add Query Param
+              </Button>
+            </div>
           </div>
 
           {queryEntries.length === 0 ? (
@@ -458,6 +532,9 @@ export function WorkflowEditorModal({
   endpoints,
   variables = {},
   templates = [],
+  requestService,
+  getSwaggerDefaults: propGetSwaggerDefaults,
+  getSwaggerDefaultsAsync: propGetSwaggerDefaultsAsync,
 }: WorkflowEditorModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -466,6 +543,29 @@ export function WorkflowEditorModal({
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  const getSwaggerDefaults = useMemo(() => {
+    if (propGetSwaggerDefaults) return propGetSwaggerDefaults
+    if (requestService?.getSwaggerDefaults) {
+      return (epId: string) => requestService.getSwaggerDefaults!(epId)
+    }
+    return undefined
+  }, [propGetSwaggerDefaults, requestService])
+
+  const getSwaggerDefaultsAsync = useMemo(() => {
+    if (propGetSwaggerDefaultsAsync) return propGetSwaggerDefaultsAsync
+    if (requestService?.getSwaggerDefaultsAsync) {
+      return (epId: string) => requestService.getSwaggerDefaultsAsync!(epId)
+    }
+    if (requestService?.getSwaggerDefaults) {
+      return async (epId: string) => requestService.getSwaggerDefaults!(epId)
+    }
+    return undefined
+  }, [propGetSwaggerDefaultsAsync, requestService])
 
   useEffect(() => {
     if (workflow) {
@@ -495,20 +595,66 @@ export function WorkflowEditorModal({
     setError(null)
   }, [workflow, isOpen])
 
-  const handleAddStep = () => {
+  const handleAddStep = async () => {
     const defaultEndpoint = endpoints[0]?.endpointId || 'get /'
+    const defs =
+      (await getSwaggerDefaultsAsync?.(defaultEndpoint)) ??
+      getSwaggerDefaults?.(defaultEndpoint)
+
+    const detectedTokens = extractPathParams(defaultEndpoint)
+    const initialPath: Record<string, string> = {}
+    for (const token of detectedTokens) {
+      initialPath[token] = defs?.path?.[token] ?? ''
+    }
+
     const newStep: WorkflowStep = {
       id: `step_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       endpointId: defaultEndpoint,
       name: '',
-      body: '',
+      body: defs?.exampleBody ? formatJsonSafe(defs.exampleBody).formatted : '',
       delayMs: 0,
-      pathParams: {},
-      queryParams: {},
+      pathParams: initialPath,
+      queryParams: defs?.query ? { ...defs.query } : {},
       headerParams: {},
     }
     setSteps((prev) => [...prev, newStep])
     setExpandedSteps((prev) => ({ ...prev, [newStep.id]: true }))
+  }
+
+  const handleEndpointSelect = async (stepId: string, newEp: string) => {
+    const targetStep = steps.find((s) => s.id === stepId)
+    if (!targetStep) return
+
+    const patch: Partial<WorkflowStep> = { endpointId: newEp }
+
+    const defs =
+      (await getSwaggerDefaultsAsync?.(newEp)) ??
+      getSwaggerDefaults?.(newEp)
+
+    // Pre-fill body from Swagger if available and current body is empty
+    if (defs?.exampleBody && (!targetStep.body || targetStep.body.trim() === '')) {
+      const { formatted } = formatJsonSafe(defs.exampleBody)
+      patch.body = formatted
+    }
+
+    // Pre-fill query params from Swagger
+    if (defs?.query && Object.keys(defs.query).length > 0) {
+      patch.queryParams = { ...(targetStep.queryParams ?? {}), ...defs.query }
+    }
+
+    // Pre-fill path params from Swagger
+    const detectedTokens = extractPathParams(newEp)
+    if (detectedTokens.length > 0) {
+      const initialPath: Record<string, string> = { ...(targetStep.pathParams ?? {}) }
+      for (const token of detectedTokens) {
+        if (!initialPath[token]) {
+          initialPath[token] = defs?.path?.[token] ?? ''
+        }
+      }
+      patch.pathParams = initialPath
+    }
+
+    handleStepChange(stepId, patch)
   }
 
   const handleRemoveStep = (id: string) => {
@@ -533,6 +679,16 @@ export function WorkflowEditorModal({
       const temp = next[index + 1]!
       next[index + 1] = next[index]!
       next[index] = temp
+      return next
+    })
+  }
+
+  const handleReorderSteps = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    setSteps((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved!)
       return next
     })
   }
@@ -579,9 +735,8 @@ export function WorkflowEditorModal({
 
   return (
     <Dialog title={workflow ? 'Edit Workflow' : 'Create New Workflow'} onClose={onClose} size="xl">
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-sm max-h-[72vh]">
-          {error && (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm">
+        {error && (
             <div className="rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
               {error}
             </div>
@@ -674,18 +829,63 @@ export function WorkflowEditorModal({
                 {steps.map((step, idx) => {
                   const isExpanded = expandedSteps[step.id] ?? true
                   const [method] = step.endpointId.split(' ')
+                  const isDragging = draggedIndex === idx
+                  const isDragOver = dragOverIndex === idx
 
                   return (
                     <div
                       key={step.id}
-                      className="rounded-lg border border-border bg-surface/70 hover:border-border-strong transition-colors p-3.5"
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedIndex(idx)
+                        e.dataTransfer.effectAllowed = 'move'
+                        e.dataTransfer.setData('text/plain', String(idx))
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                        if (dragOverIndex !== idx) {
+                          setDragOverIndex(idx)
+                        }
+                      }}
+                      onDragLeave={(e) => {
+                        if (e.currentTarget.contains(e.relatedTarget as Node)) return
+                        if (dragOverIndex === idx) setDragOverIndex(null)
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        if (draggedIndex !== null && draggedIndex !== idx) {
+                          handleReorderSteps(draggedIndex, idx)
+                        }
+                        setDraggedIndex(null)
+                        setDragOverIndex(null)
+                      }}
+                      onDragEnd={() => {
+                        setDraggedIndex(null)
+                        setDragOverIndex(null)
+                      }}
+                      className={`rounded-lg border transition-all p-3.5 ${
+                        isDragging
+                          ? 'opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]'
+                          : isDragOver
+                            ? 'border-primary border-2 bg-primary/10 shadow-md ring-2 ring-primary/20'
+                            : 'border-border bg-surface/70 hover:border-border-strong'
+                      }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          {/* Drag Handle */}
+                          <div
+                            className="cursor-grab active:cursor-grabbing p-1 text-muted hover:text-text rounded shrink-0"
+                            title="Drag to reorder step"
+                          >
+                            <GripVerticalIcon className="h-3.5 w-3.5" />
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => toggleExpand(step.id)}
-                            className="p-1 hover:bg-surface-hover rounded text-muted hover:text-text"
+                            className="p-1 hover:bg-surface-hover rounded text-muted hover:text-text shrink-0"
                             aria-label={isExpanded ? 'Collapse step' : 'Expand step'}
                           >
                             {isExpanded ? (
@@ -695,7 +895,7 @@ export function WorkflowEditorModal({
                             )}
                           </button>
 
-                          <span className="font-mono text-xs font-bold text-muted w-5">
+                          <span className="font-mono text-xs font-bold text-muted w-5 shrink-0">
                             #{idx + 1}
                           </span>
 
@@ -777,7 +977,7 @@ export function WorkflowEditorModal({
                             <EndpointPicker
                               endpoints={endpoints}
                               selectedEndpointId={step.endpointId}
-                              onSelect={(ep) => handleStepChange(step.id, { endpointId: ep })}
+                              onSelect={(ep) => handleEndpointSelect(step.id, ep)}
                             />
                           </div>
 
@@ -788,6 +988,8 @@ export function WorkflowEditorModal({
                             endpoints={endpoints}
                             variables={variables}
                             templates={templates}
+                            getSwaggerDefaults={getSwaggerDefaults}
+                            getSwaggerDefaultsAsync={getSwaggerDefaultsAsync}
                           />
                         </div>
                       )}
@@ -797,9 +999,8 @@ export function WorkflowEditorModal({
               </div>
             )}
           </div>
-        </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border pt-3 mt-4">
+        <div className="sticky -bottom-4 -mx-4 px-4 py-3 bg-bg border-t border-border flex items-center justify-end gap-2 z-10 mt-2">
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>

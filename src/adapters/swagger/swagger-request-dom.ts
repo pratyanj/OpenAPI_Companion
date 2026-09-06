@@ -111,9 +111,9 @@ export function readParametersFromBlock(block: Element): {
     const val = input ? input.value : ''
 
     if (rawIn === 'path') {
-      if (val) path[rawName] = val
+      path[rawName] = val
     } else if (rawIn === 'query') {
-      if (val) query[rawName] = val
+      query[rawName] = val
     } else if (rawIn === 'header') {
       if (val) headers[rawName] = val
     }
@@ -166,7 +166,7 @@ export function readSwaggerExample(doc: Document, endpointId: string): string | 
 
   // 2. Otherwise read example rendered in pre elements (OAS2/OAS3 examples)
   const exampleEl = block.querySelector(
-    '.body-param__example pre, .model-example pre, .highlight-code pre, pre.example, .body-param-example pre',
+    '.body-param__example pre, .model-example pre, .highlight-code pre, pre.example, .body-param-example pre, .example-value pre, .body-param pre',
   )
   if (exampleEl?.textContent?.trim()) {
     return exampleEl.textContent.trim()

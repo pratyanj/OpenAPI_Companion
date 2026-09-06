@@ -237,6 +237,25 @@ export function createRemoteRequestService(): RequestPanelService {
         query: open?.query || undefined,
       }
     },
+    getSwaggerDefaultsAsync: async (endpointId: string) => {
+      try {
+        const res = await rpc<{
+          exampleBody?: string
+          path?: Record<string, string>
+          query?: Record<string, string>
+        }>('requests.getSwaggerDefaults', [endpointId])
+        if (res && (res.exampleBody || res.path || res.query)) return res
+      } catch {
+        // fallback
+      }
+      const open = latestState.adapter.openRequests.find((r) => r.endpointId === endpointId)
+      const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
+      return {
+        exampleBody: open?.body || exec?.requestBody || undefined,
+        path: open?.path || undefined,
+        query: open?.query || undefined,
+      }
+    },
   }
 }
 

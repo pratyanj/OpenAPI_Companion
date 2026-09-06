@@ -358,6 +358,31 @@ async function boot(): Promise<void> {
     }
   })
 
+  // Auto-sync extracted auth tokens to Swagger UI's Authorize dialog and auth storage
+  bus.subscribe('VARIABLE_AUTO_EXTRACTED', async (payload) => {
+    const norm = payload.variableName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const isAuth =
+      /^(token|authtoken|accesstoken|jwt|bearer|authorization|idtoken|sessiontoken)$/i.test(norm) ||
+      norm.endsWith('token') ||
+      norm.includes('jwt') ||
+      norm.includes('bearer')
+
+    if (isAuth) {
+      try {
+        const env = await environments.get(currentEnv)
+        const tokenVal = env.ok && env.value?.variables?.[payload.variableName]
+        if (tokenVal && typeof tokenVal === 'string' && tokenVal.trim()) {
+          await auth.applyToken(currentEnv, tokenVal.trim())
+          console.debug(
+            `${LOG} auto-synced extracted auth token from "${payload.variableName}" to Swagger Authorizer`,
+          )
+        }
+      } catch (err) {
+        console.warn(`${LOG} could not auto-sync auth token to Swagger Authorizer:`, err)
+      }
+    }
+  })
+
   // Always-on: restore auth, auto-restore drafts, watch, and react to DOM changes.
   await auth.restore(currentEnv)
   await requests.autoRestoreOpen(currentEnv)
