@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Button,
   Badge,
@@ -17,6 +17,8 @@ import {
   ClockIcon,
   ToastSuccessIcon,
   ToastErrorIcon,
+  UploadIcon,
+  DownloadIcon,
 } from '@/components'
 import { useEventBus } from '@/hooks'
 import type { EventBus } from '@/core/events'
@@ -27,6 +29,7 @@ import type {
   WorkflowsPanelService,
   WorkflowRunSummary,
   WorkflowExecutionOptions,
+  WorkflowExportBundle,
 } from './types'
 import { WorkflowEditorModal } from './WorkflowEditorModal'
 import { WorkflowRunnerModal } from './WorkflowRunnerModal'
@@ -236,6 +239,78 @@ export function WorkflowsPanel({
     return service.execute(workflowId, options)
   }
 
+  // ---------------------------------------------------------------------------
+  // Import / Export
+  // ---------------------------------------------------------------------------
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importExportStatus, setImportExportStatus] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
+
+  const showStatus = (type: 'success' | 'error', message: string) => {
+    setImportExportStatus({ type, message })
+    setTimeout(() => setImportExportStatus(null), 4000)
+  }
+
+  const handleExport = async () => {
+    if (!service.exportAll) return
+    try {
+      const res = await service.exportAll()
+      if (!res.ok) {
+        showStatus('error', `Export failed: ${res.error.message}`)
+        return
+      }
+      const json = JSON.stringify(res.value, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `workflows-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      const count = res.value.workflows.length
+      showStatus('success', `Exported ${count} workflow${count !== 1 ? 's' : ''}`)
+    } catch (e: unknown) {
+      showStatus('error', e instanceof Error ? e.message : 'Export failed')
+    }
+  }
+
+  const handleImport = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !service.importAll) return
+    // Reset input so same file can be re-selected
+    e.target.value = ''
+    try {
+      const text = await file.text()
+      let bundle: WorkflowExportBundle
+      try {
+        bundle = JSON.parse(text) as WorkflowExportBundle
+      } catch {
+        showStatus('error', 'Invalid JSON file — could not parse')
+        return
+      }
+      const res = await service.importAll(bundle)
+      if (!res.ok) {
+        showStatus('error', `Import failed: ${res.error.message}`)
+        return
+      }
+      await refreshWorkflows()
+      const { imported, skipped, renamed } = res.value
+      const parts: string[] = []
+      if (imported > 0) parts.push(`${imported} imported`)
+      if (renamed.length > 0) parts.push(`${renamed.length} renamed`)
+      if (skipped > 0) parts.push(`${skipped} skipped`)
+      showStatus('success', parts.join(', ') || 'Nothing imported')
+    } catch (e: unknown) {
+      showStatus('error', e instanceof Error ? e.message : 'Import failed')
+    }
+  }
+
   const filteredWorkflows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return workflows
@@ -265,14 +340,41 @@ export function WorkflowsPanel({
             </p>
           </div>
 
-          <Button
-            variant="primary"
-            onClick={handleCreate}
-            className="flex items-center gap-1 shrink-0 px-2.5 py-1 text-xs"
-          >
-            <PlusIcon className="h-3.5 w-3.5" />
-            <span>New Workflow</span>
-          </Button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Import button — only shown if service supports it */}
+            {service.importAll && (
+              <button
+                type="button"
+                onClick={handleImport}
+                title="Import workflows from JSON"
+                aria-label="Import workflows"
+                className="p-1.5 rounded text-muted hover:text-text hover:bg-surface-alt transition-colors"
+              >
+                <UploadIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {/* Export button — only shown if service supports it and there are workflows */}
+            {service.exportAll && workflows.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleExport()}
+                title="Export all workflows as JSON"
+                aria-label="Export workflows"
+                className="p-1.5 rounded text-muted hover:text-text hover:bg-surface-alt transition-colors"
+              >
+                <DownloadIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              <span>New Workflow</span>
+            </Button>
+          </div>
         </div>
 
         {workflows.length > 0 && (
@@ -288,6 +390,7 @@ export function WorkflowsPanel({
         )}
       </div>
 
+
       {/* Error Notice */}
       {error && (
         <div className="m-3 p-2.5 rounded border border-danger/30 bg-danger/10 text-danger text-xs flex items-center justify-between">
@@ -302,7 +405,25 @@ export function WorkflowsPanel({
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* Import/Export status toast */}
+      {importExportStatus && (
+        <div
+          className={`mx-3 mt-2 px-2.5 py-2 rounded border text-xs flex items-center gap-2 animate-fade-in ${
+            importExportStatus.type === 'success'
+              ? 'border-success/30 bg-success/10 text-success'
+              : 'border-danger/30 bg-danger/10 text-danger'
+          }`}
+        >
+          {importExportStatus.type === 'success' ? (
+            <ToastSuccessIcon className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <ToastErrorIcon className="h-3.5 w-3.5 shrink-0" />
+          )}
+          <span>{importExportStatus.message}</span>
+        </div>
+      )}
+
+
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {loading ? (
           <div className="py-12 text-center text-xs text-muted">Loading workflows...</div>
@@ -478,6 +599,16 @@ export function WorkflowsPanel({
           bus={bus}
         />
       )}
+
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(e) => void handleFileSelected(e)}
+        aria-hidden
+      />
     </div>
   )
 }

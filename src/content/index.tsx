@@ -26,7 +26,7 @@ import { EnvironmentService, type EnvironmentInput } from '@/modules/environment
 import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
-import { WorkflowService, executeWorkflowStep, type WorkflowInput } from '@/modules/workflows'
+import { WorkflowService, executeWorkflowStep, type WorkflowInput, type WorkflowExportBundle } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -615,6 +615,12 @@ async function boot(): Promise<void> {
     'workflows.execute': ([id, envId]) =>
       workflows.execute(id as string, { environmentId: envId as string }),
     'workflows.cancel': () => ok(workflows.cancelActiveExecution()),
+    'workflows.export': ([ids]) => workflows.exportAll(ids as string[] | undefined),
+    'workflows.import': ([bundle, opts]) =>
+      workflows.importAll(
+        bundle as WorkflowExportBundle,
+        opts as { onConflict: 'rename' | 'skip' } | undefined,
+      ),
     'workflowEditor.open': async ([options]) => {
       const editor = await withWorkflowEditor()
       if (editor) {

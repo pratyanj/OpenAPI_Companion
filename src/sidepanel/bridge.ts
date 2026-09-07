@@ -404,5 +404,8 @@ export function createRemoteWorkflowsService(): WorkflowsPanelService {
     openEndpoint: (endpointId) => {
       void rpcResult('adapter.openEndpoint', endpointId)
     },
+    exportAll: (ids) => rpcResult('workflows.export', ids),
+    importAll: (bundle, opts) => rpcResult('workflows.import', bundle, opts),
   }
 }
+

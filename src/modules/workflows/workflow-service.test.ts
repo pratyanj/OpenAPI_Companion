@@ -344,3 +344,161 @@ describe('WorkflowService Execution', () => {
     expect(executor).toHaveBeenCalledTimes(1)
   })
 })
+
+// =============================================================================
+// Import / Export
+// =============================================================================
+describe('WorkflowService import / export', () => {
+  const makeStep = (endpointId: string) => ({
+    id: 'step_1',
+    endpointId,
+    name: 'Test step',
+    body: '{"key":"value"}',
+  })
+
+  it('exports an empty workflow list as a valid bundle', async () => {
+    const { service } = setup()
+    const res = await service.exportAll()
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.version).toBe('1.0')
+    expect(res.value.workflows).toHaveLength(0)
+    expect(typeof res.value.exportedAt).toBe('string')
+  })
+
+  it('exports workflows without runtime metadata (id, createdAt, lastRunAt)', async () => {
+    const { service } = setup()
+    await service.create({
+      name: 'Flow A',
+      description: 'desc',
+      mode: 'stop-on-failure',
+      steps: [makeStep('GET /users')],
+    })
+
+    const res = await service.exportAll()
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+
+    expect(res.value.workflows).toHaveLength(1)
+    const exported = res.value.workflows[0]!
+    expect(exported.name).toBe('Flow A')
+    expect(exported.description).toBe('desc')
+    expect(exported.mode).toBe('stop-on-failure')
+    expect(exported.steps).toHaveLength(1)
+    expect(exported.steps[0]!.endpointId).toBe('GET /users')
+
+    // Verify runtime fields are NOT present
+    expect((exported as unknown as Record<string, unknown>).id).toBeUndefined()
+    expect((exported as unknown as Record<string, unknown>).createdAt).toBeUndefined()
+    expect((exported as unknown as Record<string, unknown>).lastRunAt).toBeUndefined()
+
+    // Verify step has no internal id
+    expect((exported.steps[0] as unknown as Record<string, unknown>).id).toBeUndefined()
+  })
+
+  it('exports only specific workflow IDs when ids param is provided', async () => {
+    const { service } = setup()
+    const r1 = await service.create({ name: 'Flow A', steps: [makeStep('GET /a')] })
+    await service.create({ name: 'Flow B', steps: [makeStep('GET /b')] })
+    if (!r1.ok) throw new Error('create failed')
+
+    const res = await service.exportAll([r1.value.id])
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.workflows).toHaveLength(1)
+    expect(res.value.workflows[0]!.name).toBe('Flow A')
+  })
+
+  it('imports a valid bundle and creates the workflows', async () => {
+    const { service } = setup()
+    const bundle = {
+      version: '1.0' as const,
+      exportedAt: new Date().toISOString(),
+      workflows: [
+        {
+          name: 'Imported Flow',
+          description: 'from bundle',
+          mode: 'continue-on-failure' as const,
+          steps: [{ endpointId: 'POST /login', name: 'Login' }],
+        },
+      ],
+    }
+
+    const res = await service.importAll(bundle)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.imported).toBe(1)
+    expect(res.value.skipped).toBe(0)
+    expect(res.value.renamed).toHaveLength(0)
+
+    const all = await service.list()
+    expect(all.ok).toBe(true)
+    if (!all.ok) return
+    expect(all.value.some((w) => w.name === 'Imported Flow')).toBe(true)
+  })
+
+  it('renames imported workflow when name conflicts (default behavior)', async () => {
+    const { service } = setup()
+    await service.create({ name: 'Duplicate Flow', steps: [makeStep('GET /x')] })
+
+    const bundle = {
+      version: '1.0' as const,
+      exportedAt: new Date().toISOString(),
+      workflows: [{ name: 'Duplicate Flow', mode: 'stop-on-failure' as const, steps: [] }],
+    }
+
+    const res = await service.importAll(bundle)
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.imported).toBe(1)
+    expect(res.value.renamed).toHaveLength(1)
+    expect(res.value.renamed[0]).toContain('Duplicate Flow')
+    expect(res.value.renamed[0]).toContain('(imported)')
+
+    const all = await service.list()
+    if (!all.ok) return
+    expect(all.value.some((w) => w.name === 'Duplicate Flow (imported)')).toBe(true)
+    // Original unchanged
+    expect(all.value.some((w) => w.name === 'Duplicate Flow')).toBe(true)
+  })
+
+  it('skips conflicting workflows when onConflict is "skip"', async () => {
+    const { service } = setup()
+    await service.create({ name: 'Existing Flow', steps: [makeStep('GET /x')] })
+
+    const bundle = {
+      version: '1.0' as const,
+      exportedAt: new Date().toISOString(),
+      workflows: [
+        { name: 'Existing Flow', mode: 'stop-on-failure' as const, steps: [] },
+        { name: 'New Flow', mode: 'stop-on-failure' as const, steps: [] },
+      ],
+    }
+
+    const res = await service.importAll(bundle, { onConflict: 'skip' })
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.imported).toBe(1)
+    expect(res.value.skipped).toBe(1)
+    expect(res.value.renamed).toHaveLength(0)
+  })
+
+  it('returns WORKFLOW_INVALID_INPUT for invalid bundle structure (non-array workflows)', async () => {
+    const { service } = setup()
+    const badBundle = { version: '1.0', exportedAt: '', workflows: 'not-an-array' }
+    const res = await service.importAll(badBundle as unknown as import('./types').WorkflowExportBundle)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.error.code).toBe('WORKFLOW_INVALID_INPUT')
+  })
+
+  it('returns WORKFLOW_INVALID_INPUT for unsupported bundle version', async () => {
+    const { service } = setup()
+    const badBundle = { version: '2.0', exportedAt: '', workflows: [] }
+    const res = await service.importAll(badBundle as unknown as import('./types').WorkflowExportBundle)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.error.code).toBe('WORKFLOW_INVALID_INPUT')
+    expect(res.error.message).toContain('2.0')
+  })
+})

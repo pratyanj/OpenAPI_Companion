@@ -10,7 +10,11 @@ import type {
   WorkflowExecutionOptions,
   StepExecutor,
   StepExecutionPayload,
+  WorkflowExportBundle,
+  WorkflowExportItem,
+  WorkflowImportResult,
 } from './types'
+
 
 export interface WorkflowEnvironmentService {
   getActiveId(): Promise<string>
@@ -272,9 +276,145 @@ export class WorkflowService {
     return resolved
   }
 
+  // ---------------------------------------------------------------------------
+  // Export
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Export all (or specific) workflows as a portable, ID-free JSON bundle.
+   * Runtime metadata (id, createdAt, updatedAt, lastRun*) is stripped so the
+   * bundle can be imported into any project without ID collisions.
+   */
+  async exportAll(ids?: string[]): Promise<Result<WorkflowExportBundle>> {
+    const all = await this.list()
+    if (!all.ok) return all
+
+    const source = ids && ids.length > 0 ? all.value.filter((w) => ids.includes(w.id)) : all.value
+
+    const workflows: WorkflowExportItem[] = source.map((w) => ({
+      name: w.name,
+      description: w.description,
+      mode: w.mode,
+      steps: w.steps.map((s) => ({
+        endpointId: s.endpointId,
+        name: s.name,
+        body: s.body,
+        pathParams: s.pathParams,
+        queryParams: s.queryParams,
+        headerParams: s.headerParams,
+        delayMs: s.delayMs,
+      })),
+    }))
+
+    return ok({
+      version: '1.0',
+      exportedAt: new Date(this.now()).toISOString(),
+      workflows,
+    })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Import
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Import workflows from a portable JSON bundle.
+   * - Validates bundle version.
+   * - On name conflict: renames with "(imported)" suffix (default) or skips.
+   * - Returns a summary: { imported, skipped, renamed }.
+   */
+  async importAll(
+    bundle: WorkflowExportBundle,
+    options?: { onConflict: 'rename' | 'skip' },
+  ): Promise<Result<WorkflowImportResult>> {
+    // Validate bundle structure
+    if (!bundle || typeof bundle !== 'object') {
+      return err({
+        code: 'WORKFLOW_INVALID_INPUT',
+        message: 'Invalid import bundle: expected an object',
+        recoverable: true,
+      })
+    }
+    if (bundle.version !== '1.0') {
+      return err({
+        code: 'WORKFLOW_INVALID_INPUT',
+        message: `Unsupported bundle version: "${String(bundle.version)}". Expected "1.0"`,
+        recoverable: true,
+      })
+    }
+    if (!Array.isArray(bundle.workflows)) {
+      return err({
+        code: 'WORKFLOW_INVALID_INPUT',
+        message: 'Invalid import bundle: "workflows" must be an array',
+        recoverable: true,
+      })
+    }
+
+    const conflictStrategy = options?.onConflict ?? 'rename'
+    const result: WorkflowImportResult = { imported: 0, skipped: 0, renamed: [] }
+
+    for (const item of bundle.workflows) {
+      if (!item.name || typeof item.name !== 'string') {
+        // Skip malformed entries without crashing the whole import
+        result.skipped++
+        continue
+      }
+
+      // Check for name conflict
+      const existing = await this.list()
+      if (!existing.ok) return existing
+
+      const nameExists = existing.value.some(
+        (w) => w.name.toLowerCase() === item.name.trim().toLowerCase(),
+      )
+
+      let resolvedName = item.name.trim()
+      if (nameExists) {
+        if (conflictStrategy === 'skip') {
+          result.skipped++
+          continue
+        }
+        // rename strategy: append "(imported)", with dedup loop
+        let candidate = `${resolvedName} (imported)`
+        let suffix = 2
+        const currentNames = existing.value.map((w) => w.name.toLowerCase())
+        while (currentNames.includes(candidate.toLowerCase())) {
+          candidate = `${resolvedName} (imported ${suffix++})`
+        }
+        result.renamed.push(`${resolvedName} → ${candidate}`)
+        resolvedName = candidate
+      }
+
+      const createRes = await this.create({
+        name: resolvedName,
+        description: item.description,
+        mode: item.mode ?? 'stop-on-failure',
+        steps: (item.steps ?? []).map((s) => ({
+          id: '',
+          endpointId: s.endpointId,
+          name: s.name,
+          body: s.body,
+          pathParams: s.pathParams,
+          queryParams: s.queryParams,
+          headerParams: s.headerParams,
+          delayMs: s.delayMs,
+        })),
+      })
+
+      if (createRes.ok) {
+        result.imported++
+      } else {
+        result.skipped++
+      }
+    }
+
+    return ok(result)
+  }
+
   /**
    * Execute a workflow sequentially with dynamic variable resolution and auto-extraction chaining.
    */
+
   async execute(
     workflowId: string,
     options?: WorkflowExecutionOptions,
