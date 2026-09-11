@@ -94,6 +94,31 @@ describe('substitute', () => {
     expect(result.text).toBe('{{$unknownVar}}')
     expect(result.missing).toEqual(['$unknownVar'])
   })
+
+  it('replaces URL-encoded %7B%7BVAR%7D%7D placeholders in Swagger URLs', () => {
+    const result = substitute('https://api.example.com/tasks/%7B%7Btask_id%7D%7D?token=%7B%7BAPI_KEY%7D%7D', {
+      task_id: '42',
+      API_KEY: 'secret123',
+    })
+    expect(result.text).toBe('https://api.example.com/tasks/42?token=secret123')
+    expect(result.missing).toEqual([])
+  })
+
+  it('falls back to case-insensitive matching for user variables (e.g. {{token}} for TOKEN)', () => {
+    const result = substitute('Bearer {{token}} for {{USER_ID}}', {
+      TOKEN: 'jwt_abc',
+      user_id: '100',
+    })
+    expect(result.text).toBe('Bearer jwt_abc for 100')
+    expect(result.missing).toEqual([])
+  })
+
+  it('resolves dynamic variables inside URL-encoded placeholders and preserves missing %7B%7B', () => {
+    const fixedNow = 1_700_000_000_000
+    const result = substitute('/items/%7B%7B$uuid%7D%7D/%7B%7BMISSING%7D%7D', {}, { now: () => fixedNow })
+    expect(result.text).toMatch(/^\/items\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/%7B%7BMISSING%7D%7D$/i)
+    expect(result.missing).toEqual(['MISSING'])
+  })
 })
 
 describe('EnvironmentService', () => {

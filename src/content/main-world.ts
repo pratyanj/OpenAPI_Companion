@@ -6,6 +6,10 @@
  *
  * It relays auth state to the isolated sidebar and executes authorize/logout
  * commands, all over `window.postMessage`. It has NO access to chrome.* APIs.
+ *
+ * Also intercepts outgoing HTTP requests (via window.fetch, XMLHttpRequest, and
+ * Swagger's requestInterceptor) to resolve {{variable}} and %7B%7Bvariable%7D%7D
+ * placeholders using the active project variables.
  */
 import { resolveSwaggerUi, type SwaggerUiGlobal } from './swagger-ui-global'
 import {
@@ -18,6 +22,7 @@ import {
   type BridgeInbound,
   planAuthWrite,
   type SchemeDefinition,
+  resolveWithVariables,
 } from './swagger-protocol'
 
 function readAuthorized(): Record<string, AuthorizedEntry> | undefined {
@@ -102,6 +107,154 @@ function applyWrite(snapshot: Parameters<typeof buildAuthorizePayload>[0], attem
   }
 }
 
+// ---------------------------------------------------------------------------
+// Variable Resolution in Network Requests (fetch, XHR, Swagger requestInterceptor)
+// ---------------------------------------------------------------------------
+
+let activeVariables: Record<string, string> = {}
+
+export function getActiveVariables(): Record<string, string> {
+  return activeVariables
+}
+
+/** Hook into Swagger's configuration requestInterceptor if available. */
+function hookSwaggerInterceptor(): void {
+  const swagger = resolveSwaggerUi()
+  const configs = swagger?.getConfigs?.() as Record<string, unknown> | undefined
+  if (configs && !configs.__oacHooked) {
+    configs.__oacHooked = true
+    const prev = configs.requestInterceptor as ((req: unknown) => unknown) | undefined
+    configs.requestInterceptor = (req: unknown): unknown => {
+      let modified = req
+      if (typeof prev === 'function') {
+        try {
+          modified = prev(req) ?? req
+        } catch (e) {
+          console.error('[OpenAPI Companion] prev requestInterceptor error:', e)
+        }
+      }
+      if (modified && typeof modified === 'object') {
+        const m = modified as Record<string, unknown>
+        if (typeof m.url === 'string') {
+          m.url = resolveWithVariables(m.url, activeVariables)
+        }
+        if (m.headers && typeof m.headers === 'object') {
+          const headers = m.headers as Record<string, unknown>
+          for (const [k, v] of Object.entries(headers)) {
+            if (typeof v === 'string') {
+              headers[k] = resolveWithVariables(v, activeVariables)
+            }
+          }
+        }
+        if (typeof m.body === 'string') {
+          m.body = resolveWithVariables(m.body, activeVariables)
+        }
+      }
+      return modified
+    }
+  }
+}
+
+/** Intercept window.fetch to substitute {{VAR}} in URL, headers, and request body. */
+export function hookFetch(): void {
+  if (typeof window === 'undefined' || typeof window.fetch !== 'function') return
+  const currentFetch = window.fetch as unknown as { __oacHooked?: boolean }
+  if (currentFetch.__oacHooked) return
+
+  const originalFetch = window.fetch
+  const wrappedFetch = async function (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    try {
+      if (typeof input === 'string') {
+        input = resolveWithVariables(input, activeVariables)
+      } else if (input instanceof URL) {
+        input = new URL(resolveWithVariables(input.toString(), activeVariables))
+      }
+
+      if (init) {
+        let modifiedHeaders = init.headers
+        if (modifiedHeaders) {
+          if (typeof Headers !== 'undefined' && modifiedHeaders instanceof Headers) {
+            const nextHeaders = new Headers()
+            modifiedHeaders.forEach((val, key) => {
+              nextHeaders.set(key, resolveWithVariables(val, activeVariables))
+            })
+            modifiedHeaders = nextHeaders
+          } else if (Array.isArray(modifiedHeaders)) {
+            modifiedHeaders = modifiedHeaders.map(([k, v]) => [
+              k,
+              resolveWithVariables(String(v), activeVariables),
+            ])
+          } else if (typeof modifiedHeaders === 'object') {
+            const nextHeaders: Record<string, string> = {}
+            for (const [k, v] of Object.entries(modifiedHeaders as Record<string, unknown>)) {
+              nextHeaders[k] = typeof v === 'string' ? resolveWithVariables(v, activeVariables) : String(v)
+            }
+            modifiedHeaders = nextHeaders
+          }
+        }
+
+        let modifiedBody = init.body
+        if (typeof modifiedBody === 'string') {
+          modifiedBody = resolveWithVariables(modifiedBody, activeVariables)
+        }
+
+        init = {
+          ...init,
+          headers: modifiedHeaders,
+          body: modifiedBody,
+        }
+      }
+    } catch (err) {
+      console.warn('[OpenAPI Companion] error resolving variables in fetch:', err)
+    }
+
+    return originalFetch.apply(this, [input, init])
+  }
+
+  ;(wrappedFetch as unknown as { __oacHooked: boolean }).__oacHooked = true
+  window.fetch = wrappedFetch
+}
+
+/** Intercept XMLHttpRequest to resolve variables in open(), setRequestHeader(), and send(). */
+export function hookXHR(): void {
+  if (typeof window === 'undefined' || typeof window.XMLHttpRequest === 'undefined') return
+  const proto = XMLHttpRequest.prototype as unknown as {
+    __oacHooked?: boolean
+    open: (...args: unknown[]) => void
+    setRequestHeader: (header: string, value: string) => void
+    send: (body?: Document | XMLHttpRequestBodyInit | null) => void
+  }
+  if (proto.__oacHooked) return
+  proto.__oacHooked = true
+
+  const origOpen = proto.open
+  proto.open = function (method: unknown, url: unknown, ...rest: unknown[]) {
+    const resolvedUrl = typeof url === 'string' ? resolveWithVariables(url, activeVariables) : url
+    return origOpen.apply(this, [method, resolvedUrl, ...rest])
+  }
+
+  const origSetHeader = proto.setRequestHeader
+  proto.setRequestHeader = function (header: string, value: string) {
+    const resolvedVal = typeof value === 'string' ? resolveWithVariables(value, activeVariables) : value
+    return origSetHeader.apply(this, [header, resolvedVal])
+  }
+
+  const origSend = proto.send
+  proto.send = function (body?: unknown) {
+    if (typeof body === 'string') {
+      body = resolveWithVariables(body, activeVariables)
+    }
+    return origSend.apply(this, [body as Document | XMLHttpRequestBodyInit | null | undefined])
+  }
+}
+
+// Initialize network hooks immediately
+hookFetch()
+hookXHR()
+
 window.addEventListener('message', (event: MessageEvent) => {
   if ((event.source && event.source !== window) || !isOutbound(event.data)) return
   const message = event.data
@@ -114,6 +267,9 @@ window.addEventListener('message', (event: MessageEvent) => {
     pushAuth(true)
   } else if (message.cmd === 'readAuth') {
     handshake()
+  } else if (message.cmd === 'syncVariables') {
+    activeVariables = { ...(message.variables ?? {}) }
+    hookSwaggerInterceptor()
   }
 })
 
@@ -122,4 +278,7 @@ console.debug(
   `[OpenAPI Companion] main-world active; Swagger object ${resolveSwaggerUi() ? 'found' : 'not yet'}`,
 )
 handshake()
-setInterval(() => pushAuth(false), 1000)
+setInterval(() => {
+  pushAuth(false)
+  hookSwaggerInterceptor()
+}, 1000)

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   BRIDGE_TAG,
+  resolveWithVariables,
   buildAuthorizePayload,
   chooseScheme,
   extractAuth,
@@ -221,5 +222,25 @@ describe('securityDefinitionsFrom', () => {
     const defs = securityDefinitionsFrom(state)
     const plan = planAuthWrite({ type: 'jwt', token: 'Bearer eyJ.a.b', schemeName: 'Bearer' }, defs)
     expect(plan).toEqual({ via: 'apiKey', name: 'Bearer', value: 'Bearer eyJ.a.b' })
+  })
+})
+
+describe('resolveWithVariables', () => {
+  it('resolves {{VAR}} and case-insensitive placeholders in strings', () => {
+    const text = 'https://api.example.com/users/{{user_id}}?role={{ROLE}}'
+    const vars = { USER_ID: '123', role: 'admin' }
+    expect(resolveWithVariables(text, vars)).toBe('https://api.example.com/users/123?role=admin')
+  })
+
+  it('resolves URL-encoded %7B%7BVAR%7D%7D in URLs', () => {
+    const text = 'https://api.example.com/tasks/%7B%7Btask_id%7D%7D'
+    const vars = { task_id: '99' }
+    expect(resolveWithVariables(text, vars)).toBe('https://api.example.com/tasks/99')
+  })
+
+  it('resolves dynamic variables like {{$uuid}} and {{$timestamp}}', () => {
+    const text = 'id={{$uuid}}&time={{$timestamp}}'
+    const out = resolveWithVariables(text, {})
+    expect(out).toMatch(/^id=[0-9a-f-]{36}&time=\d+$/i)
   })
 })

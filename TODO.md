@@ -20,9 +20,16 @@
     - Added `isLocalSavingRef` to ignore self-emitted `ENVIRONMENT_CHANGED` events during local saves, preventing inputs from resetting mid-keystroke.
     - Enhanced visual feedback: displays subtle spinner only during actual background persistence, followed by a reassuring green `Saved ✓` badge for 2 seconds (**601 tests passed**).
 
-- [ ] **4. 🚀 Direct Variable Resolution inside Native Swagger UI (`{{variable}}`)**
-  - **Feature**: Allow developers to type `{{variable}}` placeholders directly into Swagger UI inputs on the webpage.
-  - **Implementation**: Hook the content script / main-world fetch/execute interceptor to resolve active environment variables (e.g. `{{token}}`, `{{taskId}}`, `{{baseUrl}}`) directly when executing requests from Swagger UI.
+- [x] **4. 🚀 Direct Variable Resolution inside Native Swagger UI (`{{variable}}`)**
+  - **Feature**: Allow developers to type `{{variable}}` placeholders directly into Swagger UI inputs (parameters, query, headers, and request body) on the webpage.
+  - **Dual-Layer Architecture**:
+    - **Interactive DOM Layer (`swagger-variables.ts`)**:
+      - Live autocomplete popup in Shadow DOM triggered by typing `{{` in any Swagger UI input/textarea with keyboard navigation (<kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Enter</kbd>, <kbd>Tab</kbd>, <kbd>Esc</kbd>) for project variables and dynamic variables (`{{$uuid}}`, `{{$timestamp}}`, etc.).
+      - Injected `⚡ Variables (N active)` toolbar in open operation blocks with 1-click **"Resolve {{...}} in inputs"** button.
+      - Auto-resolves inputs in-place on native `.btn.execute` click via `setNativeValue` so Swagger's form state updates before execution.
+    - **Network Interceptor Layer (`main-world.ts`)**:
+      - Hooks `window.fetch`, `XMLHttpRequest`, and Swagger UI's `requestInterceptor` in the MAIN execution world.
+      - Resolves `{{VAR}}`, case-insensitive variables, dynamic variables, and URL-encoded `%7B%7BVAR%7D%7D` placeholders across request URLs, headers, and request bodies before HTTP calls leave the browser (**615 tests passed**).
 
 # TODO — Open Action Items
 

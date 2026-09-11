@@ -29,6 +29,7 @@ import { CollectionsService } from '@/modules/collections'
 import { WorkflowService, executeWorkflowStep, type WorkflowInput, type WorkflowExportBundle } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
+import { mountSwaggerVariables } from './swagger-variables'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
@@ -126,6 +127,35 @@ async function boot(): Promise<void> {
         : ''
   }
   await refreshEnvBaseUrl()
+
+  // Keep active variables synced with both SwaggerBridge (for MAIN-world network interception)
+  // and in-page Swagger UI DOM inputs (autocomplete & operation toolbars).
+  let activeVariables: Record<string, string> = {}
+  let activeSecrets: string[] = []
+
+  const swaggerVars = mountSwaggerVariables({}, [], document)
+
+  const syncActiveVariables = async (): Promise<void> => {
+    const env = await environments.get(currentEnv)
+    if (env.ok && env.value) {
+      activeVariables = env.value.variables ?? {}
+      activeSecrets = env.value.secrets ?? []
+      bridge.syncVariables(activeVariables)
+      swaggerVars.updateVariables(activeVariables, activeSecrets)
+    }
+  }
+  await syncActiveVariables()
+
+  if (typeof chrome !== 'undefined' && chrome?.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (
+        area === 'local' &&
+        Object.keys(changes).some((k) => k.includes('environments') || k.includes('environment'))
+      ) {
+        void syncActiveVariables()
+      }
+    })
+  }
 
   // Endpoint search runs IN THE PAGE (top-centered overlay) — the panel is too
   // narrow for it and can't draw over the doc. Triggered by ⌘K here, or by the
@@ -457,6 +487,7 @@ async function boot(): Promise<void> {
     void (async () => {
       currentEnv = payload.environmentId
       await refreshEnvBaseUrl()
+      await syncActiveVariables()
       stopAuthWatch()
       const restored = await auth.restore(currentEnv)
       if (restored.ok && restored.value == null) adapter.clearAuth()

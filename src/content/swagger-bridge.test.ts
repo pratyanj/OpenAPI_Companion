@@ -63,6 +63,31 @@ describe('SwaggerBridge', () => {
     expect(post).toHaveBeenCalledWith(command, '*') // re-applied on ready
   })
 
+
+  it('synchronizes variables to MAIN and re-synchronizes when MAIN announces ready', () => {
+    const bridge = make()
+    const vars = { BASE_URL: 'http://localhost:3000', TOKEN: 'xyz' }
+    const post = vi.spyOn(window, 'postMessage')
+
+    bridge.syncVariables(vars)
+    expect(bridge.getVariables()).toEqual(vars)
+    expect(post).toHaveBeenCalledWith({
+      tag: BRIDGE_TAG,
+      dir: 'to-main',
+      cmd: 'syncVariables',
+      variables: vars,
+    }, '*')
+
+    post.mockClear()
+    fromMain({ tag: BRIDGE_TAG, dir: 'from-main', type: 'ready', specUrl: null, version: null })
+    expect(post).toHaveBeenCalledWith({
+      tag: BRIDGE_TAG,
+      dir: 'to-main',
+      cmd: 'syncVariables',
+      variables: vars,
+    }, '*')
+  })
+
   it('ignores malformed or outbound-shaped messages', () => {
     const bridge = make()
     fromMain({ foo: 'bar' })

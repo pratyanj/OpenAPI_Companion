@@ -37,7 +37,7 @@ export interface SubstituteOptions {
   rng?: Rng
 }
 
-const VAR_PATTERN = /\{\{\s*([$A-Za-z0-9_]+)\s*\}\}/g
+export const VAR_PATTERN = /(?:\{\{|%7B%7B)\s*([$A-Za-z0-9_]+)\s*(?:\}\}|%7D%7D)/gi
 
 const errors = {
   duplicateName: (name: string): AppError => ({
@@ -157,14 +157,23 @@ export function substitute(
   const missing = new Set<string>()
   const nowFn = options?.now ?? (() => Date.now())
   const rngFn = options?.rng ?? Math.random
-  const resolved = text.replace(VAR_PATTERN, (_match, key: string) => {
+
+  // Build lowercase lookup for case-insensitive fallback
+  const lowerMap: Record<string, string> = {}
+  for (const [k, v] of Object.entries(variables)) {
+    lowerMap[k.toLowerCase()] = v
+  }
+
+  const resolved = text.replace(VAR_PATTERN, (match, key: string) => {
     if (key in variables) return variables[key] ?? ''
+    const lowerKey = key.toLowerCase()
+    if (lowerKey in lowerMap) return lowerMap[lowerKey] ?? ''
     if (key.startsWith('$')) {
       const dynamic = resolveDynamicVariable(key, nowFn, rngFn)
       if (dynamic !== null) return dynamic
     }
     missing.add(key)
-    return `{{${key}}}`
+    return match.startsWith('%7B') || match.startsWith('%7b') ? match : `{{${key}}}`
   })
   return { text: resolved, missing: [...missing] }
 }

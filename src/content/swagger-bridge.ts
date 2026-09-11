@@ -17,6 +17,8 @@ export class SwaggerBridge {
   private specUrlValue: string | null = null
   private versionValue: string | null = null
   private lastCommand: BridgeOutbound | null = null
+  private lastVariablesCommand: BridgeOutbound | null = null
+  private latestVariables: Record<string, string> = {}
   private readonly authListeners = new Set<(snapshot: AuthSnapshot | null) => void>()
 
   constructor(win: Window = window) {
@@ -39,6 +41,22 @@ export class SwaggerBridge {
   writeAuth(snapshot: AuthSnapshot): void {
     this.post({ tag: BRIDGE_TAG, dir: 'to-main', cmd: 'writeAuth', snapshot }, true)
   }
+  syncVariables(variables: Record<string, string>): void {
+    this.latestVariables = { ...variables }
+    const cmd: BridgeOutbound = {
+      tag: BRIDGE_TAG,
+      dir: 'to-main',
+      cmd: 'syncVariables',
+      variables: this.latestVariables,
+    }
+    this.lastVariablesCommand = cmd
+    this.post(cmd, false)
+  }
+
+  getVariables(): Record<string, string> {
+    return this.latestVariables
+  }
+
   clearAuth(): void {
     this.post({ tag: BRIDGE_TAG, dir: 'to-main', cmd: 'clearAuth' }, true)
   }
@@ -61,6 +79,7 @@ export class SwaggerBridge {
       this.versionValue = message.version
       // MAIN (re)announced — re-apply the last command in case it was missed.
       if (this.lastCommand) this.win.postMessage(this.lastCommand, '*')
+      if (this.lastVariablesCommand) this.win.postMessage(this.lastVariablesCommand, '*')
     } else if (message.type === 'auth') {
       this.latestAuth = message.snapshot
       for (const listener of this.authListeners) listener(this.latestAuth)
