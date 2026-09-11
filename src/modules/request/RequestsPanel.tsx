@@ -301,15 +301,63 @@ export function RequestsPanel({
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* ── Top Header Action Buttons ── */}
+      {/* ─── Search & Filter Bar ─── */}
+      <div className="flex flex-col gap-2">
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search presets by name, path, or payload…"
+            className="w-full rounded-md border border-border bg-bg pl-8 pr-8 py-1.5 text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-2 text-muted hover:text-text"
+            >
+              <CloseIcon className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+
+        {/* Method filter pills */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+          {METHODS.map((method) => {
+            const active = methodFilter === method
+            return (
+              <button
+                key={method}
+                type="button"
+                onClick={() => setMethodFilter(method)}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-surface/50 text-muted hover:bg-surface hover:text-text'
+                }`}
+              >
+                {method}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <hr className="border-border" />
+
+      {/* ─── Action Buttons ─── */}
       <div className="flex items-center gap-2">
         <Button
           variant="primary"
           className="flex flex-1 items-center justify-center gap-1.5 text-xs py-1.5"
           onClick={openCreateDialog}
+          aria-label="New"
         >
           <PlusIcon className="h-3.5 w-3.5" />
-          <span>New preset</span>
+          <span>New</span>
         </Button>
 
         <Button
@@ -327,7 +375,7 @@ export function RequestsPanel({
         </Button>
       </div>
 
-      {/* ── Quick Capture from Swagger Banner ── */}
+      {/* ─── Quick Capture from Swagger Banner ─── */}
       {isCapturing && (
         <div className="flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 animate-in fade-in duration-200">
           <div className="flex items-center justify-between">
@@ -396,54 +444,7 @@ export function RequestsPanel({
         </div>
       )}
 
-      {/* ── Search & Filter Bar ── */}
-      <div className="flex flex-col gap-2">
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search presets by name, path, or payload…"
-            className="w-full rounded-md border border-border bg-bg pl-8 pr-8 py-1.5 text-xs text-text placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          />
-          {searchQuery ? (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-2 text-muted hover:text-text"
-            >
-              <CloseIcon className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
-        </div>
-
-        {/* Method filter pills */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-          {METHODS.map((method) => {
-            const active = methodFilter === method
-            return (
-              <button
-                key={method}
-                type="button"
-                onClick={() => setMethodFilter(method)}
-                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-surface/50 text-muted hover:bg-surface hover:text-text'
-                }`}
-              >
-                {method}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <hr className="border-border" />
-
-      {/* ── Preset Cards List ── */}
+      {/* ─── Preset Cards List ─── */}
       {loading ? (
         <div className="flex justify-center py-6">
           <Spinner />

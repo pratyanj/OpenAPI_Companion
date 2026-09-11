@@ -87,7 +87,7 @@ describe('RequestsPanel', () => {
     await screen.findByText('No request presets yet')
 
     // Click "New preset" button
-    fireEvent.click(screen.getByRole('button', { name: /New preset/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^New$|^New preset$/i }))
 
     expect(await screen.findByText('Create Request Preset')).toBeInTheDocument()
 
@@ -113,7 +113,7 @@ describe('RequestsPanel', () => {
     await screen.findByText('No request presets yet')
 
     // Click "New preset" button
-    fireEvent.click(screen.getByRole('button', { name: /New preset/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^New$|^New preset$/i }))
     expect(await screen.findByText('Create Request Preset')).toBeInTheDocument()
 
     // Open Endpoint Picker dropdown (click trigger box)
@@ -151,7 +151,7 @@ describe('RequestsPanel', () => {
     render(<RequestsPanel service={service} bus={new EventBus()} environmentId="default" />)
     await screen.findByText('No request presets yet')
 
-    fireEvent.click(screen.getByRole('button', { name: /New preset/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^New$|^New preset$/i }))
     expect(await screen.findByText('Create Request Preset')).toBeInTheDocument()
 
     // Health check endpoint is selected (GET)
@@ -322,7 +322,7 @@ describe('RequestsPanel', () => {
     await screen.findByText('Create user')
 
     // Click "New preset"
-    fireEvent.click(screen.getByRole('button', { name: /New preset/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^New$|^New preset$/i }))
     expect(onOpenPresetEditor).toHaveBeenCalledWith(
       expect.objectContaining({ initialEndpointId: expect.any(String) }),
     )
