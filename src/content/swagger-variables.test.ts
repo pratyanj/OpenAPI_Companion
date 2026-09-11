@@ -36,47 +36,7 @@ describe('swagger-variables (in-page Swagger UI integration)', () => {
     document.body.innerHTML = ''
   })
 
-  it('injects toolbar and resolves placeholders on button click', () => {
-    document.body.innerHTML = opblockHtml('POST', '/tasks/{user_id}', '{"assignee": "{{USER_ID}}"}', '{{USER_ID}}')
-
-    handle = mountSwaggerVariables({ USER_ID: '42' }, [])
-
-    const block = document.querySelector('.opblock')!
-    const toolbar = block.querySelector('.oac-opblock-var-toolbar')!
-    expect(toolbar).toBeInTheDocument()
-    expect(toolbar.textContent).toContain('⚡ Variables (1)')
-
-    const input = block.querySelector<HTMLInputElement>('input.parameter')!
-    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
-
-    expect(input.value).toBe('{{USER_ID}}')
-    expect(textarea.value).toBe('{"assignee": "{{USER_ID}}"}')
-
-    // Click the "Resolve {{...}} in inputs" button
-    const resolveBtn = toolbar.querySelector<HTMLButtonElement>('.oac-resolve-btn')!
-    resolveBtn.click()
-
-    expect(input.value).toBe('42')
-    expect(textarea.value).toBe('{"assignee": "42"}')
-  })
-
-  it('auto-resolves placeholders in the block when native Execute button is clicked', () => {
-    document.body.innerHTML = opblockHtml('GET', '/users/{user_id}', '', '{{USER_ID}}')
-
-    handle = mountSwaggerVariables({ USER_ID: '99' }, [])
-
-    const block = document.querySelector('.opblock')!
-    const input = block.querySelector<HTMLInputElement>('input.parameter')!
-    expect(input.value).toBe('{{USER_ID}}')
-
-    const executeBtn = block.querySelector<HTMLButtonElement>('.btn.execute')!
-    executeBtn.click()
-
-    // Values should be resolved in-place before execution
-    expect(input.value).toBe('99')
-  })
-
-  it('triggers autocomplete popup when {{ is typed in a Swagger input', () => {
+  it('triggers autocomplete dropdown list when {{ is typed in a Swagger input', () => {
     document.body.innerHTML = opblockHtml('POST', '/items', '')
 
     handle = mountSwaggerVariables({ TOKEN: 'abc_secret', API_KEY: 'key_123' }, ['TOKEN'])
@@ -127,15 +87,53 @@ describe('swagger-variables (in-page Swagger UI integration)', () => {
     expect(popup.style.display).toBe('none')
   })
 
-  it('updates variable list and count dynamically', () => {
+  it('auto-resolves placeholders in the block when native Execute button is clicked', () => {
+    document.body.innerHTML = opblockHtml('GET', '/users/{user_id}', '', '{{USER_ID}}')
+
+    handle = mountSwaggerVariables({ USER_ID: '99' }, [])
+
+    const block = document.querySelector('.opblock')!
+    const input = block.querySelector<HTMLInputElement>('input.parameter')!
+    expect(input.value).toBe('{{USER_ID}}')
+
+    const executeBtn = block.querySelector<HTMLButtonElement>('.btn.execute')!
+    executeBtn.click()
+
+    // Values should be resolved in-place before execution
+    expect(input.value).toBe('99')
+  })
+
+  it('programmatically resolves placeholders in an operation block via resolveOperationInputs', () => {
+    document.body.innerHTML = opblockHtml('POST', '/tasks/{user_id}', '{"assignee": "{{USER_ID}}"}', '{{USER_ID}}')
+
+    handle = mountSwaggerVariables({ USER_ID: '42' }, [])
+
+    const block = document.querySelector('.opblock')!
+    const input = block.querySelector<HTMLInputElement>('input.parameter')!
+    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
+
+    expect(input.value).toBe('{{USER_ID}}')
+    expect(textarea.value).toBe('{"assignee": "{{USER_ID}}"}')
+
+    const count = handle.resolveOperationInputs(block)
+    expect(count).toBe(2)
+    expect(input.value).toBe('42')
+    expect(textarea.value).toBe('{"assignee": "42"}')
+  })
+
+  it('updates variable list dynamically for autocomplete', () => {
     document.body.innerHTML = opblockHtml('GET', '/test')
 
     handle = mountSwaggerVariables({ A: '1' }, [])
-    const block = document.querySelector('.opblock')!
-    const toolbar = block.querySelector('.oac-opblock-var-toolbar')!
-    expect(toolbar.textContent).toContain('⚡ Variables (1)')
+    handle.updateVariables({ A: '1', NEW_VAR: '2' }, [])
 
-    handle.updateVariables({ A: '1', B: '2', C: '3' }, [])
-    expect(toolbar.textContent).toContain('⚡ Variables (3)')
+    const block = document.querySelector('.opblock')!
+    const input = block.querySelector<HTMLInputElement>('input.parameter')!
+    input.value = '{{'
+    input.setSelectionRange(2, 2)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const host = document.getElementById('oac-swagger-var-autocomplete-host')!
+    expect(host.shadowRoot!.textContent).toContain('NEW_VAR')
   })
 })

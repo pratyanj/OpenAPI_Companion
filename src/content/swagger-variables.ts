@@ -2,10 +2,10 @@
  * Swagger UI Native Variables Integration (ISOLATED World).
  *
  * Provides:
- * 1. Live variable autocomplete (`{{`) inside Swagger UI inputs & textareas.
- * 2. An operation toolbar badge (`⚡ Variables`) with 1-click in-place input resolution.
- * 3. Pre-execution hook that resolves any remaining `{{...}}` in inputs before
- *    Swagger's Execute button triggers the network request.
+ * 1. Live variable autocomplete dropdown (`{{`) inside Swagger UI inputs & textareas
+ *    to make developers' daily testing easy.
+ * 2. Pre-execution hook that resolves any `{{...}}` placeholders in inputs before
+ *    Swagger's Execute button triggers the request.
  */
 import { setNativeValue } from '@/adapters/swagger/swagger-request-dom'
 import { substitute } from '@/modules/environment/env-service'
@@ -18,7 +18,6 @@ export interface SwaggerVariablesHandle {
 }
 
 const HOST_ID = 'oac-swagger-var-autocomplete-host'
-const TOOLBAR_CLASS = 'oac-opblock-var-toolbar'
 
 export function mountSwaggerVariables(
   initialVariables: Record<string, string> = {},
@@ -341,14 +340,13 @@ export function mountSwaggerVariables(
   }
 
   function onBlur(): void {
-    // Small timeout to allow mousedown on list item
     setTimeout(() => {
       closeAutocomplete()
     }, 150)
   }
 
   // ---------------------------------------------------------------------------
-  // In-Place Operation Variables Resolver
+  // In-Place Operation Variables Resolver (for Execute click or programmatic use)
   // ---------------------------------------------------------------------------
 
   function resolveOperationInputs(block: Element): number {
@@ -368,55 +366,6 @@ export function mountSwaggerVariables(
       }
     }
     return resolvedCount
-  }
-
-  // ---------------------------------------------------------------------------
-  // Swagger Operation Toolbar Injection ("⚡ Variables")
-  // ---------------------------------------------------------------------------
-
-  function injectOperationToolbars(): void {
-    const openBlocks = doc.querySelectorAll('.opblock.is-open')
-    for (const block of Array.from(openBlocks)) {
-      if (block.querySelector(`.${TOOLBAR_CLASS}`)) continue
-
-      const container =
-        block.querySelector('.opblock-section-header') ??
-        block.querySelector('.opblock-body') ??
-        block
-
-      const toolbar = doc.createElement('div')
-      toolbar.className = `${TOOLBAR_CLASS} oac-toolbar`
-      toolbar.style.cssText =
-        'display: inline-flex; align-items: center; gap: 8px; margin: 6px 0; padding: 4px 10px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; font-size: 12px; color: #2563eb;'
-
-      const count = Object.keys(activeVariables).length
-      toolbar.innerHTML = `
-        <span style="font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-          ⚡ Variables (${count})
-        </span>
-        <button type="button" class="oac-resolve-btn" style="background: #3b82f6; color: #ffffff; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 500; cursor: pointer;">
-          Resolve {{...}} in inputs
-        </button>
-      `
-
-      const btn = toolbar.querySelector<HTMLButtonElement>('.oac-resolve-btn')
-      if (btn) {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          const n = resolveOperationInputs(block)
-          const origText = btn.textContent
-          btn.textContent = n > 0 ? `✓ Resolved ${n} variable${n === 1 ? '' : 's'}` : 'No {{...}} in inputs'
-          btn.style.background = n > 0 ? '#10b981' : '#64748b'
-          setTimeout(() => {
-            btn.textContent = origText
-            btn.style.background = '#3b82f6'
-          }, 2000)
-        })
-      }
-
-      container.prepend(toolbar)
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -443,22 +392,10 @@ export function mountSwaggerVariables(
   window.addEventListener('scroll', updatePopupPosition, true)
   window.addEventListener('resize', updatePopupPosition)
 
-  // Watch for opened opblocks to inject toolbar
-  const observer = new MutationObserver(() => {
-    injectOperationToolbars()
-  })
-  observer.observe(doc.body, { childList: true, subtree: true })
-  injectOperationToolbars()
-
   return {
     updateVariables(vars: Record<string, string>, secrets: string[] = []): void {
       activeVariables = { ...vars }
       activeSecrets = [...secrets]
-      // Update count in visible toolbars
-      const count = Object.keys(activeVariables).length
-      doc.querySelectorAll(`.${TOOLBAR_CLASS} span`).forEach((el) => {
-        el.textContent = `⚡ Variables (${count})`
-      })
     },
     resolveOperationInputs,
     dispose(): void {
@@ -468,11 +405,9 @@ export function mountSwaggerVariables(
       doc.removeEventListener('click', onExecuteClick, true)
       window.removeEventListener('scroll', updatePopupPosition, true)
       window.removeEventListener('resize', updatePopupPosition)
-      observer.disconnect()
       if (host && host.parentNode) {
         host.parentNode.removeChild(host)
       }
-      doc.querySelectorAll(`.${TOOLBAR_CLASS}`).forEach((el) => el.remove())
     },
   }
 }

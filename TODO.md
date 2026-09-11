@@ -25,7 +25,6 @@
   - **Dual-Layer Architecture**:
     - **Interactive DOM Layer (`swagger-variables.ts`)**:
       - Live autocomplete popup in Shadow DOM triggered by typing `{{` in any Swagger UI input/textarea with keyboard navigation (<kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Enter</kbd>, <kbd>Tab</kbd>, <kbd>Esc</kbd>) for project variables and dynamic variables (`{{$uuid}}`, `{{$timestamp}}`, etc.).
-      - Injected `⚡ Variables (N active)` toolbar in open operation blocks with 1-click **"Resolve {{...}} in inputs"** button.
       - Auto-resolves inputs in-place on native `.btn.execute` click via `setNativeValue` so Swagger's form state updates before execution.
     - **Network Interceptor Layer (`main-world.ts`)**:
       - Hooks `window.fetch`, `XMLHttpRequest`, and Swagger UI's `requestInterceptor` in the MAIN execution world.

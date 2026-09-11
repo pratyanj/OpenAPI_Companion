@@ -16,10 +16,7 @@ Developers can now use their Project Variables (and dynamic variables like `{{$u
     - <kbd>Enter</kbd> or <kbd>Tab</kbd> to insert the selected variable (`{{NAME}}`).
     - <kbd>Escape</kbd> to dismiss.
   - Automatically invokes `setNativeValue` to dispatch React synthetic input events, ensuring Swagger UI's internal state updates immediately.
-- **Operation Toolbar (`⚡ Variables`)**:
-  - Injected inside open operation blocks (`.opblock.is-open`).
-  - Displays the active variable count: `⚡ Variables (N)`.
-  - Includes a 1-click **"Resolve {{...}} in inputs"** button that scans all parameter inputs and body textareas in the current operation, replaces all placeholders in-place with their resolved values, and provides instant visual feedback (`✓ Resolved N variables`).
+*(Note: Per user feedback, the in-block operation toolbar pill was removed to keep the Swagger UI clean and non-intrusive. Developers access variables directly via the `{{` dropdown list in input fields).*
 - **Pre-Execution Resolution**:
   - Automatically intercepts clicks on Swagger UI's native **Execute** button (`.btn.execute`) to resolve any remaining placeholders in the form inputs prior to execution.
 
