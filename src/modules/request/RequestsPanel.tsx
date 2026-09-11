@@ -165,7 +165,16 @@ export function RequestsPanel({
     }
   }, [service])
 
-  const activeOpenWithBody = openRequests.find((r) => r.body != null && r.body.trim() !== '')
+  const activeOpenRequest = useMemo(() => {
+    return (
+      openRequests.find(
+        (r) =>
+          (r.body != null && r.body.trim() !== '') ||
+          (r.path && Object.keys(r.path).length > 0) ||
+          (r.query && Object.keys(r.query).length > 0),
+      ) || openRequests[0]
+    )
+  }, [openRequests])
 
   // Filtered templates
   const filteredTemplates = useMemo(() => {
@@ -236,7 +245,7 @@ export function RequestsPanel({
     if (!trimmed) return
     const result = await service.saveOpenAsTemplate(trimmed, environmentId)
     if (result.ok && result.value === null) {
-      setCaptureHint('Open a request and enter a body in Swagger first.')
+      setCaptureHint('Click "Try it out" on an operation in Swagger first.')
       return
     }
     if (!result.ok) {
@@ -310,9 +319,11 @@ export function RequestsPanel({
             setIsCapturing(!isCapturing)
             setCaptureHint(null)
           }}
+          title="Capture active open endpoint from Swagger page"
+          aria-label="Capture live"
         >
           <ZapIcon className="h-3.5 w-3.5 text-amber-500" />
-          <span>Capture open</span>
+          <span>Capture live</span>
         </Button>
       </div>
 
@@ -322,7 +333,7 @@ export function RequestsPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
               <ZapIcon className="h-3.5 w-3.5 text-amber-500" />
-              <span>Capture Live Request Body</span>
+              <span>Capture Live Endpoint</span>
             </div>
             <button
               type="button"
@@ -337,16 +348,27 @@ export function RequestsPanel({
             </button>
           </div>
 
-          {activeOpenWithBody ? (
-            <p className="text-[11px] text-muted">
-              Found open payload for{' '}
-              <span className="font-mono font-medium text-text">
-                {activeOpenWithBody.endpointId}
-              </span>
-            </p>
+          {activeOpenRequest ? (
+            <div className="flex flex-col gap-0.5">
+              <p className="text-[11px] text-muted">
+                Found open endpoint:{' '}
+                <span className="font-mono font-medium text-text">
+                  {activeOpenRequest.endpointId}
+                </span>
+              </p>
+              <div className="flex items-center gap-2 text-[10px] text-muted">
+                {activeOpenRequest.path && Object.keys(activeOpenRequest.path).length > 0 ? (
+                  <span>{Object.keys(activeOpenRequest.path).length} path param(s)</span>
+                ) : null}
+                {activeOpenRequest.query && Object.keys(activeOpenRequest.query).length > 0 ? (
+                  <span>{Object.keys(activeOpenRequest.query).length} query param(s)</span>
+                ) : null}
+                {activeOpenRequest.body ? <span>Has request body</span> : null}
+              </div>
+            </div>
           ) : (
             <p className="text-[11px] text-muted">
-              Captures the request body from whichever Swagger operation is currently open.
+              Click &quot;Try it out&quot; on any operation in Swagger to capture its path, query, or body parameters.
             </p>
           )}
 
@@ -359,7 +381,7 @@ export function RequestsPanel({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleSaveCapture()
               }}
-              placeholder="Preset name (e.g. Admin Payload)…"
+              placeholder="Preset name (e.g. Add Label to Task)..."
               className="flex-1 text-xs"
             />
             <Button

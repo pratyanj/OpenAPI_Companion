@@ -1,3 +1,25 @@
+
+## 🎯 Today's Action Items & Bugs (V1.1.5 Sprint)
+
+- [x] **1. 🐛 Fix Request Capture for No-Body Endpoints (Path/Query Only) & Rename to "Capture Live"**
+  - **Issue**: In Requests tab, "Capture Open" button fails to capture endpoints that have only path parameters and query parameters with no JSON request body (e.g. `POST /tasks/{task_id}/labels/{label_id}`).
+  - **Fix**: Update capture parser to extract path parameters from Swagger inputs (`input[data-param-name]`) and query parameters even when no body schema exists.
+  - **UI**: Rename button from `"Capture Open"` to `"Capture Live"` with live sync icon and informative tooltip.
+
+- [ ] **2. 🔐 Protected Backup Export & Restore with Passphrase Encryption (AES-GCM)**
+  - **Issue**: Backups currently either expose stored credentials in plain text or warn users not to share them.
+  - **Feature**: Add optional passphrase encryption using Web Crypto (`AES-GCM` + `PBKDF2`).
+  - **Export**: Prompt user for an optional passphrase to encrypt auth passwords, tokens, and secret variables.
+  - **Import**: Automatically detect encrypted bundle and prompt for passphrase to decrypt and restore credentials safely.
+
+- [ ] **3. ⚡ Debounced Variable Autosave (Stop saving on every single keystroke)**
+  - **Issue**: In the variable editor, saving triggers on every single keypress, causing storage churn, re-renders, and partial saves (e.g. "p", "pa", "pas").
+  - **Fix**: Update input handling to keep local React state immediate for typing, but debounce the persistent storage write (300ms-500ms debounce or save on blur/Enter) with visual "Saved" indicator.
+
+- [ ] **4. 🚀 Direct Variable Resolution inside Native Swagger UI (`{{variable}}`)**
+  - **Feature**: Allow developers to type `{{variable}}` placeholders directly into Swagger UI inputs on the webpage.
+  - **Implementation**: Hook the content script / main-world fetch/execute interceptor to resolve active environment variables (e.g. `{{token}}`, `{{taskId}}`, `{{baseUrl}}`) directly when executing requests from Swagger UI.
+
 # TODO — Open Action Items
 
 > Running tracker for OpenAPI Companion. Checked items are done; unchecked need action. Last updated: 2026-07-01.

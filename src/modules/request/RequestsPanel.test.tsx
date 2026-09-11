@@ -67,9 +67,9 @@ describe('RequestsPanel', () => {
     await screen.findByText('No request presets yet')
 
     // Click "Capture open" button
-    fireEvent.click(screen.getByRole('button', { name: /Capture open/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Capture live/i }))
 
-    expect(screen.getByText(/Found open payload for/i)).toBeInTheDocument()
+    expect(screen.getByText(/Found open endpoint:/i)).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText(/Preset name/i), {
       target: { value: 'Captured Preset' },
