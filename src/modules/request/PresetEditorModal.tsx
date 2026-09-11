@@ -403,12 +403,48 @@ export function PresetEditorModal({
     }
   }
 
+  const actionButtons = (
+    <div className="flex items-center gap-2 mr-1">
+      {template ? (
+        <>
+          <Button
+            variant="secondary"
+            className="py-1 px-2.5 text-xs font-medium"
+            onClick={() => void handleSave(true)}
+            disabled={isSaving}
+            title="Save as a new preset with these values for this endpoint instead of overwriting"
+          >
+            + Save as New Preset
+          </Button>
+          <Button
+            variant="primary"
+            className="py-1 px-2.5 text-xs font-medium"
+            onClick={() => void handleSave(false)}
+            disabled={isSaving}
+          >
+            {isSaving ? <Spinner className="h-3.5 w-3.5" /> : 'Save Changes'}
+          </Button>
+        </>
+      ) : (
+        <Button
+          variant="primary"
+          className="py-1 px-2.5 text-xs font-medium"
+          onClick={() => void handleSave(false)}
+          disabled={isSaving}
+        >
+          {isSaving ? <Spinner className="h-3.5 w-3.5" /> : 'Create Preset'}
+        </Button>
+      )}
+    </div>
+  )
+
   return (
     <Dialog
       title={template ? 'Edit Request Preset' : 'Create Request Preset'}
       onClose={onClose}
       size="xl"
       align="top"
+      actions={actionButtons}
     >
       <div className="flex flex-col gap-4">
         {/* Warning / Error Alert */}
@@ -712,38 +748,7 @@ export function PresetEditorModal({
           </div>
         )}
 
-        {/* ── Dialog Actions Footer ── */}
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <Button variant="ghost" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-
-          <div className="flex items-center gap-2">
-            {template ? (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => void handleSave(true)}
-                  disabled={isSaving}
-                  title="Save as a new preset with these values for this endpoint instead of overwriting"
-                >
-                  + Save as New Preset
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => void handleSave(false)}
-                  disabled={isSaving}
-                >
-                  {isSaving ? <Spinner className="h-4 w-4" /> : 'Save Changes'}
-                </Button>
-              </>
-            ) : (
-              <Button variant="primary" onClick={() => void handleSave(false)} disabled={isSaving}>
-                {isSaving ? <Spinner className="h-4 w-4" /> : 'Create Preset'}
-              </Button>
-            )}
-          </div>
-        </div>
+        
       </div>
     </Dialog>
   )
