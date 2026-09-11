@@ -6,6 +6,7 @@ import {
   IconButton,
   Badge,
   VariableTextarea,
+  VariableInput,
   EyeIcon,
   Spinner,
   PlusIcon,
@@ -503,7 +504,7 @@ export function PresetEditorModal({
                     <span className="font-semibold text-primary">{`{${paramName}}`}</span>
                     <span className="text-danger">*</span>
                   </label>
-                  <Input
+                  <VariableInput
                     id={`param-${paramName}`}
                     value={pathParams[paramName] ?? ''}
                     onChange={(e) => {
@@ -511,6 +512,8 @@ export function PresetEditorModal({
                       setPathParams((prev) => ({ ...prev, [paramName]: val }))
                       setError(null)
                     }}
+                    projectVariables={projectVars}
+                    projectSecrets={projectSecrets}
                     placeholder={`e.g. 101 or {{${paramName.toUpperCase()}}}`}
                     error={
                       pathTouched && !pathParams[paramName]?.trim()
@@ -529,6 +532,9 @@ export function PresetEditorModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-text">Query Parameters</span>
+                <span className="text-[10px] text-muted">
+                  (Type <code className="font-mono text-primary font-semibold">{`{{`}</code> for variables)
+                </span>
               {queryParams.filter((q) => q.key.trim()).length > 0 && (
                 <Badge kind="info">{queryParams.filter((q) => q.key.trim()).length} set</Badge>
               )}
@@ -572,7 +578,7 @@ export function PresetEditorModal({
                     />
                   </div>
                   <div className="flex-1">
-                    <Input
+                    <VariableInput
                       value={qp.value}
                       onChange={(e) => {
                         const newVal = e.target.value
@@ -580,6 +586,8 @@ export function PresetEditorModal({
                           prev.map((item, i) => (i === idx ? { ...item, value: newVal } : item)),
                         )
                       }}
+                      projectVariables={projectVars}
+                      projectSecrets={projectSecrets}
                       placeholder="Value or {{VARIABLE}}"
                       aria-label={`Query parameter ${idx + 1} value`}
                     />

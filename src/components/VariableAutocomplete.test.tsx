@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { VariableTextarea } from './VariableAutocomplete'
+import { VariableTextarea, VariableInput } from './VariableAutocomplete'
 
 describe('VariableTextarea', () => {
   it('renders textarea with standard attributes', () => {
@@ -98,5 +98,85 @@ describe('VariableTextarea', () => {
 
     fireEvent.keyDown(textarea, { key: 'ArrowUp' })
     expect(options[0]).toHaveAttribute('aria-selected', 'true')
+  })
+})
+
+
+describe('VariableInput', () => {
+  it('renders input with standard attributes', () => {
+    render(
+      <VariableInput id="test-input" placeholder="Value or {{VARIABLE}}" defaultValue="123" />,
+    )
+    const input = screen.getByPlaceholderText('Value or {{VARIABLE}}')
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveValue('123')
+  })
+
+  it('triggers autocomplete menu when typing {{', () => {
+    const projectVariables = { USER_ID: '42', API_KEY: 'secret' }
+    const projectSecrets = ['API_KEY']
+
+    render(
+      <VariableInput
+        projectVariables={projectVariables}
+        projectSecrets={projectSecrets}
+        placeholder="Parameter value"
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('Parameter value')
+    fireEvent.change(input, { target: { value: '{{' } })
+
+    expect(screen.getByRole('listbox', { name: 'Variable suggestions' })).toBeInTheDocument()
+    expect(screen.getByText('Project Variables')).toBeInTheDocument()
+    expect(screen.getByText('{{USER_ID}}')).toBeInTheDocument()
+    expect(screen.getByText('{{API_KEY}}')).toBeInTheDocument()
+    expect(screen.getByText('{{$uuid}}')).toBeInTheDocument()
+  })
+
+  it('filters suggestions when typing query after {{ in input', () => {
+    const projectVariables = { USER_ID: '42', TOKEN: 'xyz' }
+
+    render(<VariableInput projectVariables={projectVariables} placeholder="Parameter value" />)
+
+    const input = screen.getByPlaceholderText('Parameter value')
+    fireEvent.change(input, { target: { value: '{{us' } })
+
+    expect(screen.getByText('{{USER_ID}}')).toBeInTheDocument()
+    expect(screen.queryByText('{{TOKEN}}')).not.toBeInTheDocument()
+  })
+
+  it('inserts selected suggestion on click in input', () => {
+    const projectVariables = { TASK_ID: 'tsk_99' }
+    const onChange = vi.fn()
+
+    render(
+      <VariableInput
+        projectVariables={projectVariables}
+        placeholder="Parameter value"
+        onChange={onChange}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('Parameter value')
+    fireEvent.change(input, { target: { value: '{{' } })
+
+    const option = screen.getByText('{{TASK_ID}}')
+    fireEvent.click(option)
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('closes menu on Escape in input', () => {
+    const projectVariables = { TOKEN: 'xyz' }
+
+    render(<VariableInput projectVariables={projectVariables} placeholder="Parameter value" />)
+
+    const input = screen.getByPlaceholderText('Parameter value')
+    fireEvent.change(input, { target: { value: '{{' } })
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 })
