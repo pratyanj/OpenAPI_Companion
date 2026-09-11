@@ -6,12 +6,11 @@
   - **Fix**: Update capture parser to extract path parameters from Swagger inputs (`input[data-param-name]`) and query parameters even when no body schema exists.
   - **UI**: Rename button from `"Capture Open"` to `"Capture Live"` with live sync icon and informative tooltip.
 
-- [ ] **2. 🔐 Protected Backup Export & Restore with Passphrase Encryption (AES-GCM)**
-  - **Issue**: Backups currently either expose stored credentials in plain text or warn users not to share them.
-  - **Feature**: Add optional passphrase encryption using Web Crypto (`AES-GCM` + `PBKDF2`).
-  - **Export**: Prompt user for an optional passphrase to encrypt auth passwords, tokens, and secret variables.
-  - **Import**: Automatically detect encrypted bundle and prompt for passphrase to decrypt and restore credentials safely.
-
+- [x] **2. Protected Backup Export & Restore with Passphrase Encryption (AES-GCM)**
+  - **Issue**: Backups previously either exposed credentials in plain text or redacted passwords to prevent leaks, preventing teammates from sharing credentials in backups.
+  - **Feature**: Added optional passphrase encryption using Web Crypto (`AES-GCM` 256-bit + `PBKDF2` 100,000 iterations).
+  - **Export**: Entering a passphrase preserves account passwords (`login.password`) and encrypts the entire backup bundle. Leaving it empty preserves safe redacted export.
+  - **Import / Restore**: Automatically detects encrypted backup bundles and prompts for the passphrase to decrypt credentials, preview contents, and restore safely (**601 tests passed**).
 - [ ] **3. ⚡ Debounced Variable Autosave (Stop saving on every single keystroke)**
   - **Issue**: In the variable editor, saving triggers on every single keypress, causing storage churn, re-renders, and partial saves (e.g. "p", "pa", "pas").
   - **Fix**: Update input handling to keep local React state immediate for typing, but debounce the persistent storage write (300ms-500ms debounce or save on blur/Enter) with visual "Saved" indicator.

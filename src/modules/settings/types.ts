@@ -53,4 +53,8 @@ export interface ImportPreview {
   projectCount: number
   /** True if the bundle carries authentication credentials. */
   containsSecrets: boolean
+  /** True if this preview was decrypted from a passphrase-protected backup. */
+  isEncrypted?: boolean
 }
+
+export type { EncryptedCryptoMetadata, EncryptedExportBundle } from '@/utils/crypto-backup'
