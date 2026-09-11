@@ -84,4 +84,26 @@ describe('SettingsService storage management', () => {
     expect(all.ok && all.value).toEqual([])
     expect(reset).toHaveBeenCalled()
   })
-})
+  it('reports project metadata when available', async () => {
+    const { service, storage } = setup()
+    await seed(storage)
+    await storage.set(
+      projectKey('p1', 'metadata'),
+      {
+        id: 'p1',
+        name: 'TaskUp API',
+        originUrl: 'http://localhost:8008',
+        openApiUrl: 'http://localhost:8008/openapi.json',
+        docType: 'swagger',
+        createdAt: 1,
+        lastActiveEnvId: 'default',
+      },
+      { immediate: true },
+    )
+    const metrics = await service.getStorageMetrics()
+    const p1Metric = metrics.projects.find((p) => p.projectId === 'p1')
+    expect(p1Metric?.name).toBe('TaskUp API')
+    expect(p1Metric?.originUrl).toBe('http://localhost:8008')
+    expect(p1Metric?.openApiUrl).toBe('http://localhost:8008/openapi.json')
+  })
+});

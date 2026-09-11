@@ -14,9 +14,19 @@ export const DEFAULT_PREFERENCES: Preferences = {
 }
 
 /** Per-project storage usage, plus the grand total. */
+/** Per-project storage metric including metadata. */
+export interface ProjectStorageMetric {
+  projectId: string
+  name?: string
+  originUrl?: string
+  openApiUrl?: string
+  bytes: number
+}
+
+/** Per-project storage usage, plus the grand total. */
 export interface StorageMetrics {
   totalBytes: number
-  projects: { projectId: string; bytes: number }[]
+  projects: ProjectStorageMetric[]
 }
 
 /** The on-disk shape of an exported backup file. */

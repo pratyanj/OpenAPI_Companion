@@ -4,7 +4,7 @@ import type { EventBus, ImportSummary } from '@/core/events'
 import { useTheme } from '@/hooks'
 import type { ThemeManager, ThemePreference } from '@/services'
 import { APP_NAME, APP_VERSION } from '@/constants'
-import { Badge, Button, Dialog } from '@/components'
+import { Badge, Button, Dialog, DeleteIcon, ExternalLinkIcon } from '@/components'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type { ImportMode, ImportPreview, Preferences, StorageMetrics } from './types'
@@ -49,7 +49,8 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
   const { preference } = useTheme(theme)
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null)
-  const [confirm, setConfirm] = useState<'project' | 'all' | null>(null)
+  type ConfirmTarget = 'project' | 'all' | { type: 'single'; projectId: string; name?: string }
+  const [confirm, setConfirm] = useState<ConfirmTarget | null>(null)
   const [importText, setImportText] = useState('')
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
   const [importMode, setImportMode] = useState<ImportMode>('skip')
@@ -80,6 +81,12 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
     if (which === 'project' && projectId) {
       const r = await settings.clearProject(projectId)
       notify(r.ok ? 'success' : 'error', r.ok ? `Cleared ${r.value} entries.` : r.error.message)
+    } else if (typeof which === 'object' && which?.type === 'single') {
+      const r = await settings.clearProject(which.projectId)
+      notify(
+        r.ok ? 'success' : 'error',
+        r.ok ? `Cleared ${r.value} entries for ${which.name || which.projectId}.` : r.error.message,
+      )
     } else if (which === 'all') {
       const r = await settings.clearAll()
       notify(
@@ -88,6 +95,18 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
       )
     }
     await loadMetrics()
+  }
+
+  const openUrl = (url: string) => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.tabs && typeof chrome.tabs.create === 'function') {
+        void chrome.tabs.create({ url })
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
   }
 
   const backup = async () => {
@@ -157,18 +176,65 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
 
       <Section title="Storage">
         <div className="rounded-md border border-border">
-          <div className="flex items-center justify-between border-b border-border px-2 py-1">
-            <span className="text-muted">Total used</span>
-            <span className="font-mono text-text">
+          <div className="flex items-center justify-between border-b border-border px-2 py-1.5 bg-surface/50">
+            <span className="text-muted font-medium">Total used</span>
+            <span className="font-mono text-text font-semibold">
               {metrics ? formatBytes(metrics.totalBytes) : '…'}
             </span>
           </div>
-          {metrics?.projects.map((p) => (
-            <div key={p.projectId} className="flex items-center justify-between px-2 py-1">
-              <span className="truncate font-mono text-[11px] text-muted">{p.projectId}</span>
-              <span className="font-mono text-text">{formatBytes(p.bytes)}</span>
-            </div>
-          ))}
+          <div className="max-h-36 overflow-y-auto divide-y divide-border/50">
+            {metrics?.projects.map((p) => {
+              const displayName = p.name || p.originUrl || p.projectId
+              const targetUrl = p.originUrl || p.openApiUrl
+              return (
+                <div
+                  key={p.projectId}
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 hover:bg-surface/30 transition-colors"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate font-medium text-text text-[11px]" title={displayName}>
+                        {displayName}
+                      </span>
+                      {targetUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => openUrl(targetUrl)}
+                          title={`Open ${targetUrl} in a new tab`}
+                          aria-label={`Open ${displayName} in new tab`}
+                          className="inline-flex items-center text-muted hover:text-primary transition-colors p-0.5 rounded"
+                        >
+                          <ExternalLinkIcon className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                    {p.originUrl ? (
+                      <span className="truncate font-mono text-[10px] text-muted" title={p.originUrl}>
+                        {p.originUrl}
+                      </span>
+                    ) : (
+                      <span className="truncate font-mono text-[10px] text-muted/70">
+                        {p.projectId}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono text-[11px] text-text">{formatBytes(p.bytes)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirm({ type: 'single', projectId: p.projectId, name: p.name })}
+                      title={`Clear data for ${displayName}`}
+                      aria-label={`Clear data for ${displayName}`}
+                      className="p-1 text-muted hover:text-danger rounded hover:bg-surface transition-colors"
+                    >
+                      <DeleteIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {projectId ? (
@@ -295,7 +361,9 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
             <p className="text-text">
               {confirm === 'all'
                 ? 'This permanently deletes ALL OpenAPI Companion data (settings, every project, history, auth). This cannot be undone.'
-                : 'This permanently deletes all saved data for the current project. This cannot be undone.'}
+                : typeof confirm === 'object' && confirm.type === 'single'
+                  ? `This permanently deletes all saved data for ${confirm.name || confirm.projectId}. This cannot be undone.`
+                  : 'This permanently deletes all saved data for the current project. This cannot be undone.'}
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirm(null)}>

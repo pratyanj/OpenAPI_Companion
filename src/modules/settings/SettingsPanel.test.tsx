@@ -120,4 +120,51 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     await waitFor(() => expect(io.applyImport).toHaveBeenCalledWith('{"backup":true}', 'skip'))
   })
-})
+  it('renders human-readable project details and opens external link', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const settings = mockSettings({
+      getStorageMetrics: vi.fn(async () => ({
+        totalBytes: 2048,
+        projects: [
+          {
+            projectId: 'p1',
+            name: 'TaskUp API',
+            originUrl: 'http://localhost:8008',
+            openApiUrl: 'http://localhost:8008/openapi.json',
+            bytes: 1024,
+          },
+        ],
+      })),
+    })
+    renderPanel(settings)
+    expect(await screen.findByText('TaskUp API')).toBeInTheDocument()
+    expect(screen.getByText('http://localhost:8008')).toBeInTheDocument()
+    const linkBtn = screen.getByRole('button', { name: 'Open TaskUp API in new tab' })
+    fireEvent.click(linkBtn)
+    expect(openSpy).toHaveBeenCalledWith('http://localhost:8008', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
+  })
+
+  it('allows clearing an individual project from the storage list', async () => {
+    const settings = mockSettings({
+      getStorageMetrics: vi.fn(async () => ({
+        totalBytes: 2048,
+        projects: [
+          {
+            projectId: 'p1',
+            name: 'TaskUp API',
+            originUrl: 'http://localhost:8008',
+            bytes: 1024,
+          },
+        ],
+      })),
+    })
+    renderPanel(settings)
+    const deleteBtn = await screen.findByRole('button', { name: 'Clear data for TaskUp API' })
+    fireEvent.click(deleteBtn)
+    expect(await screen.findByRole('dialog', { name: 'Please confirm' })).toBeInTheDocument()
+    expect(screen.getByText(/permanently deletes all saved data for TaskUp API/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(settings.clearProject).toHaveBeenCalledWith('p1'))
+  })
+});

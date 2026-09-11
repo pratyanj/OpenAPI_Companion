@@ -1,5 +1,6 @@
 import { ok, type Result } from '@/types'
-import { settingsKey, projectPrefix, type StorageService } from '@/core/storage'
+import { settingsKey, projectPrefix, projectKey, type StorageService } from '@/core/storage'
+import type { ProjectMeta } from '@/core/project'
 import { STORAGE_ROOTS } from '@/constants'
 import type { EventBus } from '@/core/events'
 import { DEFAULT_PREFERENCES, type Preferences, type StorageMetrics } from './types'
@@ -72,7 +73,15 @@ export class SettingsService implements SettingsApi {
     const projects: StorageMetrics['projects'] = []
     for (const id of ids) {
       const bytes = await this.storage.getBytesInUse(projectPrefix(id))
-      projects.push({ projectId: id, bytes: bytes.ok ? bytes.value : 0 })
+      const meta = await this.storage.getData<ProjectMeta>(projectKey(id, 'metadata'))
+      const metaData = meta.ok && meta.value ? meta.value : undefined
+      projects.push({
+        projectId: id,
+        name: metaData?.name,
+        originUrl: metaData?.originUrl,
+        openApiUrl: metaData?.openApiUrl,
+        bytes: bytes.ok ? bytes.value : 0,
+      })
     }
     projects.sort((a, b) => b.bytes - a.bytes)
     return { totalBytes: total.ok ? total.value : 0, projects }
