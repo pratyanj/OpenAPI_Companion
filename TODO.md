@@ -11,14 +11,14 @@
   - **Feature**: Added optional passphrase encryption using Web Crypto (`AES-GCM` 256-bit + `PBKDF2` 100,000 iterations).
   - **Export**: Entering a passphrase preserves account passwords (`login.password`) and encrypts the entire backup bundle. Leaving it empty preserves safe redacted export.
   - **Import / Restore**: Automatically detects encrypted backup bundles and prompts for the passphrase to decrypt credentials, preview contents, and restore safely (**601 tests passed**).
-- [ ] **3. ⚡ Debounced Variable Autosave (Stop saving on every single keystroke)**
-  - **Issue**: In the variable editor, saving triggers on every single keypress, causing storage churn, re-renders, and partial saves (e.g. "p", "pa", "pas").
-  - **Fix**: Update input handling to keep local React state immediate for typing, but debounce the persistent storage write (300ms-500ms debounce or save on blur/Enter) with visual "Saved" indicator.
-
-- [x] **5. Variable Suggestions for Query & Path Parameters in Preset Editor**
-  - **Issue**: When adding or editing a request preset, query parameter values and path parameter inputs allowed typing `{{VAR}}` but did not show autocomplete suggestions for listed project or dynamic variables.
-  - **Fix**: Created `VariableInput` component with full `{{` autocomplete dropdown, keyboard navigation (ArrowUp, ArrowDown, Enter, Tab, Escape), variable preview, and secret masking badges.
-  - **UI**: Integrated `VariableInput` for both Query Parameter values and Path Parameter inputs in `PresetEditorModal.tsx` and exported it in components library with full unit test coverage (**591 tests passed**).
+- [x] **3. ⚡ Debounced Variable Autosave (Smooth Typing, No Per-Keystroke Storage Churn)**
+  - **Issue**: Previously, in the project variable editor, typing immediately set the saving spinner and queued rapid storage writes on every keystroke, causing UI flicker, partial saves ("p", "pa", "pas"), and race conditions when self-published `ENVIRONMENT_CHANGED` events triggered reloads mid-typing.
+  - **Fix**:
+    - Removed premature `setSaving(true)` on keydown so typing is completely smooth and fluid without spinner flickering.
+    - Added a 450ms debounce timer that automatically resets on each keystroke, saving only when the user finishes typing.
+    - Added instant flush on `onBlur` and <kbd>Enter</kbd> (`handleKeyDown`) on both variable name and value fields in Table mode and Raw `.env` editor.
+    - Added `isLocalSavingRef` to ignore self-emitted `ENVIRONMENT_CHANGED` events during local saves, preventing inputs from resetting mid-keystroke.
+    - Enhanced visual feedback: displays subtle spinner only during actual background persistence, followed by a reassuring green `Saved ✓` badge for 2 seconds (**601 tests passed**).
 
 - [ ] **4. 🚀 Direct Variable Resolution inside Native Swagger UI (`{{variable}}`)**
   - **Feature**: Allow developers to type `{{variable}}` placeholders directly into Swagger UI inputs on the webpage.
