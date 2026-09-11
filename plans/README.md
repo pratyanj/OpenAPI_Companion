@@ -16,4 +16,5 @@ plans/YYYY-MM-DD_<feature_name>.md
 | Date | Plan File | Feature Area | Status |
 |---|---|---|---|
 | 2026-09-05 | [`2026-09-05_project_variables_automation_phase_c.md`](./2026-09-05_project_variables_automation_phase_c.md) | Project Variables Phase C: Zero-Click Auto-Extraction & In-Page Swagger Overlay | **Completed & Shipped** |
-| 2026-09-06 | [`2026-09-06_workflow_runner_v1_2.md`](./2026-09-06_workflow_runner_v1_2.md) | Workflow Runner: Sequential API Automation & Auto-Extraction Chaining | **Current / In-Progress** |
+| 2026-09-06 | [`2026-09-06_workflow_runner_v1_2.md`](./2026-09-06_workflow_runner_v1_2.md) | Workflow Runner: Sequential API Automation & Auto-Extraction Chaining | **Completed & Shipped** |
+| 2026-09-07 | [`2026-09-07_readme_workflows_and_environments.md`](./2026-09-07_readme_workflows_and_environments.md) | Documentation: Workflows & Environments Overhaul | **Current / In-Progress** |

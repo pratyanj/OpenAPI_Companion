@@ -13,6 +13,7 @@ import { HistoryPanel, type HistoryPanelService } from '@/modules/history'
 import { FakeDataPanel, type FakeDataPanelService } from '@/modules/fake-data'
 import { SettingsPanel, type SettingsApi, type ImportExportApi } from '@/modules/settings'
 import { CollectionsPanel, type CollectionsPanelService } from '@/modules/collections'
+import { WorkflowsPanel, type WorkflowsPanelService } from '@/modules/workflows'
 import { Dashboard, type DocStats } from './Dashboard'
 
 /**
@@ -25,6 +26,7 @@ const PLACEHOLDERS: Record<string, { title: string; message: string }> = {
   environments: { title: 'Variables', message: 'Not connected to the page yet.' },
   history: { title: 'API History', message: 'Not connected to the page yet.' },
   collections: { title: 'Collections', message: 'Not connected to the page yet.' },
+  workflows: { title: 'Workflows', message: 'Not connected to the page yet.' },
 }
 
 /** Shown when the rich dashboard can't be built (no services / no project). */
@@ -39,7 +41,11 @@ function BasicHome({ project }: { project: ProjectMeta | null }) {
 }
 
 import type { Result } from '@/types'
-import type { ExtractionRuleModalOpenOptions } from '@/sidepanel/bridge'
+import type {
+  ExtractionRuleModalOpenOptions,
+  WorkflowEditorBridgeOpenOptions,
+  WorkflowRunnerBridgeOpenOptions,
+} from '@/sidepanel/bridge'
 
 interface PanelOutletProps {
   activeTab: string
@@ -51,6 +57,7 @@ interface PanelOutletProps {
   historyService?: HistoryPanelService
   fakeDataService?: FakeDataPanelService
   collectionsService?: CollectionsPanelService
+  workflowsService?: WorkflowsPanelService
   settingsService?: SettingsApi
   importExportService?: ImportExportApi
   theme?: ThemeManager
@@ -65,6 +72,10 @@ interface PanelOutletProps {
   onOpenExtractionRuleModal?: (
     options?: ExtractionRuleModalOpenOptions,
   ) => Promise<Result<void>> | Result<void> | void
+  /** Opens the in-page workflow editor overlay. */
+  onOpenWorkflowEditor?: (options?: WorkflowEditorBridgeOpenOptions) => void
+  /** Opens the in-page workflow runner overlay. */
+  onOpenWorkflowRunner?: (options: WorkflowRunnerBridgeOpenOptions) => void
   /** Tab switcher, so the dashboard can link into the other panels. */
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
@@ -81,6 +92,7 @@ export function PanelOutlet({
   historyService,
   fakeDataService,
   collectionsService,
+  workflowsService,
   settingsService,
   importExportService,
   theme,
@@ -89,6 +101,8 @@ export function PanelOutlet({
   onOpenPresetEditor,
   onOpenHistoryDetail,
   onOpenExtractionRuleModal,
+  onOpenWorkflowEditor,
+  onOpenWorkflowRunner: _onOpenWorkflowRunner,
   onNavigate,
   swagger,
 }: PanelOutletProps) {
@@ -177,6 +191,20 @@ export function PanelOutlet({
 
   if (activeTab === 'collections' && collectionsService && bus) {
     return <CollectionsPanel service={collectionsService} bus={bus} />
+  }
+
+  if (activeTab === 'workflows' && workflowsService && bus) {
+    return (
+      <WorkflowsPanel
+        service={workflowsService}
+        requestService={requestService}
+        environmentService={environmentService}
+        bus={bus}
+        environmentId={environmentId}
+        endpoints={requestService?.listEndpoints?.() ?? []}
+        onOpenWorkflowEditor={onOpenWorkflowEditor}
+      />
+    )
   }
 
   if (activeTab === 'settings' && settingsService && importExportService && theme && bus) {

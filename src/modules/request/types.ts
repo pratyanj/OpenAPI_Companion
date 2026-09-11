@@ -57,6 +57,11 @@ export interface RequestPanelService {
     path?: Record<string, string>
     query?: Record<string, string>
   }
+  getSwaggerDefaultsAsync?(endpointId: string): Promise<{
+    exampleBody?: string
+    path?: Record<string, string>
+    query?: Record<string, string>
+  }>
 }
 
 export const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const

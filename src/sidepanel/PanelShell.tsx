@@ -19,11 +19,16 @@ import type { HistoryPanelService } from '@/modules/history'
 import type { FakeDataPanelService } from '@/modules/fake-data'
 import type { SettingsApi, ImportExportApi } from '@/modules/settings'
 import type { CollectionsPanelService } from '@/modules/collections'
+import type { WorkflowsPanelService } from '@/modules/workflows'
 import type { DocStats } from '@/sidebar/Dashboard'
 import { PanelOutlet } from '@/sidebar/PanelOutlet'
 import { TABS, DEFAULT_TAB } from '@/sidebar/tabs'
 import type { Result } from '@/types'
-import type { ExtractionRuleModalOpenOptions } from './bridge'
+import type {
+  ExtractionRuleModalOpenOptions,
+  WorkflowEditorBridgeOpenOptions,
+  WorkflowRunnerBridgeOpenOptions,
+} from './bridge'
 
 const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
   light: 'dark',
@@ -51,6 +56,10 @@ export interface PanelShellProps {
   onOpenExtractionRuleModal?: (
     options?: ExtractionRuleModalOpenOptions,
   ) => Promise<Result<void>> | Result<void> | void
+  /** Opens the workflow editor overlay in the PAGE (see `openPageWorkflowEditor`). */
+  onOpenWorkflowEditor?: (options?: WorkflowEditorBridgeOpenOptions) => void
+  /** Opens the workflow runner overlay in the PAGE (see `openPageWorkflowRunner`). */
+  onOpenWorkflowRunner?: (options: WorkflowRunnerBridgeOpenOptions) => void
   /** The page is running an older build of the agent; it needs a refresh. */
   staleTab?: boolean
   authService: AuthPanelService
@@ -61,6 +70,7 @@ export interface PanelShellProps {
   settingsService: SettingsApi
   importExportService: ImportExportApi
   collectionsService: CollectionsPanelService
+  workflowsService?: WorkflowsPanelService
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
   swagger?: DocStats
 }
@@ -79,6 +89,8 @@ export function PanelShell({
   onOpenPresetEditor,
   onOpenHistoryDetail,
   onOpenExtractionRuleModal,
+  onOpenWorkflowEditor,
+  onOpenWorkflowRunner,
   staleTab = false,
   authService,
   requestService,
@@ -88,6 +100,7 @@ export function PanelShell({
   settingsService,
   importExportService,
   collectionsService,
+  workflowsService,
   swagger,
 }: PanelShellProps) {
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
@@ -155,6 +168,7 @@ export function PanelShell({
           historyService={historyService}
           fakeDataService={fakeDataService}
           collectionsService={collectionsService}
+          workflowsService={workflowsService}
           settingsService={settingsService}
           importExportService={importExportService}
           theme={theme}
@@ -163,6 +177,8 @@ export function PanelShell({
           onOpenPresetEditor={onOpenPresetEditor}
           onOpenHistoryDetail={onOpenHistoryDetail}
           onOpenExtractionRuleModal={onOpenExtractionRuleModal}
+          onOpenWorkflowEditor={onOpenWorkflowEditor}
+          onOpenWorkflowRunner={onOpenWorkflowRunner}
           onNavigate={setActiveTab}
           swagger={swagger}
         />

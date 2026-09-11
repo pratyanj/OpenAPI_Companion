@@ -37,12 +37,20 @@ import {
   Folder,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
+  GripVertical,
   Plus,
   Zap,
   Lock,
   Unlock,
   Upload,
   FileText,
+  Workflow,
+  PlayCircle,
+  ArrowUp,
+  ArrowDown,
+  Calendar,
+  Pin,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -102,14 +110,23 @@ export const CodeIcon = make(Code)
 export const MoreIcon = make(MoreVertical)
 export const LocateIcon = make(Crosshair)
 export const ReplayIcon = make(Play)
+export const PlayIcon = make(Play)
 export const ChevronDownIcon = make(ChevronDown)
 export const ChevronRightIcon = make(ChevronRight)
+export const ChevronLeftIcon = make(ChevronLeft)
 export const PlusIcon = make(Plus)
 export const ZapIcon = make(Zap)
 export const LockIcon = make(Lock)
 export const UnlockIcon = make(Unlock)
 export const UploadIcon = make(Upload)
 export const FileTextIcon = make(FileText)
+export const WorkflowIcon = make(Workflow)
+export const RunIcon = make(PlayCircle)
+export const ArrowUpIcon = make(ArrowUp)
+export const ArrowDownIcon = make(ArrowDown)
+export const GripVerticalIcon = make(GripVertical)
+export const CalendarIcon = make(Calendar)
+export const PinIcon = make(Pin)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)

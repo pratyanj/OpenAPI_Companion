@@ -22,6 +22,7 @@ import type { HistoryPanelService } from '@/modules/history'
 import type { FakeDataPanelService } from '@/modules/fake-data'
 import { CommandPalette, type ProductivityPanelService } from '@/modules/productivity'
 import type { SettingsApi, ImportExportApi } from '@/modules/settings'
+import type { WorkflowsPanelService } from '@/modules/workflows'
 import { PanelOutlet } from './PanelOutlet'
 import { TABS, DEFAULT_TAB } from './tabs'
 
@@ -51,6 +52,7 @@ export interface SidebarShellProps {
   historyService?: HistoryPanelService
   fakeDataService?: FakeDataPanelService
   productivityService?: ProductivityPanelService
+  workflowsService?: WorkflowsPanelService
   settingsService?: SettingsApi
   importExportService?: ImportExportApi
   environmentId?: string
@@ -68,6 +70,7 @@ export function SidebarShell({
   historyService,
   fakeDataService,
   productivityService,
+  workflowsService,
   settingsService,
   importExportService,
   environmentId,
@@ -166,6 +169,7 @@ export function SidebarShell({
             environmentService={environmentService}
             historyService={historyService}
             fakeDataService={fakeDataService}
+            workflowsService={workflowsService}
             settingsService={settingsService}
             importExportService={importExportService}
             theme={theme}

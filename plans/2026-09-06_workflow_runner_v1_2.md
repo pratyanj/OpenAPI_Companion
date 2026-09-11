@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-06  
 **Feature**: Workflow Runner — Sequential API Automation & Auto-Extraction Chaining  
-**Status**: Ready for Implementation (Option 1)  
+**Status**: Completed & Shipped (`feat/workflow-runner`)  
 
 ---
 

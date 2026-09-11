@@ -21,12 +21,15 @@ import {
   openPagePresetEditor,
   openPageHistoryDetail,
   openPageExtractionRuleModal,
+  openPageWorkflowEditor,
+  openPageWorkflowRunner,
   RemoteSwaggerAdapter,
   createRemoteAuthService,
   createRemoteRequestService,
   createRemoteEnvironmentService,
   createRemoteHistoryService,
   createRemoteCollectionsService,
+  createRemoteWorkflowsService,
 } from './bridge'
 import { STATE_PUSH, PANEL_PORT, type PanelPortMessage } from '@/content/sidepanel-protocol'
 import { closeSelf } from '@/core/sidebar'
@@ -129,11 +132,14 @@ async function render(root: Root): Promise<void> {
         onOpenPresetEditor={openPagePresetEditor}
         onOpenHistoryDetail={openPageHistoryDetail}
         onOpenExtractionRuleModal={openPageExtractionRuleModal}
+        onOpenWorkflowEditor={openPageWorkflowEditor}
+        onOpenWorkflowRunner={openPageWorkflowRunner}
         authService={createRemoteAuthService()}
         requestService={createRemoteRequestService()}
         environmentService={createRemoteEnvironmentService()}
         historyService={createRemoteHistoryService()}
         collectionsService={createRemoteCollectionsService()}
+        workflowsService={createRemoteWorkflowsService()}
         fakeDataService={new FakeDataService({ adapter, storage, projectId: ctx.projectId, bus })}
         swagger={adapter}
         settingsService={new SettingsService({ storage, bus })}

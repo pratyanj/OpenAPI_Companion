@@ -13,6 +13,7 @@ import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/req
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
 import type { HistoryPanelService } from '@/modules/history'
 import type { CollectionsPanelService } from '@/modules/collections'
+import type { WorkflowsPanelService, Workflow } from '@/modules/workflows'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -236,6 +237,25 @@ export function createRemoteRequestService(): RequestPanelService {
         query: open?.query || undefined,
       }
     },
+    getSwaggerDefaultsAsync: async (endpointId: string) => {
+      try {
+        const res = await rpc<{
+          exampleBody?: string
+          path?: Record<string, string>
+          query?: Record<string, string>
+        }>('requests.getSwaggerDefaults', [endpointId])
+        if (res && (res.exampleBody || res.path || res.query)) return res
+      } catch {
+        // fallback
+      }
+      const open = latestState.adapter.openRequests.find((r) => r.endpointId === endpointId)
+      const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
+      return {
+        exampleBody: open?.body || exec?.requestBody || undefined,
+        path: open?.path || undefined,
+        query: open?.query || undefined,
+      }
+    },
   }
 }
 
@@ -296,6 +316,31 @@ export async function openPageExtractionRuleModal(
   return await rpcResult<void>('extractionRuleModal.open', options ?? {})
 }
 
+export interface WorkflowEditorBridgeOpenOptions {
+  workflow?: Workflow | null
+}
+
+export interface WorkflowRunnerBridgeOpenOptions {
+  workflow: Workflow
+  environmentId?: string
+}
+
+/**
+ * Ask the page to open its Workflow Editor overlay.
+ * Lives in the page (top-centered, 672px+ wide) for ample room to edit steps.
+ */
+export function openPageWorkflowEditor(options?: WorkflowEditorBridgeOpenOptions): void {
+  void rpcResult('workflowEditor.open', options ?? {})
+}
+
+/**
+ * Ask the page to open its Workflow Runner overlay.
+ * Lives in the page (top-centered, 672px+ wide) for live scenario execution.
+ */
+export function openPageWorkflowRunner(options: WorkflowRunnerBridgeOpenOptions): void {
+  void rpcResult('workflowRunner.open', options)
+}
+
 export function createRemoteHistoryService(): HistoryPanelService {
   return {
     list: (query) => rpcResult('history.list', query),
@@ -340,3 +385,27 @@ export function createRemoteCollectionsService(): CollectionsPanelService {
     },
   }
 }
+
+export function createRemoteWorkflowsService(): WorkflowsPanelService {
+  return {
+    list: () => rpcResult('workflows.list'),
+    get: (id) => rpcResult('workflows.get', id),
+    create: (input) => rpcResult('workflows.create', input),
+    update: (id, patch) => rpcResult('workflows.update', id, patch),
+    delete: (id) => rpcResult('workflows.delete', id),
+    duplicate: (id) => rpcResult('workflows.duplicate', id),
+    execute: (workflowId, options) =>
+      rpcResult('workflows.execute', workflowId, options?.environmentId),
+    cancelActiveExecution: () => {
+      void rpcResult('workflows.cancel')
+      return true
+    },
+    listEndpoints: () => latestState.adapter.endpoints,
+    openEndpoint: (endpointId) => {
+      void rpcResult('adapter.openEndpoint', endpointId)
+    },
+    exportAll: (ids) => rpcResult('workflows.export', ids),
+    importAll: (bundle, opts) => rpcResult('workflows.import', bundle, opts),
+  }
+}
+

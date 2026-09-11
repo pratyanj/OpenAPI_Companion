@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { IconButton } from './IconButton'
 import { CloseIcon } from './icons'
+import { cn } from '@/utils/cn'
 
 /**
  * Panel max-width: `lg` (default) for confirms, `xl` for endpoint search, `full`
@@ -19,6 +20,7 @@ interface DialogProps {
   align?: DialogAlign
   /** Controls placed in the header, left of Close — for per-dialog actions. */
   actions?: ReactNode
+  contentClassName?: string
 }
 
 const SIZE_CLASS: Record<DialogSize, string> = {
@@ -48,6 +50,7 @@ export function Dialog({
   size = 'lg',
   align = 'center',
   actions,
+  contentClassName,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -78,7 +81,7 @@ export function Dialog({
       aria-modal="true"
       aria-label={title}
       onClick={onClose}
-      className={`fixed inset-0 z-[2147483647] flex ${ALIGN_CLASS[align]} justify-center bg-black/50 p-4`}
+      className={`fixed inset-0 z-[2147483647] flex ${ALIGN_CLASS[align]} justify-center bg-black/60 backdrop-blur-[1px] p-3 sm:p-4`}
     >
       <div
         ref={panelRef}
@@ -86,8 +89,8 @@ export function Dialog({
         onClick={(e) => e.stopPropagation()}
         className={`flex max-h-[85vh] w-full ${SIZE_CLASS[size]} flex-col overflow-hidden rounded-xl border border-border bg-bg text-text shadow-2xl focus:outline-none`}
       >
-        <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-          <strong className="shrink-0 text-sm">{title}</strong>
+        <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 bg-surface/30">
+          <strong className="shrink-0 text-sm font-semibold">{title}</strong>
           <div className="flex min-w-0 items-center gap-1">
             {actions}
             <IconButton label="Close" onClick={onClose}>
@@ -95,7 +98,7 @@ export function Dialog({
             </IconButton>
           </div>
         </header>
-        <div className="overflow-auto p-4">{children}</div>
+        <div className={cn('overflow-auto p-4', contentClassName)}>{children}</div>
       </div>
     </div>
   )

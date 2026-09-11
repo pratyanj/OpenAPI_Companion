@@ -26,6 +26,7 @@ import { EnvironmentService, type EnvironmentInput } from '@/modules/environment
 import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
+import { WorkflowService, executeWorkflowStep, type WorkflowInput, type WorkflowExportBundle } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -35,6 +36,8 @@ import type {
   ExtractionRuleModalHandle,
   ExtractionRuleModalOpenOptions,
 } from './extraction-rule-modal'
+import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
+import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -101,6 +104,15 @@ async function boot(): Promise<void> {
     extraction: environments,
   })
   const collections = new CollectionsService({ storage, projectId: meta.id, bus })
+  const workflows = new WorkflowService({
+    storage,
+    projectId: meta.id,
+    bus,
+    environmentService: environments,
+    defaultExecutor: async (payload) => {
+      return executeWorkflowStep(adapter, payload)
+    },
+  })
 
   let currentEnv = meta.lastActiveEnvId
 
@@ -249,6 +261,64 @@ async function boot(): Promise<void> {
     }
   }
 
+  let workflowEditor: WorkflowEditorHandle | null = null
+  const withWorkflowEditor = async (): Promise<WorkflowEditorHandle | null> => {
+    if (workflowEditor) return workflowEditor
+    try {
+      const { mountWorkflowEditor } = await import('./workflow-editor')
+      const requestPanelService: RequestPanelService = {
+        listTemplates: () => requests.listTemplates(),
+        saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
+        createCustomTemplate: (input) => requests.createCustomTemplate(input),
+        updateTemplate: (id, updates) => requests.updateTemplate(id, updates),
+        deleteTemplate: (id) => requests.deleteTemplate(id),
+        applyTemplate: (id, envId) => requests.applyTemplate(id, envId),
+        locateAndFill: (id, envId) => requests.locateAndFill(id, envId),
+        listEndpoints: () => adapter.listEndpoints(),
+        getOpenRequests: () => adapter.readOpenRequests(),
+        getSwaggerDefaults: (epId) => requests.getSwaggerDefaults(epId),
+      }
+      workflowEditor = mountWorkflowEditor(
+        workflows,
+        requestPanelService,
+        environments,
+        () => adapter.listEndpoints(),
+        bus,
+      )
+      const editorTheme = new ThemeManager({ storage, root: workflowEditor.themeRoot, bus })
+      await editorTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void editorTheme.init()
+        }
+      })
+      return workflowEditor
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page workflow editor overlay.`, cause)
+      return null
+    }
+  }
+
+  let workflowRunner: WorkflowRunnerHandle | null = null
+  const withWorkflowRunner = async (): Promise<WorkflowRunnerHandle | null> => {
+    if (workflowRunner) return workflowRunner
+    try {
+      const { mountWorkflowRunner } = await import('./workflow-runner')
+      workflowRunner = mountWorkflowRunner(workflows, bus)
+      const runnerTheme = new ThemeManager({ storage, root: workflowRunner.themeRoot, bus })
+      await runnerTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void runnerTheme.init()
+        }
+      })
+      return workflowRunner
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page workflow runner overlay.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut. `key` is
   // optional-chained because page scripts can dispatch synthetic keydowns
   // without it, and a TypeError here would kill the whole listener.
@@ -285,6 +355,31 @@ async function boot(): Promise<void> {
     }
     if (payload.keys.includes('auth-login-endpoint')) {
       void auth.getConfiguredLoginEndpoint().then((ep) => (configuredLoginEndpoint = ep))
+    }
+  })
+
+  // Auto-sync extracted auth tokens to Swagger UI's Authorize dialog and auth storage
+  bus.subscribe('VARIABLE_AUTO_EXTRACTED', async (payload) => {
+    const norm = payload.variableName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const isAuth =
+      /^(token|authtoken|accesstoken|jwt|bearer|authorization|idtoken|sessiontoken)$/i.test(norm) ||
+      norm.endsWith('token') ||
+      norm.includes('jwt') ||
+      norm.includes('bearer')
+
+    if (isAuth) {
+      try {
+        const env = await environments.get(currentEnv)
+        const tokenVal = env.ok && env.value?.variables?.[payload.variableName]
+        if (tokenVal && typeof tokenVal === 'string' && tokenVal.trim()) {
+          await auth.applyToken(currentEnv, tokenVal.trim())
+          console.debug(
+            `${LOG} auto-synced extracted auth token from "${payload.variableName}" to Swagger Authorizer`,
+          )
+        }
+      } catch (err) {
+        console.warn(`${LOG} could not auto-sync auth token to Swagger Authorizer:`, err)
+      }
     }
   })
 
@@ -510,6 +605,46 @@ async function boot(): Promise<void> {
       collections.removeEndpointFromCollection(collectionId as string, endpointId as string),
     'collections.importTags': ([groups]) =>
       collections.importTags(groups as Array<{ name: string; endpointIds: string[] }>),
+    'workflows.list': () => workflows.list(),
+    'workflows.get': ([id]) => workflows.get(id as string),
+    'workflows.create': ([input]) => workflows.create(input as WorkflowInput),
+    'workflows.update': ([id, patch]) =>
+      workflows.update(id as string, patch as Partial<WorkflowInput>),
+    'workflows.delete': ([id]) => workflows.delete(id as string),
+    'workflows.duplicate': ([id]) => workflows.duplicate(id as string),
+    'workflows.execute': ([id, envId]) =>
+      workflows.execute(id as string, { environmentId: envId as string }),
+    'workflows.cancel': () => ok(workflows.cancelActiveExecution()),
+    'workflows.export': ([ids]) => workflows.exportAll(ids as string[] | undefined),
+    'workflows.import': ([bundle, opts]) =>
+      workflows.importAll(
+        bundle as WorkflowExportBundle,
+        opts as { onConflict: 'rename' | 'skip' } | undefined,
+      ),
+    'workflowEditor.open': async ([options]) => {
+      const editor = await withWorkflowEditor()
+      if (editor) {
+        editor.open(options as WorkflowEditorOpenOptions)
+        return ok(undefined)
+      }
+      return err({
+        code: 'WORKFLOW_EDITOR_MOUNT_FAILED',
+        message: 'Could not open workflow editor overlay',
+        recoverable: true,
+      })
+    },
+    'workflowRunner.open': async ([options]) => {
+      const runner = await withWorkflowRunner()
+      if (runner) {
+        runner.open(options as WorkflowRunnerOpenOptions)
+        return ok(undefined)
+      }
+      return err({
+        code: 'WORKFLOW_RUNNER_MOUNT_FAILED',
+        message: 'Could not open workflow runner overlay',
+        recoverable: true,
+      })
+    },
   }
 
   chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
