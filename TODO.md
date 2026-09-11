@@ -16,6 +16,11 @@
   - **Issue**: In the variable editor, saving triggers on every single keypress, causing storage churn, re-renders, and partial saves (e.g. "p", "pa", "pas").
   - **Fix**: Update input handling to keep local React state immediate for typing, but debounce the persistent storage write (300ms-500ms debounce or save on blur/Enter) with visual "Saved" indicator.
 
+- [x] **5. Variable Suggestions for Query & Path Parameters in Preset Editor**
+  - **Issue**: When adding or editing a request preset, query parameter values and path parameter inputs allowed typing `{{VAR}}` but did not show autocomplete suggestions for listed project or dynamic variables.
+  - **Fix**: Created `VariableInput` component with full `{{` autocomplete dropdown, keyboard navigation (ArrowUp, ArrowDown, Enter, Tab, Escape), variable preview, and secret masking badges.
+  - **UI**: Integrated `VariableInput` for both Query Parameter values and Path Parameter inputs in `PresetEditorModal.tsx` and exported it in components library with full unit test coverage (**591 tests passed**).
+
 - [ ] **4. 🚀 Direct Variable Resolution inside Native Swagger UI (`{{variable}}`)**
   - **Feature**: Allow developers to type `{{variable}}` placeholders directly into Swagger UI inputs on the webpage.
   - **Implementation**: Hook the content script / main-world fetch/execute interceptor to resolve active environment variables (e.g. `{{token}}`, `{{taskId}}`, `{{baseUrl}}`) directly when executing requests from Swagger UI.
