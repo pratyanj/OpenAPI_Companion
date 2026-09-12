@@ -250,7 +250,7 @@ export function mountSwaggerResponseVariable(
         onSaved: () => {
           btn.classList.add('success')
           const label = btn.querySelector('.oac-save-var-label')
-          if (label) label.textContent = 'Saved ✓'
+          if (label) label.textContent = 'Saved'
           setTimeout(() => {
             btn.classList.remove('success')
             if (label) label.textContent = 'Save to Variable'

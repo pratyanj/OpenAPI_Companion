@@ -44,8 +44,12 @@
   - **Text Selection & Property Support**: Supports selecting text inside the response body before clicking to pre-fill the selected value.
   - **Auto-Sync & Visual Feedback**: Saving immediately persists into active Project Variables, publishes `ENVIRONMENT_CHANGED`, and gives instant `Saved ✓` visual confirmation (**632 tests passing**).
 - [x] ~~**3. ⏱ Response Latency & Timing Benchmark Badge next to Response Code**~~ *(Removed: Omitted to keep Swagger response rendering completely lightweight without extra UI listeners)*
-- [ ] **4. 🧹 1-Click JSON Formatter & Syntax Validator on Request Body**
-  - **Feature**: Prettifies JSON with 2-space indentation and validates bracket/comma syntax before execution via shortcut (`Alt+Shift+F`) or corner icon.
+- [x] **4. 🧹 1-Click JSON Formatter & Syntax Validator on Request Body**
+  - **1-Click JSON Prettification**: Auto-formats request body JSON with 2-space indentation via toolbar button or <kbd>Alt+Shift+F</kbd> shortcut.
+  - **Smart Auto-Repair Engine**: Automatically detects and heals common developer editing syntax errors on format (unclosed string literals, trailing commas, single quotes, unquoted keys, Python literals, comments, missing commas).
+  - **Zero-Clutter Dynamic UI**: Automatically hides the `Format JSON` button when the JSON is already formatted or empty, only appearing when formatting is needed, and hides immediately after formatting.
+  - **Non-Truncating Live Syntax Validator**: Displays clean red error banner on invalid JSON with exact error message, line, and column numbers; completely hidden when JSON is valid or empty. Never shows error text inside button label.
+  - **SVG-Only System Stability**: Replaced all emojis across content scripts with crisp SVG vector icons to prevent system/font crashes (**662 tests passing**).
 - [ ] **5. 🔁 "Re-fill Last Sent Payload" (Endpoint Quick History)**
   - **Feature**: Restores the exact parameters and body used in the previous call to this endpoint with 1 click.
 - [ ] **6. 👤 Active Account & Token Expiry Status Badge next to Swagger Authorize**

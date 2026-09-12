@@ -55,7 +55,7 @@ describe('swagger-mock-data', () => {
     expect(candidate).toEqual({ title: 'Task Title', is_done: false })
   })
 
-  it('mountSwaggerMockData attaches floating bar before textarea', () => {
+  it('mountSwaggerMockData attaches floating bar before textarea with format and mock buttons', () => {
     const block = createOpblock('POST', '/api/users')
     document.body.appendChild(block)
 
@@ -65,7 +65,23 @@ describe('swagger-mock-data', () => {
     expect(bar).not.toBeNull()
     expect(bar?.querySelector('.oac-mock-fill-btn')).not.toBeNull()
     expect(bar?.querySelector('.oac-mock-mode-btn')).not.toBeNull()
+    expect(bar?.querySelector('.oac-json-format-btn')).not.toBeNull()
+    expect(bar?.querySelector('.oac-json-syntax-badge')).not.toBeNull()
     expect(block.querySelector('textarea.body-param__text')?.previousElementSibling).toBe(bar)
+
+    handle.dispose()
+  })
+
+  it('contains zero emojis in the mounted toolbar (uses SVGs only)', () => {
+    const block = createOpblock('POST', '/api/users', '{"test": 1}')
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerMockData(document)
+    const bar = block.querySelector('.oac-mock-data-bar')!
+
+    const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u
+    expect(emojiRegex.test(bar.innerHTML)).toBe(false)
+    expect(bar.querySelectorAll('svg').length).toBeGreaterThanOrEqual(3)
 
     handle.dispose()
   })
@@ -163,7 +179,7 @@ describe('swagger-mock-data', () => {
     expect(dropdown.style.display).toBe('none')
     const parsed = JSON.parse(textarea.value)
     expect(Array.isArray(parsed)).toBe(true)
-    expect(parsed.length).toBe(1) // Minimal arrayCount = 1
+    expect(parsed.length).toBe(1)
 
     handle.dispose()
   })
@@ -181,6 +197,111 @@ describe('swagger-mock-data', () => {
     expect(textarea.value).toBe('')
     const group = block.querySelector('.oac-mock-btn-group')
     expect(group?.classList.contains('error')).toBe(true)
+
+    handle.dispose()
+  })
+
+  it('hides format button when JSON is already formatted and reveals when edited', () => {
+    // Formatted JSON initially -> format button is hidden
+    const formatted = '{\n  "name": "Bob"\n}'
+    const block = createOpblock('POST', '/api/users', formatted)
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerMockData(document)
+    const formatGroup = block.querySelector<HTMLElement>('.oac-json-format-group')!
+    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
+
+    expect(formatGroup.classList.contains('hidden')).toBe(true)
+
+    // User edits to unformatted JSON -> format button appears
+    textarea.value = '{"name":"Bob","age":30}'
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(formatGroup.classList.contains('hidden')).toBe(false)
+
+    handle.dispose()
+  })
+
+  it('formats compact JSON to 2-space indentation when format button is clicked', () => {
+    const unformatted = '{"name":"Bob","active":true,"tags":["admin","staff"]}'
+    const block = createOpblock('POST', '/api/users', unformatted)
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerMockData(document)
+    const formatBtn = block.querySelector<HTMLButtonElement>('.oac-json-format-btn')!
+    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
+    const formatGroup = block.querySelector<HTMLElement>('.oac-json-format-group')!
+
+    formatBtn.click()
+
+    expect(textarea.value).toBe(JSON.stringify(JSON.parse(unformatted), null, 2))
+    expect(formatGroup.classList.contains('success')).toBe(true)
+
+    handle.dispose()
+  })
+
+  it('shows error feedback and preserves content when formatting invalid JSON', () => {
+    const invalidJson = '{"unclosed": '
+    const block = createOpblock('POST', '/api/users', invalidJson)
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerMockData(document)
+    const formatBtn = block.querySelector<HTMLButtonElement>('.oac-json-format-btn')!
+    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
+    const formatGroup = block.querySelector<HTMLElement>('.oac-json-format-group')!
+
+    formatBtn.click()
+
+    expect(textarea.value).toBe(invalidJson)
+    expect(formatGroup.classList.contains('error')).toBe(true)
+    expect(formatBtn.textContent).toContain('Format JSON')
+
+    handle.dispose()
+  })
+
+  it('formats JSON when Alt+Shift+F is pressed', () => {
+    const unformatted = '{"id":123,"status":"pending"}'
+    const block = createOpblock('POST', '/api/orders', unformatted)
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerMockData(document)
+    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
+
+    textarea.focus()
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'F',
+      altKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(event)
+
+    expect(textarea.value).toBe(JSON.stringify({ id: 123, status: 'pending' }, null, 2))
+
+    handle.dispose()
+  })
+
+  it('updates live syntax badge on textarea input', () => {
+    const block = createOpblock('POST', '/api/test', '')
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerMockData(document)
+    const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
+    const badge = block.querySelector<HTMLElement>('.oac-json-syntax-badge')!
+
+    // Initially empty
+    expect(badge.classList.contains('empty')).toBe(true)
+
+    // User types valid JSON - hidden to avoid cluttering UI
+    textarea.value = '{"ok": true}'
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(badge.classList.contains('empty')).toBe(true)
+
+    // User introduces syntax error - visible only when invalid
+    textarea.value = '{"unclosed": '
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(badge.classList.contains('invalid')).toBe(true)
 
     handle.dispose()
   })

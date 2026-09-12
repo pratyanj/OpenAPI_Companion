@@ -157,7 +157,7 @@ describe('swagger-response-variable', () => {
     openCall.onSaved()
 
     expect(btn.classList.contains('success')).toBe(true)
-    expect(btn.textContent).toContain('Saved ✓')
+    expect(btn.textContent).toContain('Saved')
 
     handle.dispose()
   })
