@@ -10,6 +10,8 @@ export interface SaveToVariableDialogProps {
   service: EnvironmentPanelService
   endpointId?: string
   bus?: EventBus
+  initialProperty?: string
+  initialValue?: string
   onClose: () => void
   onSaved?: (variableName: string, value: string) => void
 }
@@ -19,10 +21,24 @@ export function SaveToVariableDialog({
   service,
   endpointId,
   bus,
+  initialProperty,
+  initialValue,
   onClose,
   onSaved,
 }: SaveToVariableDialogProps) {
   const candidates = useMemo(() => extractJsonCandidates(responseBody), [responseBody])
+
+  const initialCand = useMemo(() => {
+    if (initialProperty) {
+      const match = candidates.find(
+        (c) =>
+          c.property.toLowerCase() === initialProperty.toLowerCase() ||
+          c.suggestedName.toLowerCase() === initialProperty.toLowerCase(),
+      )
+      if (match) return match
+    }
+    return candidates[0] ?? null
+  }, [candidates, initialProperty])
 
   const [activeEnv, setActiveEnv] = useState<Environment | null>(null)
   const [activeId, setActiveId] = useState('default')
@@ -30,12 +46,17 @@ export function SaveToVariableDialog({
   const [existingSecrets, setExistingSecrets] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [selectedCandidate, setSelectedCandidate] = useState<JsonCandidate | null>(
-    candidates[0] ?? null,
+  const [selectedCandidate, setSelectedCandidate] = useState<JsonCandidate | null>(initialCand)
+  const [name, setName] = useState(
+    initialProperty
+      ? initialProperty.toUpperCase().replace(/[^A-Z0-9_]/g, '_')
+      : (initialCand?.suggestedName ?? ''),
   )
-  const [name, setName] = useState(candidates[0]?.suggestedName ?? '')
-  const [value, setValue] = useState(candidates[0]?.value ?? '')
-  const [isSecret, setIsSecret] = useState(candidates[0]?.isLikelySecret ?? false)
+  const [value, setValue] = useState(initialValue ?? (initialCand?.value ?? ''))
+  const [isSecret, setIsSecret] = useState(
+    initialCand?.isLikelySecret ??
+      Boolean(name && /(token|secret|password|key|auth)/i.test(name)),
+  )
   const [autoExtract, setAutoExtract] = useState(false)
 
   const [saving, setSaving] = useState(false)

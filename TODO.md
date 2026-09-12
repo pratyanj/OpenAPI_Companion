@@ -38,8 +38,11 @@
   - **Multi-Mode Support**: Included mode selector dropdown (`✨ Realistic`, `⚡ Minimal`, `⚠️ Boundary`, `🧪 Fuzzing`).
   - **Keyboard Shortcut**: Added <kbd>Alt+M</kbd> shortcut while focused inside any Swagger body textarea to instantly generate and fill mock data.
   - **Visual Feedback**: Displays smooth status animations (`✓ Filled!` in green / `⚠️ No Schema` in amber) (**625 tests passing**).
-- [ ] **2. ⚡ 1-Click "Save Response Property to Variable" from Swagger Response DOM**
-  - **Feature**: Click any JSON key/value in Swagger's rendered response to open a quick popover: "Save as {{VARIABLE}}", immediately persisting into active Project Variables.
+- [x] **2. ⚡ 1-Click "Save Response Property to Variable" from Swagger Response DOM**
+  - **Feature**: Injected a sleek `⚡ Save to Variable` button directly into Swagger UI's rendered live responses (`.live-responses-table .response-col_description`) alongside Swagger's native controls.
+  - **In-Page Shadow DOM Overlay (`#oac-save-variable-host`)**: Mounts `SaveToVariableDialog` in an isolated top-centered modal overlay over Swagger UI, with candidate properties (`access_token`, `user_id`, `id`, etc.) automatically detected and pre-suggested.
+  - **Text Selection & Property Support**: Supports selecting text inside the response body before clicking to pre-fill the selected value.
+  - **Auto-Sync & Visual Feedback**: Saving immediately persists into active Project Variables, publishes `ENVIRONMENT_CHANGED`, and gives instant `Saved ✓` visual confirmation (**632 tests passing**).
 - [ ] **3. ⏱ Response Latency & Timing Benchmark Badge next to Response Code**
   - **Feature**: Real round-trip execution latency and payload size badge next to Swagger's HTTP status code (e.g. `200 OK • 142 ms • 4.2 KB`).
 - [ ] **4. 🧹 1-Click JSON Formatter & Syntax Validator on Request Body**
