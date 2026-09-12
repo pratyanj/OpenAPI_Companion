@@ -1,9 +1,10 @@
 /**
  * Swagger UI 1-Click "Save Response Property to Variable" Integration.
  *
- * Attaches a sleek, compact "⚡ Save to Variable" action button directly onto Swagger UI's rendered
+ * Attaches a sleek, compact "Save to Variable" action button directly onto Swagger UI's rendered
  * response body DOM (.live-responses-table .response-col_description) for successful 2xx responses,
- * positioned neatly on the right side with comfortable spacing.
+ * with background and border matching the API operation method (GET, POST, PUT, DELETE, PATCH),
+ * black Swagger native font color, right alignment, and comfortable spacing.
  */
 import { endpointIdOf } from '@/adapters/swagger/swagger-request-dom'
 import type { SaveVariableModalHandle } from './save-variable-modal'
@@ -30,12 +31,12 @@ const CSS_STYLES = `
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 7px;
-  font-size: 10px;
+  padding: 2px 8px;
+  font-size: 10.5px;
   font-weight: 600;
-  color: #2563eb;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: #3b4151;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
   border-radius: 4px;
   cursor: pointer;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -43,28 +44,109 @@ const CSS_STYLES = `
   outline: none;
   transition: all 0.15s ease;
   user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .oac-save-var-btn:hover {
-  background: #dbeafe;
-  border-color: #3b82f6;
-  color: #1d4ed8;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
+  filter: brightness(0.96);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .oac-save-var-btn:active {
-  background: #bfdbfe;
+  filter: brightness(0.91);
 }
 
+/* GET - Swagger Blue/Soft Blue */
+.opblock.opblock-get .oac-save-var-btn,
+.oac-save-var-btn.oac-method-get {
+  background: rgba(97, 175, 254, 0.14);
+  border-color: #61affe;
+  color: #3b4151;
+}
+.opblock.opblock-get .oac-save-var-btn:hover,
+.oac-save-var-btn.oac-method-get:hover {
+  background: rgba(97, 175, 254, 0.28);
+  border-color: #4990e2;
+  color: #1e293b;
+}
+
+/* POST - Swagger Green */
+.opblock.opblock-post .oac-save-var-btn,
+.oac-save-var-btn.oac-method-post {
+  background: rgba(73, 204, 144, 0.14);
+  border-color: #49cc90;
+  color: #3b4151;
+}
+.opblock.opblock-post .oac-save-var-btn:hover,
+.oac-save-var-btn.oac-method-post:hover {
+  background: rgba(73, 204, 144, 0.28);
+  border-color: #34b37d;
+  color: #1e293b;
+}
+
+/* PUT - Swagger Orange */
+.opblock.opblock-put .oac-save-var-btn,
+.oac-save-var-btn.oac-method-put {
+  background: rgba(252, 161, 48, 0.14);
+  border-color: #fca130;
+  color: #3b4151;
+}
+.opblock.opblock-put .oac-save-var-btn:hover,
+.oac-save-var-btn.oac-method-put:hover {
+  background: rgba(252, 161, 48, 0.28);
+  border-color: #e59024;
+  color: #1e293b;
+}
+
+/* DELETE - Swagger Red / Soft Pink */
+.opblock.opblock-delete .oac-save-var-btn,
+.oac-save-var-btn.oac-method-delete {
+  background: rgba(249, 62, 62, 0.14);
+  border-color: #f93e3e;
+  color: #3b4151;
+}
+.opblock.opblock-delete .oac-save-var-btn:hover,
+.oac-save-var-btn.oac-method-delete:hover {
+  background: rgba(249, 62, 62, 0.28);
+  border-color: #d63030;
+  color: #1e293b;
+}
+
+/* PATCH - Swagger Teal */
+.opblock.opblock-patch .oac-save-var-btn,
+.oac-save-var-btn.oac-method-patch {
+  background: rgba(80, 227, 194, 0.14);
+  border-color: #50e3c2;
+  color: #3b4151;
+}
+.opblock.opblock-patch .oac-save-var-btn:hover,
+.oac-save-var-btn.oac-method-patch:hover {
+  background: rgba(80, 227, 194, 0.28);
+  border-color: #38c4a4;
+  color: #1e293b;
+}
+
+/* HEAD */
+.opblock.opblock-head .oac-save-var-btn,
+.oac-save-var-btn.oac-method-head {
+  background: rgba(144, 18, 254, 0.14);
+  border-color: #9012fe;
+  color: #3b4151;
+}
+
+/* OPTIONS */
+.opblock.opblock-options .oac-save-var-btn,
+.oac-save-var-btn.oac-method-options {
+  background: rgba(13, 90, 167, 0.14);
+  border-color: #0d5aa7;
+  color: #3b4151;
+}
+
+/* Success feedback animation */
 .oac-save-var-btn.success {
   background: #dcfce7 !important;
   border-color: #22c55e !important;
   color: #15803d !important;
-}
-
-.oac-save-var-icon {
-  font-size: 10px;
-  line-height: 1;
 }
 `;
 
@@ -136,18 +218,19 @@ export function mountSwaggerResponseVariable(
     btn.type = 'button'
     btn.className = 'oac-save-var-btn'
     btn.title = 'Save response property to project variable'
-    btn.innerHTML = `
-      <span class="oac-save-var-icon">⚡</span>
-      <span class="oac-save-var-label">Save to Variable</span>
-    `
+    btn.innerHTML = `<span class="oac-save-var-label">Save to Variable</span>`
+
+    const block = cell.closest('.opblock')
+    const endpointId = block ? endpointIdOf(block) : undefined
+    const method = endpointId ? endpointId.split(' ')[0]?.toLowerCase() : undefined
+    if (method) {
+      btn.classList.add(`oac-method-${method}`)
+    }
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
       const rawBody = extractResponseBodyText(cell)
       if (!rawBody) return
-
-      const block = cell.closest('.opblock')
-      const endpointId = block ? endpointIdOf(block) : undefined
 
       // Check if user selected text in the response
       let selectedText: string | undefined
