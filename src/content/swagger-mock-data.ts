@@ -39,7 +39,7 @@ const CSS_STYLES = `
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   transition: all 0.15s ease;
 }
@@ -47,6 +47,16 @@ const CSS_STYLES = `
 .oac-mock-btn-group:hover {
   border-color: #3b82f6;
   box-shadow: 0 2px 5px rgba(59, 130, 246, 0.15);
+}
+
+.oac-mock-fill-btn {
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+.oac-mock-mode-btn {
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 
 .oac-mock-btn {
@@ -386,8 +396,8 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
 
     group.appendChild(fillBtn)
     group.appendChild(modeBtn)
-    group.appendChild(dropdown)
     bar.appendChild(group)
+    bar.appendChild(dropdown)
 
     // Insert directly before the textarea
     textarea.parentElement?.insertBefore(bar, textarea)
