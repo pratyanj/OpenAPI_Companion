@@ -30,6 +30,39 @@
       - Hooks `window.fetch`, `XMLHttpRequest`, and Swagger UI's `requestInterceptor` in the MAIN execution world.
       - Resolves `{{VAR}}`, case-insensitive variables, dynamic variables, and URL-encoded `%7B%7BVAR%7D%7D` placeholders across request URLs, headers, and request bodies before HTTP calls leave the browser (**615 tests passed**).
 
+## 🚀 Swagger UI In-Page Enhancements Sprint (13 Points)
+
+- [x] **1. 🪄 1-Click "Fill Realistic Mock Data" (Request Body)**
+  - **Feature**: Injected a subtle floating button bar (`.oac-mock-data-bar`) directly above Swagger UI's request body textarea (`textarea.body-param__text`) without cluttering Swagger's layout.
+  - **1-Click Generation**: Main button (`🪄 Fake Data`) reads either existing JSON in the textarea or Swagger's rendered schema/example (`readSwaggerExample`), parses and synthesizes realistic values (realistic names, emails, phones, dates, UUIDs, and contextual strings) via `synthesizeFromJsonSample`, and writes React state via `setNativeValue`.
+  - **Multi-Mode Support**: Included mode selector dropdown (`✨ Realistic`, `⚡ Minimal`, `⚠️ Boundary`, `🧪 Fuzzing`).
+  - **Keyboard Shortcut**: Added <kbd>Alt+M</kbd> shortcut while focused inside any Swagger body textarea to instantly generate and fill mock data.
+  - **Visual Feedback**: Displays smooth status animations (`✓ Filled!` in green / `⚠️ No Schema` in amber) (**625 tests passing**).
+- [ ] **2. ⚡ 1-Click "Save Response Property to Variable" from Swagger Response DOM**
+  - **Feature**: Click any JSON key/value in Swagger's rendered response to open a quick popover: "Save as {{VARIABLE}}", immediately persisting into active Project Variables.
+- [ ] **3. ⏱ Response Latency & Timing Benchmark Badge next to Response Code**
+  - **Feature**: Real round-trip execution latency and payload size badge next to Swagger's HTTP status code (e.g. `200 OK • 142 ms • 4.2 KB`).
+- [ ] **4. 🧹 1-Click JSON Formatter & Syntax Validator on Request Body**
+  - **Feature**: Prettifies JSON with 2-space indentation and validates bracket/comma syntax before execution via shortcut (`Alt+Shift+F`) or corner icon.
+- [ ] **5. 🔁 "Re-fill Last Sent Payload" (Endpoint Quick History)**
+  - **Feature**: Restores the exact parameters and body used in the previous call to this endpoint with 1 click.
+- [ ] **6. 👤 Active Account & Token Expiry Status Badge next to Swagger Authorize**
+  - **Feature**: Displays active logged-in user name/role and token countdown (`👤 Admin • Expires in 14m`) next to the native padlock, with 1-click renewal.
+- [ ] **7. 🔄 1-Click Multi-Account / Role Switcher in Swagger Header**
+  - **Feature**: Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.
+- [ ] **8. 🔍 Response JSON Search & Node Collapsing**
+  - **Feature**: Real-time keyword filter and expandable/collapsible JSON tree inside Swagger's response body.
+- [ ] **9. 💻 Multi-Language "Copy Code" Dropdown (cURL, Fetch, Axios, Python)**
+  - **Feature**: Quick copy menu next to Swagger's Curl block supporting PowerShell cURL, Fetch, Axios, and Python requests.
+- [ ] **10. 📥 Export Response as JSON or CSV File**
+  - **Feature**: 1-click export buttons to download response arrays/objects as `.json` or `.csv` files.
+- [ ] **11. ⭐ Endpoint Favorites / Pinning to Top**
+  - **Feature**: Star icon on endpoints to pin frequently tested operations into a "⭐ Pinned" section at the top of Swagger.
+- [ ] **12. 📋 Paste cURL to Auto-Fill Operation**
+  - **Feature**: Paste a raw cURL command to automatically navigate to the matching endpoint and populate all parameters and body.
+- [ ] **13. 🌐 Global Debug Headers Injector**
+  - **Feature**: Configure global headers (e.g. `X-Tenant-ID`, `X-Debug`) that automatically attach to all outgoing Swagger UI requests.
+
 # TODO — Open Action Items
 
 > Running tracker for OpenAPI Companion. Checked items are done; unchecked need action. Last updated: 2026-07-01.

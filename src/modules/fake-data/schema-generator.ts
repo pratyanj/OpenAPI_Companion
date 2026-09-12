@@ -226,7 +226,19 @@ export function synthesizeFromJsonSample(
           result[key] = generateBoundaryValue({ type: typeof value }, key, rng)
         } else {
           const detected = detectGenerator(key, value)
-          result[key] = detected ? generate(detected, rng) : value
+          if (detected) {
+            result[key] = generate(detected, rng)
+          } else if (
+            mode === 'realistic' &&
+            typeof value === 'string' &&
+            (value.toLowerCase() === 'string' || value.toLowerCase() === 'str' || value === '')
+          ) {
+            const clean = key.replace(/[^a-zA-Z0-9]/g, ' ').trim()
+            const word = clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : 'Sample'
+            result[key] = `${word} ${randInt(rng, 10, 99)}`
+          } else {
+            result[key] = value
+          }
         }
       }
     }

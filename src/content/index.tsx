@@ -30,6 +30,7 @@ import { WorkflowService, executeWorkflowStep, type WorkflowInput, type Workflow
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher } from './launcher'
 import { mountSwaggerVariables } from './swagger-variables'
+import { mountSwaggerMockData } from './swagger-mock-data'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
@@ -134,6 +135,7 @@ async function boot(): Promise<void> {
   let activeSecrets: string[] = []
 
   const swaggerVars = mountSwaggerVariables({}, [], document)
+  const swaggerMockData = mountSwaggerMockData(document)
 
   const syncActiveVariables = async (): Promise<void> => {
     const env = await environments.get(currentEnv)
