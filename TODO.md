@@ -43,11 +43,7 @@
   - **In-Page Shadow DOM Overlay (`#oac-save-variable-host`)**: Mounts `SaveToVariableDialog` in an isolated top-centered modal overlay over Swagger UI, with candidate properties (`access_token`, `user_id`, `id`, etc.) automatically detected and pre-suggested.
   - **Text Selection & Property Support**: Supports selecting text inside the response body before clicking to pre-fill the selected value.
   - **Auto-Sync & Visual Feedback**: Saving immediately persists into active Project Variables, publishes `ENVIRONMENT_CHANGED`, and gives instant `Saved ✓` visual confirmation (**632 tests passing**).
-- [x] **3. ⏱ Response Latency & Timing Benchmark Badge next to Response Code**
-  - **Round-Trip Timing Interceptor**: Captures Swagger Execute button clicks, measuring elapsed execution latency (`performance.now()`) until live response table row renders.
-  - **Latency Tier Color-Coding**: Visually highlights performance tiers (< 300ms ⚡ fast `#15803d`/`#dcfce7`, 300-1000ms ⏱ moderate `#b45309`/`#fef3c7`, > 1000ms ⏳ slow `#b91c1c`/`#fee2e2`).
-  - **Payload Size Calculation**: Computes exact byte size across UTF-8 payloads and formats in B, KB, or MB.
-  - **Seamless Native UI Integration**: Injects `.oac-timing-badge` directly into `.live-responses-table .response-col_status` beside the numeric status code without disturbing Swagger table layout (**640 tests passing**).
+- [x] ~~**3. ⏱ Response Latency & Timing Benchmark Badge next to Response Code**~~ *(Removed: Omitted to keep Swagger response rendering completely lightweight without extra UI listeners)*
 - [ ] **4. 🧹 1-Click JSON Formatter & Syntax Validator on Request Body**
   - **Feature**: Prettifies JSON with 2-space indentation and validates bracket/comma syntax before execution via shortcut (`Alt+Shift+F`) or corner icon.
 - [ ] **5. 🔁 "Re-fill Last Sent Payload" (Endpoint Quick History)**
