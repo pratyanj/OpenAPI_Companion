@@ -50,8 +50,15 @@
   - **Zero-Clutter Dynamic UI**: Automatically hides the `Format JSON` button when the JSON is already formatted or empty, only appearing when formatting is needed, and hides immediately after formatting.
   - **Non-Truncating Live Syntax Validator**: Displays clean red error banner on invalid JSON with exact error message, line, and column numbers; completely hidden when JSON is valid or empty. Never shows error text inside button label.
   - **SVG-Only System Stability**: Replaced all emojis across content scripts with crisp SVG vector icons to prevent system/font crashes (**662 tests passing**).
-- [ ] **5. 🔁 "Re-fill Last Sent Payload" (Endpoint Quick History)**
-  - **Feature**: Restores the exact parameters and body used in the previous call to this endpoint with 1 click.
+- [x] **5. 🔁 "Re-fill Last Sent Payload" (Endpoint Quick History)**
+  - **1-Click Refill**: Instantly restores the exact path, query, header parameters and JSON request body used in the previous execution of any endpoint.
+  - **Dual-Location Integration**:
+    - Request body toolbar (`.oac-mock-data-bar`): Injected directly above the body textarea alongside Format JSON and Fake Data.
+    - Execute wrapper (`.execute-wrapper`): Injected next to native Execute & Clear buttons, covering parameter-only endpoints (GET, DELETE, HEAD) as well as POST/PUT.
+  - **Cross-Session Storage Persistence**: Automatically persists the last sent payload per endpoint in extension local storage (`chrome.storage.local` with memory cache) so previous payloads survive page reloads and tab closures.
+  - **Zero-Clutter Dynamic UI**: Auto-hides when no previous execution exists for an endpoint, becoming smoothly visible as soon as an execution is performed or loaded from storage.
+  - **Keyboard Shortcut**: Added <kbd>Alt+L</kbd> shortcut inside any Swagger operation to immediately restore the last sent payload.
+  - **Clean Status Feedback & SVG Icons**: Flashes green `Restored` status with SVG checkmark on click; never displays error text inside button label (**669 tests passing**).
 - [ ] **6. 👤 Active Account & Token Expiry Status Badge next to Swagger Authorize**
   - **Feature**: Displays active logged-in user name/role and token countdown (`👤 Admin • Expires in 14m`) next to the native padlock, with 1-click renewal.
 - [ ] **7. 🔄 1-Click Multi-Account / Role Switcher in Swagger Header**

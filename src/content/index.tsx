@@ -33,6 +33,7 @@ import { mountSwaggerVariables } from './swagger-variables'
 import { mountSwaggerMockData } from './swagger-mock-data'
 import { mountSaveVariableModal } from './save-variable-modal'
 import { mountSwaggerResponseVariable } from './swagger-response-variable'
+import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
@@ -144,6 +145,9 @@ async function boot(): Promise<void> {
   void saveVarTheme.init()
 
   const swaggerResponseVar = mountSwaggerResponseVariable(saveVariableModal, document)
+  const swaggerEndpointHistory = mountSwaggerEndpointHistory(document, {
+    storageKeyPrefix: `oac_last_payload_${meta.id}_`,
+  })
 
   const syncActiveVariables = async (): Promise<void> => {
     const env = await environments.get(currentEnv)
