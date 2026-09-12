@@ -32,8 +32,8 @@ const CSS_STYLES = `
   align-items: center;
   gap: 3px;
   padding: 2px 8px;
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 8px;
+  font-weight: 500;
   color: #3b4151;
   background: #ffffff;
   border: 1px solid #d9d9d9;
