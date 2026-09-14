@@ -503,6 +503,7 @@ export function mountSwaggerEndpointHistory(
   // Handle Alt+L shortcut inside opblocks
   function onKeyDown(e: KeyboardEvent): void {
     if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+      if (doc.body?.classList.contains('oac-disable-endpoint-history')) return
       const activeEl = doc.activeElement
       const block = activeEl?.closest('.opblock')
       if (block) {

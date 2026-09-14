@@ -12,6 +12,7 @@ import { EnvironmentsPanel, type EnvironmentPanelService } from '@/modules/envir
 import { HistoryPanel, type HistoryPanelService } from '@/modules/history'
 import { FakeDataPanel, type FakeDataPanelService } from '@/modules/fake-data'
 import { SettingsPanel, type SettingsApi, type ImportExportApi } from '@/modules/settings'
+import { ConfigPanel } from '@/modules/config'
 import { CollectionsPanel, type CollectionsPanelService } from '@/modules/collections'
 import { WorkflowsPanel, type WorkflowsPanelService } from '@/modules/workflows'
 import { Dashboard, type DocStats } from './Dashboard'
@@ -205,6 +206,10 @@ export function PanelOutlet({
         onOpenWorkflowEditor={onOpenWorkflowEditor}
       />
     )
+  }
+
+  if (activeTab === 'config' && settingsService) {
+    return <ConfigPanel settings={settingsService} bus={bus} />
   }
 
   if (activeTab === 'settings' && settingsService && importExportService && theme && bus) {

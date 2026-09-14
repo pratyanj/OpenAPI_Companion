@@ -9,11 +9,13 @@ import { SettingsPanel } from './SettingsPanel'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type { ImportSummary } from '@/core/events'
+import { DEFAULT_SWAGGER_FEATURES } from './types'
 
 function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
   return {
-    getPreferences: vi.fn(async () => ({ autoBackup: false, historyLimit: 1000 })),
+    getPreferences: vi.fn(async () => ({ autoBackup: false, historyLimit: 1000, swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES } })),
     setPreference: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
+    setSwaggerFeature: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     resetPreferences: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     getStorageMetrics: vi.fn(async () => ({
       totalBytes: 2048,

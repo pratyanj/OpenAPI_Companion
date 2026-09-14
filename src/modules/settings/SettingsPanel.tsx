@@ -451,7 +451,12 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
                 <Badge kind="warning">contains secrets</Badge>
               ) : null}
               {importPreview.isEncrypted ? (
-                <Badge kind="success">🔒 Decrypted</Badge>
+                <Badge kind="success">
+                <span className="inline-flex items-center gap-1">
+                  <LockIcon className="h-3 w-3" />
+                  Decrypted
+                </span>
+              </Badge>
               ) : null}
             </div>
             <div className="flex items-center gap-2">

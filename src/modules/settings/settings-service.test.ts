@@ -3,7 +3,7 @@ import { StorageService, projectKey, settingsKey } from '@/core/storage'
 import { EventBus } from '@/core/events'
 import { createFakeArea } from '@/tests/fake-storage'
 import { SettingsService } from './settings-service'
-import { DEFAULT_PREFERENCES } from './types'
+import { DEFAULT_PREFERENCES, DEFAULT_SWAGGER_FEATURES } from './types'
 
 function setup(bus = new EventBus()) {
   const storage = new StorageService({ area: createFakeArea(), now: () => 1 })
@@ -15,6 +15,9 @@ describe('SettingsService preferences', () => {
   it('returns defaults when nothing is stored', async () => {
     const { service } = setup()
     expect(await service.getPreferences()).toEqual(DEFAULT_PREFERENCES)
+    expect((await service.getPreferences()).swaggerFeatures).toEqual(DEFAULT_SWAGGER_FEATURES)
+    expect((await service.getPreferences()).swaggerFeatures.authBadge).toBe(true)
+    expect((await service.getPreferences()).swaggerFeatures.mockData).toBe(true)
   })
 
   it('sets a preference, persists it, and emits SETTINGS_UPDATED', async () => {
@@ -33,9 +36,36 @@ describe('SettingsService preferences', () => {
     expect(stored.ok && stored.value?.autoBackup).toBe(true)
   })
 
+  it('sets an individual swagger feature toggle and emits SETTINGS_UPDATED', async () => {
+    const bus = new EventBus()
+    const updated = vi.fn()
+    bus.subscribe('SETTINGS_UPDATED', updated)
+    const { service } = setup(bus)
+
+    const r = await service.setSwaggerFeature('authBadge', false)
+    expect(r.ok).toBe(true)
+    const prefs = await service.getPreferences()
+    expect(prefs.swaggerFeatures.authBadge).toBe(false)
+    expect(prefs.swaggerFeatures.mockData).toBe(true)
+    expect(updated).toHaveBeenCalledWith({ keys: ['swaggerFeatures', 'authBadge'] })
+  })
+
+  it('preserves defaults when existing stored preferences lack swaggerFeatures', async () => {
+    const { service, storage } = setup()
+    // Stored old record without swaggerFeatures
+    await storage.set(settingsKey('preferences'), { autoBackup: true, historyLimit: 500 }, { immediate: true })
+
+    const prefs = await service.getPreferences()
+    expect(prefs.autoBackup).toBe(true)
+    expect(prefs.historyLimit).toBe(500)
+    expect(prefs.swaggerFeatures).toEqual(DEFAULT_SWAGGER_FEATURES)
+    expect(prefs.swaggerFeatures.endpointHistory).toBe(true)
+  })
+
   it('resets to defaults', async () => {
     const { service } = setup()
     await service.setPreference('autoBackup', true)
+    await service.setSwaggerFeature('mockData', false)
     await service.resetPreferences()
     expect(await service.getPreferences()).toEqual(DEFAULT_PREFERENCES)
   })
@@ -84,6 +114,7 @@ describe('SettingsService storage management', () => {
     expect(all.ok && all.value).toEqual([])
     expect(reset).toHaveBeenCalled()
   })
+
   it('reports project metadata when available', async () => {
     const { service, storage } = setup()
     await seed(storage)
@@ -106,4 +137,4 @@ describe('SettingsService storage management', () => {
     expect(p1Metric?.originUrl).toBe('http://localhost:8008')
     expect(p1Metric?.openApiUrl).toBe('http://localhost:8008/openapi.json')
   })
-});
+})

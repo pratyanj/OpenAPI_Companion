@@ -17,6 +17,8 @@ import { docIdentityUrl } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
+import { SettingsService } from '@/modules/settings'
+import type { SwaggerFeaturePreferences } from '@/modules/settings/types'
 import {
   RequestService,
   type CustomTemplateInput,
@@ -34,6 +36,7 @@ import { mountSwaggerMockData } from './swagger-mock-data'
 import { mountSaveVariableModal } from './save-variable-modal'
 import { mountSwaggerResponseVariable } from './swagger-response-variable'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
+import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
@@ -56,6 +59,56 @@ import {
 
 const AGENT_FLAG = 'oacAgent'
 const LOG = '[OpenAPI Companion]'
+
+const SWAGGER_FEATURE_STYLES_ID = 'oac-swagger-feature-styles'
+
+function ensureSwaggerFeatureStyles(doc: Document): void {
+  if (doc.getElementById(SWAGGER_FEATURE_STYLES_ID)) return
+  const style = doc.createElement('style')
+  style.id = SWAGGER_FEATURE_STYLES_ID
+  style.textContent = `
+    body.oac-disable-mock-data .oac-mock-btn-group,
+    body.oac-disable-mock-data .oac-mock-fill-btn,
+    body.oac-disable-mock-data .oac-mock-mode-btn,
+    body.oac-disable-mock-data .oac-mock-dropdown,
+    body.oac-disable-mock-data .oac-mode-select {
+      display: none !important;
+    }
+    body.oac-disable-json-format .oac-json-format-btn,
+    body.oac-disable-json-format .oac-json-syntax-badge {
+      display: none !important;
+    }
+    body.oac-disable-endpoint-history .oac-last-payload-bar-btn,
+    body.oac-disable-endpoint-history .oac-last-payload-btn {
+      display: none !important;
+    }
+    body.oac-disable-mock-data.oac-disable-json-format.oac-disable-endpoint-history .oac-mock-data-bar {
+      display: none !important;
+    }
+    body.oac-disable-response-variables .oac-response-action-bar,
+    body.oac-disable-response-variables .oac-save-var-btn {
+      display: none !important;
+    }
+    body.oac-disable-auth-badge .oac-auth-status-badge {
+      display: none !important;
+    }
+    body.oac-disable-var-resolution #oac-var-autocomplete-host {
+      display: none !important;
+    }
+  `
+  doc.head?.appendChild(style)
+}
+
+function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Document = document): void {
+  const b = doc.body
+  if (!b) return
+  b.classList.toggle('oac-disable-mock-data', !features.mockData)
+  b.classList.toggle('oac-disable-json-format', !features.jsonFormat)
+  b.classList.toggle('oac-disable-endpoint-history', !features.endpointHistory)
+  b.classList.toggle('oac-disable-response-variables', !features.responseVariables)
+  b.classList.toggle('oac-disable-auth-badge', !features.authBadge)
+  b.classList.toggle('oac-disable-var-resolution', !features.variableResolution)
+}
 
 async function boot(): Promise<void> {
   console.info(`${LOG} content agent loaded:`, location.href)
@@ -91,6 +144,18 @@ async function boot(): Promise<void> {
   )
 
   mountLauncher() // floating button to open the panel from the page
+
+  ensureSwaggerFeatureStyles(document)
+  const settingsService = new SettingsService({ storage, bus })
+  const syncSwaggerFeatures = async (): Promise<void> => {
+    try {
+      const prefs = await settingsService.getPreferences()
+      applySwaggerFeatureClasses(prefs.swaggerFeatures, document)
+    } catch {
+      // ignore
+    }
+  }
+  await syncSwaggerFeatures()
 
   const auth = new AuthenticationService({ storage, adapter, projectId: meta.id, bus })
   const environments = new EnvironmentService({ storage, projectId: meta.id, bus })
@@ -138,14 +203,14 @@ async function boot(): Promise<void> {
   let activeSecrets: string[] = []
 
   const swaggerVars = mountSwaggerVariables({}, [], document)
-  const swaggerMockData = mountSwaggerMockData(document)
+  mountSwaggerMockData(document)
 
   const saveVariableModal = mountSaveVariableModal(environments, bus, document)
   const saveVarTheme = new ThemeManager({ storage, root: saveVariableModal.themeRoot, bus })
   void saveVarTheme.init()
 
-  const swaggerResponseVar = mountSwaggerResponseVariable(saveVariableModal, document)
-  const swaggerEndpointHistory = mountSwaggerEndpointHistory(document, {
+  mountSwaggerResponseVariable(saveVariableModal, document)
+  mountSwaggerEndpointHistory(document, {
     storageKeyPrefix: `oac_last_payload_${meta.id}_`,
   })
 
@@ -393,7 +458,40 @@ async function boot(): Promise<void> {
     'AUTH_EXPIRED',
     (payload) => void tokenRefresh.refreshIfExpired(payload.environmentId),
   )
+
+  const swaggerAuthBadge = mountSwaggerAuthBadge(document, {
+    getAuthRecord: async () => {
+      const res = await auth.current(currentEnv)
+      return res.ok ? res.value : null
+    },
+    getAccountName: async () => {
+      return auth.activeCredentialName(currentEnv)
+    },
+    onRenew: async () => {
+      const res = await tokenRefresh.refreshNow(currentEnv)
+      return res.ok && Boolean(res.value)
+    },
+  })
+
+  const syncAuthBadge = async (): Promise<void> => {
+    try {
+      const [recRes, name] = await Promise.all([
+        auth.current(currentEnv),
+        auth.activeCredentialName(currentEnv),
+      ])
+      swaggerAuthBadge.update(recRes.ok ? recRes.value : null, name)
+    } catch {
+      // ignore
+    }
+  }
+
+  bus.subscribe('AUTH_UPDATED', () => void syncAuthBadge())
+  bus.subscribe('AUTH_RESTORED', () => void syncAuthBadge())
+  bus.subscribe('AUTH_CLEARED', () => void syncAuthBadge())
   bus.subscribe('SETTINGS_UPDATED', (payload) => {
+    if (payload.keys.includes('swaggerFeatures') || payload.keys.includes('preferences')) {
+      void syncSwaggerFeatures()
+    }
     if (payload.keys.includes('auto-refresh-token')) {
       void auth.isAutoRefreshEnabled().then((on) => (autoRefreshEnabled = on))
     }
@@ -429,6 +527,7 @@ async function boot(): Promise<void> {
 
   // Always-on: restore auth, auto-restore drafts, watch, and react to DOM changes.
   await auth.restore(currentEnv)
+  void syncAuthBadge()
   await requests.autoRestoreOpen(currentEnv)
   let stopAuthWatch = auth.watch(currentEnv)
 
@@ -491,6 +590,7 @@ async function boot(): Promise<void> {
     }
     requests.autosaveOpen(currentEnv)
     history.scheduleCapture(currentEnv)
+    swaggerAuthBadge.scanAndMount(document)
     void tokenRefresh.noticeResponses(currentEnv) // 401/403 → auto-refresh (if enabled)
     pushState() // keep the panel's read-mirror fresh
   })
@@ -507,6 +607,7 @@ async function boot(): Promise<void> {
       if (restored.ok && restored.value == null) adapter.clearAuth()
       await requests.autoRestoreOpen(currentEnv)
       stopAuthWatch = auth.watch(currentEnv)
+      void syncAuthBadge()
       pushState()
     })()
   })

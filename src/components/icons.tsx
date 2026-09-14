@@ -51,6 +51,7 @@ import {
   ArrowDown,
   Calendar,
   Pin,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -80,6 +81,7 @@ export const EnvIcon = make(Globe)
 export const HistoryIcon = make(History)
 export const DataIcon = make(Dices)
 export const SettingsIcon = make(Settings)
+export const ConfigIcon = make(SlidersHorizontal)
 export const CollectionsIcon = make(Folder)
 
 // Theme cycle

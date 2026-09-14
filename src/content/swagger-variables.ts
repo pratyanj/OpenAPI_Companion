@@ -300,6 +300,7 @@ export function mountSwaggerVariables(
   }
 
   function onInput(e: Event): void {
+    if (doc.body?.classList.contains('oac-disable-var-resolution')) return
     const target = e.target as Element | null
     if (!isSwaggerInputField(target)) {
       if (activeInput) closeAutocomplete()
@@ -373,6 +374,7 @@ export function mountSwaggerVariables(
   // ---------------------------------------------------------------------------
 
   function onExecuteClick(e: Event): void {
+    if (doc.body?.classList.contains('oac-disable-var-resolution')) return
     const path = e.composedPath?.() ?? []
     const target = (path.length ? path : [e.target]).find(
       (node): node is Element => node instanceof Element && node.matches?.('.btn.execute, .execute'),

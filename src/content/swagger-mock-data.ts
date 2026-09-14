@@ -615,6 +615,7 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
   function onKeyDown(e: KeyboardEvent): void {
     // Alt+Shift+F: Format JSON
     if (e.altKey && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+      if (doc.body?.classList.contains('oac-disable-json-format')) return
       const target = doc.activeElement
       if (target instanceof HTMLTextAreaElement && target.matches('textarea.body-param__text')) {
         e.preventDefault()
@@ -634,6 +635,7 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
 
     // Alt+M: Fill mock data
     if (e.altKey && !e.shiftKey && (e.key === 'm' || e.key === 'M')) {
+      if (doc.body?.classList.contains('oac-disable-mock-data')) return
       const target = doc.activeElement
       if (target instanceof HTMLTextAreaElement && target.matches('textarea.body-param__text')) {
         e.preventDefault()

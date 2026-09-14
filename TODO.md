@@ -59,8 +59,12 @@
   - **Zero-Clutter Dynamic UI**: Auto-hides when no previous execution exists for an endpoint, becoming smoothly visible as soon as an execution is performed or loaded from storage.
   - **Keyboard Shortcut**: Added <kbd>Alt+L</kbd> shortcut inside any Swagger operation to immediately restore the last sent payload.
   - **Clean Status Feedback & SVG Icons**: Flashes green `Restored` status with SVG checkmark on click; never displays error text inside button label (**669 tests passing**).
-- [ ] **6. 👤 Active Account & Token Expiry Status Badge next to Swagger Authorize**
-  - **Feature**: Displays active logged-in user name/role and token countdown (`👤 Admin • Expires in 14m`) next to the native padlock, with 1-click renewal.
+- [x] **6. 👤 Active Account & Token Expiry Status Badge next to Swagger Authorize**
+  - **In-Page Status Badge**: Injected directly alongside Swagger UI's native `.auth-wrapper` and Authorize padlock button without layout disruption.
+  - **Smart Identity Resolution**: Automatically detects and displays the active account name and role tag from the credential vault or decoded JWT claims (`role`, `name`, `preferred_username`, `email`, `sub`).
+  - **Real-Time Live Expiry Countdown**: Active timer dynamically counts down token lifetime (`Expires in 14m`, `Expiring in 45s`, `Expired 2m ago`, or `Active`), transitioning through color themes (green -> amber -> soft red).
+  - **1-Click Token Renewal**: Embedded `Renew` button triggers `TokenRefreshService.refreshNow()` with spinning SVG feedback and confirmation; never shows error text in button labels.
+  - **100% SVG Vector Icons**: Strict zero-emoji compliance using clean inline SVGs (`user`, `clock`, `refresh`, `check`, `key`) (**686 tests passing**).
 - [ ] **7. 🔄 1-Click Multi-Account / Role Switcher in Swagger Header**
   - **Feature**: Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.
 - [ ] **8. 🔍 Response JSON Search & Node Collapsing**
