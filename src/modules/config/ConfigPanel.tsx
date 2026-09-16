@@ -66,6 +66,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.',
   },
+  {
+    id: 'responseJsonSearch',
+    title: 'Response JSON Search & Tree View',
+    description:
+      'Interactive collapsible JSON tree with real-time keyword search, match counter, expand/collapse all, and JSON path copy inside Swagger response bodies.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {

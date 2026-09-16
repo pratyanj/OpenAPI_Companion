@@ -16,6 +16,8 @@ export interface SwaggerFeaturePreferences {
   variableResolution: boolean
   /** 1-Click Multi-Account & Role Switcher dropdown in Swagger header */
   accountSwitcher: boolean
+  /** Real-time keyword filter and expandable/collapsible JSON tree in responses */
+  responseJsonSearch: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -26,6 +28,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   authBadge: true,
   variableResolution: true,
   accountSwitcher: true,
+  responseJsonSearch: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */

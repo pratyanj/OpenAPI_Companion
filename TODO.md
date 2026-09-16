@@ -67,8 +67,14 @@
   - **100% SVG Vector Icons**: Strict zero-emoji compliance using clean inline SVGs (`user`, `clock`, `refresh`, `check`, `key`) (**686 tests passing**).
 - [x] **7. 1-Click Multi-Account / Role Switcher in Swagger Header**
   - **Feature**: Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.
-- [ ] **8. 🔍 Response JSON Search & Node Collapsing**
-  - **Feature**: Real-time keyword filter and expandable/collapsible JSON tree inside Swagger's response body.
+- [x] **8. 🔍 Response JSON Search & Node Collapsing**
+  - **Interactive Collapsible JSON Tree**: Automatically mounts an expandable/collapsible JSON tree on rendered Swagger response bodies with type-based syntax coloring (keys, strings, numbers, booleans, null) and summary badges (`{ 4 keys }`, `[ 12 items ]`).
+  - **Real-Time Keyword Search**: Fast query filtering with active match counter (`2 / 5 matches`), previous/next navigation buttons, and keyboard shortcuts (<kbd>Enter</kbd> / <kbd>Shift+Enter</kbd>).
+  - **Auto-Expansion on Match**: Automatically expands any collapsed parent and ancestor nodes when search matches are located inside them, scrolling the active match into view.
+  - **Tree vs. Raw View Switcher**: 1-click segmented toggle (`[ Tree | Raw ]`) allows switching back to Swagger UI's native pre block at any time without page reload.
+  - **1-Click Copy Actions**: Formatted 2-space indented JSON copy with SVG check feedback, plus 1-click JSON path copy (e.g. `items[0].name`) when clicking any property key.
+  - **Config Tab & Feature Toggle**: Integrated toggle `responseJsonSearch` into extension settings and the Config tab with instant classList toggling (`.oac-disable-response-json-search`).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**710 tests passing**).
 - [ ] **9. 💻 Multi-Language "Copy Code" Dropdown (cURL, Fetch, Axios, Python)**
   - **Feature**: Quick copy menu next to Swagger's Curl block supporting PowerShell cURL, Fetch, Axios, and Python requests.
 - [ ] **10. 📥 Export Response as JSON or CSV File**

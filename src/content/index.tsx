@@ -35,6 +35,7 @@ import { mountSwaggerVariables } from './swagger-variables'
 import { mountSwaggerMockData } from './swagger-mock-data'
 import { mountSaveVariableModal } from './save-variable-modal'
 import { mountSwaggerResponseVariable } from './swagger-response-variable'
+import { mountSwaggerResponseViewer } from './swagger-response-viewer'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -109,6 +110,7 @@ function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Do
   b.classList.toggle('oac-disable-auth-badge', !features.authBadge)
   b.classList.toggle('oac-disable-var-resolution', !features.variableResolution)
   b.classList.toggle('oac-disable-account-switcher', !features.accountSwitcher)
+  b.classList.toggle('oac-disable-response-json-search', !features.responseJsonSearch)
 }
 
 async function boot(): Promise<void> {
@@ -211,6 +213,7 @@ async function boot(): Promise<void> {
   void saveVarTheme.init()
 
   mountSwaggerResponseVariable(saveVariableModal, document)
+  mountSwaggerResponseViewer(document)
   mountSwaggerEndpointHistory(document, {
     storageKeyPrefix: `oac_last_payload_${meta.id}_`,
   })
