@@ -18,6 +18,8 @@ export interface SwaggerFeaturePreferences {
   accountSwitcher: boolean
   /** Real-time keyword filter and expandable/collapsible JSON tree in responses */
   responseJsonSearch: boolean
+  /** Multi-language "Copy Code" dropdown (cURL, PowerShell, Fetch, Axios, Python) */
+  copyCodeSnippet: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -29,6 +31,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   variableResolution: true,
   accountSwitcher: true,
   responseJsonSearch: true,
+  copyCodeSnippet: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */

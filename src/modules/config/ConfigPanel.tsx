@@ -72,6 +72,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Interactive collapsible JSON tree with real-time keyword search, match counter, expand/collapse all, and JSON path copy inside Swagger response bodies.',
   },
+  {
+    id: 'copyCodeSnippet',
+    title: 'Multi-Language Copy Code Dropdown',
+    description:
+      "Quick copy dropdown next to Swagger's Curl block to instantly copy runnable requests in cURL, PowerShell, Fetch, Axios, and Python (requests).",
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -132,6 +138,8 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       authBadge: true,
       variableResolution: true,
       accountSwitcher: true,
+      responseJsonSearch: true,
+      copyCodeSnippet: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

@@ -24,13 +24,13 @@ function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
 }
 
 describe('ConfigPanel', () => {
-  it('renders all 8 swagger feature toggles with active count', async () => {
+  it('renders all 9 swagger feature toggles with active count', async () => {
     const settings = mockSettings()
     const bus = new EventBus()
     render(<ConfigPanel settings={settings} bus={bus} />)
 
     expect(await screen.findByText(/Swagger In-Page Features/i)).toBeInTheDocument()
-    expect(screen.getByText('8/8 Active')).toBeInTheDocument()
+    expect(screen.getByText('9/9 Active')).toBeInTheDocument()
 
     const mockDataCheckbox = screen.getByLabelText(/Toggle 1-Click Realistic Mock Data/i) as HTMLInputElement
     const jsonFormatCheckbox = screen.getByLabelText(/Toggle JSON Formatter & Auto-Repair Validator/i) as HTMLInputElement
@@ -40,6 +40,7 @@ describe('ConfigPanel', () => {
     const varResCheckbox = screen.getByLabelText(/Toggle Direct Variable Resolution/i) as HTMLInputElement
     const accountSwitcherCheckbox = screen.getByLabelText(/Toggle 1-Click Multi-Account & Role Switcher/i) as HTMLInputElement
     const respSearchCheckbox = screen.getByLabelText(/Toggle Response JSON Search & Tree View/i) as HTMLInputElement
+    const copyCodeCheckbox = screen.getByLabelText(/Toggle Multi-Language Copy Code Dropdown/i) as HTMLInputElement
 
     expect(mockDataCheckbox.checked).toBe(true)
     expect(jsonFormatCheckbox.checked).toBe(true)
@@ -49,6 +50,7 @@ describe('ConfigPanel', () => {
     expect(varResCheckbox.checked).toBe(true)
     expect(accountSwitcherCheckbox.checked).toBe(true)
     expect(respSearchCheckbox.checked).toBe(true)
+    expect(copyCodeCheckbox.checked).toBe(true)
   })
 
   it('calls setSwaggerFeature when a toggle is clicked', async () => {

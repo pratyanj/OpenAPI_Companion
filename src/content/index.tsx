@@ -36,6 +36,7 @@ import { mountSwaggerMockData } from './swagger-mock-data'
 import { mountSaveVariableModal } from './save-variable-modal'
 import { mountSwaggerResponseVariable } from './swagger-response-variable'
 import { mountSwaggerResponseViewer } from './swagger-response-viewer'
+import { mountSwaggerCopyCode } from './swagger-copy-code'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily

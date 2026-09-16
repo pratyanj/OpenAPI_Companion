@@ -75,8 +75,18 @@
   - **1-Click Copy Actions**: Formatted 2-space indented JSON copy with SVG check feedback, plus 1-click JSON path copy (e.g. `items[0].name`) when clicking any property key.
   - **Config Tab & Feature Toggle**: Integrated toggle `responseJsonSearch` into extension settings and the Config tab with instant classList toggling (`.oac-disable-response-json-search`).
   - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**710 tests passing**).
-- [ ] **9. 💻 Multi-Language "Copy Code" Dropdown (cURL, Fetch, Axios, Python)**
-  - **Feature**: Quick copy menu next to Swagger's Curl block supporting PowerShell cURL, Fetch, Axios, and Python requests.
+- [x] **9. Multi-Language "Copy Code" Dropdown (cURL, PowerShell, Fetch, Axios, Python)**
+  - **Feature**: Injected a sleek `[ Copy Code ▾ ]` dropdown button directly alongside Swagger UI's native Curl block (`.curl-command`) next to `<h4>Curl</h4>` and Swagger's native clipboard button without layout disruption.
+  - **5 Supported Languages & Frameworks**:
+    - **cURL (Bash / Linux / macOS)**: Pure cURL with escaped parameters and headers.
+    - **cURL (PowerShell)**: Native `Invoke-RestMethod` with hashtable headers and PowerShell escaped quotes.
+    - **JavaScript (Fetch API)**: Async `fetch()` with method, parsed headers, and JSON stringified body.
+    - **JavaScript (Axios)**: Async `axios()` configuration object with lowercase method and data payload.
+    - **Python (Requests)**: Idiomatic Python `requests` code formatting JSON bodies into native Python dictionary literals (`True`, `False`, `None`, lists, dicts) or raw data payloads.
+  - **Accurate cURL Parser**: `parseCurlCommand` extracts exact method, resolved URL (including path/query parameters), headers, and request body directly from Swagger UI's executed Curl block.
+  - **Clipboard Copy & Visual Confirmation**: 1-click copy with animated SVG checkmark feedback (`Copied Python!`, `Copied Fetch!`) for 1.8s, plus outside-click dismissal.
+  - **Config Tab & Feature Toggle**: Integrated toggle `copyCodeSnippet` into extension settings and the Config tab with instant classList toggling (`.oac-disable-copy-code-snippet`).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**723 tests passing**).
 - [ ] **10. 📥 Export Response as JSON or CSV File**
   - **Feature**: 1-click export buttons to download response arrays/objects as `.json` or `.csv` files.
 - [ ] **11. ⭐ Endpoint Favorites / Pinning to Top**

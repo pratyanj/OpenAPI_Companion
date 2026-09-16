@@ -95,6 +95,90 @@ function axiosCode(req: CodeGenRequest): string {
   return lines.join('\n')
 }
 
+function formatPythonLiteral(val: unknown, indent = 0): string {
+  if (val === null || val === undefined) return 'None'
+  if (typeof val === 'boolean') return val ? 'True' : 'False'
+  if (typeof val === 'number') return String(val)
+  if (typeof val === 'string') {
+    return "'" + val.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n') + "'"
+  }
+  const pad = ' '.repeat(indent + 4)
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '[]'
+    return (
+      '[\n' +
+      val.map((v) => pad + formatPythonLiteral(v, indent + 4)).join(',\n') +
+      '\n' +
+      ' '.repeat(indent) +
+      ']'
+    )
+  }
+  if (typeof val === 'object') {
+    const keys = Object.keys(val as Record<string, unknown>)
+    if (keys.length === 0) return '{}'
+    return (
+      '{\n' +
+      keys
+        .map(
+          (k) =>
+            pad +
+            "'" +
+            k.replace(/'/g, "\\'") +
+            "': " +
+            formatPythonLiteral((val as Record<string, unknown>)[k], indent + 4),
+        )
+        .join(',\n') +
+      '\n' +
+      ' '.repeat(indent) +
+      '}'
+    )
+  }
+  return String(val)
+}
+
+function pythonCode(req: CodeGenRequest): string {
+  const lines = ['import requests', '', `url = '${req.url.replace(/'/g, "\\'")}'`]
+  const headerEntries = Object.entries(req.headers || {})
+  if (headerEntries.length) {
+    lines.push('headers = {')
+    for (const [k, v] of headerEntries) {
+      lines.push(`    '${k.replace(/'/g, "\\\'")}': '${v.replace(/'/g, "\\\'")}',`)
+    }
+    lines.push('}')
+  }
+
+  let bodyArg = ''
+  if (req.body) {
+    const { json, isJson } = parseBody(req.body)
+    if (isJson) {
+      lines.push('json_data = ' + formatPythonLiteral(json))
+      bodyArg = ', json=json_data'
+    } else {
+      lines.push(
+        `data = '${req.body.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`,
+      )
+      bodyArg = ', data=data'
+    }
+  }
+
+  const headersArg = headerEntries.length ? ', headers=headers' : ''
+  const method = req.method.toLowerCase()
+  const standardMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options']
+
+  if (standardMethods.includes(method)) {
+    lines.push(`response = requests.${method}(url${headersArg}${bodyArg})`)
+  } else {
+    lines.push(
+      `response = requests.request('${req.method.toUpperCase()}', url${headersArg}${bodyArg})`,
+    )
+  }
+
+  lines.push('print(response.status_code)')
+  lines.push('print(response.json())')
+
+  return lines.join('\n')
+}
+
 export function generateCode(lang: CodeLang, req: CodeGenRequest): string {
   switch (lang) {
     case 'curl':
@@ -105,5 +189,7 @@ export function generateCode(lang: CodeLang, req: CodeGenRequest): string {
       return fetchCode(req)
     case 'axios':
       return axiosCode(req)
+    case 'python':
+      return pythonCode(req)
   }
 }
