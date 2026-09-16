@@ -38,6 +38,7 @@ import { mountSwaggerResponseVariable } from './swagger-response-variable'
 import { mountSwaggerResponseViewer } from './swagger-response-viewer'
 import { mountSwaggerCopyCode } from './swagger-copy-code'
 import { mountSwaggerResponseExport } from './swagger-response-export'
+import { mountSwaggerPinnedEndpoints } from './swagger-pinned-endpoints'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -113,6 +114,7 @@ function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Do
   b.classList.toggle('oac-disable-var-resolution', !features.variableResolution)
   b.classList.toggle('oac-disable-account-switcher', !features.accountSwitcher)
   b.classList.toggle('oac-disable-response-json-search', !features.responseJsonSearch)
+  b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
 }
 
 async function boot(): Promise<void> {
@@ -265,6 +267,7 @@ async function boot(): Promise<void> {
     baseUrl: () => envBaseUrl || location.origin,
   })
   await productivity.init()
+  mountSwaggerPinnedEndpoints(productivity, document)
 
   // The palette is the only thing in the page that needs React, so it's loaded on
   // FIRST USE — a static import would make every page in the browser pay ~170 kB

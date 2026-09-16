@@ -24,13 +24,13 @@ function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
 }
 
 describe('ConfigPanel', () => {
-  it('renders all 10 swagger feature toggles with active count', async () => {
+  it('renders all 11 swagger feature toggles with active count', async () => {
     const settings = mockSettings()
     const bus = new EventBus()
     render(<ConfigPanel settings={settings} bus={bus} />)
 
     expect(await screen.findByText(/Swagger In-Page Features/i)).toBeInTheDocument()
-    expect(screen.getByText('10/10 Active')).toBeInTheDocument()
+    expect(screen.getByText('11/11 Active')).toBeInTheDocument()
 
     const mockDataCheckbox = screen.getByLabelText(/Toggle 1-Click Realistic Mock Data/i) as HTMLInputElement
     const jsonFormatCheckbox = screen.getByLabelText(/Toggle JSON Formatter & Auto-Repair Validator/i) as HTMLInputElement
@@ -42,6 +42,7 @@ describe('ConfigPanel', () => {
     const respSearchCheckbox = screen.getByLabelText(/Toggle Response JSON Search & Tree View/i) as HTMLInputElement
     const copyCodeCheckbox = screen.getByLabelText(/Toggle Multi-Language Copy Code Dropdown/i) as HTMLInputElement
     const exportCheckbox = screen.getByLabelText(/Toggle Response Export/i) as HTMLInputElement
+    const pinnedCheckbox = screen.getByLabelText(/Toggle Endpoint Favorites & Top Pinning/i) as HTMLInputElement
 
     expect(mockDataCheckbox.checked).toBe(true)
     expect(jsonFormatCheckbox.checked).toBe(true)
@@ -53,6 +54,7 @@ describe('ConfigPanel', () => {
     expect(respSearchCheckbox.checked).toBe(true)
     expect(copyCodeCheckbox.checked).toBe(true)
     expect(exportCheckbox.checked).toBe(true)
+    expect(pinnedCheckbox.checked).toBe(true)
   })
 
   it('calls setSwaggerFeature when a toggle is clicked', async () => {

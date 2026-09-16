@@ -99,8 +99,15 @@
     - **Standalone Fallback Bar**: Mounts compact `[ JSON ]` and `[ CSV ]` export buttons on `.response-col_description` if interactive tree view is toggled off in settings.
   - **Config Tab & Feature Toggle**: Integrated toggle `responseExport` into extension settings and the Config tab with instant classList toggling (`.oac-disable-response-export`).
   - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**746 tests passing**).
-- [ ] **11. ⭐ Endpoint Favorites / Pinning to Top**
-  - **Feature**: Star icon on endpoints to pin frequently tested operations into a "⭐ Pinned" section at the top of Swagger.
+- [x] **11. ⭐ Endpoint Favorites / Pinning to Top**
+  - **Star Icon Placement**: Placed directly to the left of the HTTP method badge (`★ [GET] /tasks/`) on Swagger operation headers.
+  - **Accordion Isolation**: Clicking the star prevents event propagation and default actions so the operation accordion never toggles.
+  - **Pinned Operations Tray**: Compact Quick-Access Cards grid rendered at the top of Swagger UI above the first tag section.
+  - **1-Click "Jump & Open"**: Clicking any card or its "Open" button smoothly scrolls down, auto-expands the collapsed accordion, and applies a prominent pulse highlight animation (`.oac-pulse-highlight`).
+  - **Real-Time Synchronization**: Directly integrated with `ProductivityService`, `FAVORITE_TOGGLED` event bus, Command Palette, and side panel.
+  - **Zero Clutter**: Tray automatically hides when 0 items are favorited.
+  - **Config Tab & Feature Toggle**: Integrated toggle `pinnedEndpoints` in settings and Config panel with `.oac-disable-pinned-endpoints`.
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**82 test files, 757 tests passing**).
 - [ ] **12. 📋 Paste cURL to Auto-Fill Operation**
   - **Feature**: Paste a raw cURL command to automatically navigate to the matching endpoint and populate all parameters and body.
 - [ ] **13. 🌐 Global Debug Headers Injector**

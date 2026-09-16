@@ -84,6 +84,12 @@ const FEATURES: FeatureItem[] = [
     description:
       '1-click export actions in rendered response toolbars to download responses as formatted .json or RFC 4180-compliant .csv files.',
   },
+  {
+    id: 'pinnedEndpoints',
+    title: 'Endpoint Favorites & Top Pinning',
+    description:
+      'Star favorite buttons directly on endpoint headers and an interactive Pinned Operations tray at the top of Swagger UI.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -147,6 +153,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       responseJsonSearch: true,
       copyCodeSnippet: true,
       responseExport: true,
+      pinnedEndpoints: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

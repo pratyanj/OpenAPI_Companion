@@ -22,6 +22,8 @@ export interface SwaggerFeaturePreferences {
   copyCodeSnippet: boolean
   /** 1-Click export response as .json or RFC 4180 .csv file */
   responseExport: boolean
+  /** 1-Click star favorite buttons and top Pinned Operations quick tray */
+  pinnedEndpoints: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -35,6 +37,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   responseJsonSearch: true,
   copyCodeSnippet: true,
   responseExport: true,
+  pinnedEndpoints: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */
