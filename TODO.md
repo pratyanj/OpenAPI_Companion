@@ -65,7 +65,7 @@
   - **Real-Time Live Expiry Countdown**: Active timer dynamically counts down token lifetime (`Expires in 14m`, `Expiring in 45s`, `Expired 2m ago`, or `Active`), transitioning through color themes (green -> amber -> soft red).
   - **1-Click Token Renewal**: Embedded `Renew` button triggers `TokenRefreshService.refreshNow()` with spinning SVG feedback and confirmation; never shows error text in button labels.
   - **100% SVG Vector Icons**: Strict zero-emoji compliance using clean inline SVGs (`user`, `clock`, `refresh`, `check`, `key`) (**686 tests passing**).
-- [ ] **7. 🔄 1-Click Multi-Account / Role Switcher in Swagger Header**
+- [x] **7. 1-Click Multi-Account / Role Switcher in Swagger Header**
   - **Feature**: Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.
 - [ ] **8. 🔍 Response JSON Search & Node Collapsing**
   - **Feature**: Real-time keyword filter and expandable/collapsible JSON tree inside Swagger's response body.

@@ -14,6 +14,8 @@ export interface SwaggerFeaturePreferences {
   authBadge: boolean
   /** Direct {{variable}} autocomplete and resolution inside Swagger inputs */
   variableResolution: boolean
+  /** 1-Click Multi-Account & Role Switcher dropdown in Swagger header */
+  accountSwitcher: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -23,6 +25,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   responseVariables: true,
   authBadge: true,
   variableResolution: true,
+  accountSwitcher: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */

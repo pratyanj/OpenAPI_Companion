@@ -30,7 +30,7 @@ import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
 import { WorkflowService, executeWorkflowStep, type WorkflowInput, type WorkflowExportBundle } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
-import { mountLauncher } from './launcher'
+import { mountLauncher, openSidePanelFromPage } from './launcher'
 import { mountSwaggerVariables } from './swagger-variables'
 import { mountSwaggerMockData } from './swagger-mock-data'
 import { mountSaveVariableModal } from './save-variable-modal'
@@ -108,6 +108,7 @@ function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Do
   b.classList.toggle('oac-disable-response-variables', !features.responseVariables)
   b.classList.toggle('oac-disable-auth-badge', !features.authBadge)
   b.classList.toggle('oac-disable-var-resolution', !features.variableResolution)
+  b.classList.toggle('oac-disable-account-switcher', !features.accountSwitcher)
 }
 
 async function boot(): Promise<void> {
@@ -232,6 +233,12 @@ async function boot(): Promise<void> {
         Object.keys(changes).some((k) => k.includes('environments') || k.includes('environment'))
       ) {
         void syncActiveVariables()
+      }
+      if (
+        area === 'local' &&
+        Object.keys(changes).some((k) => k.includes('auth'))
+      ) {
+        void syncAuthBadge()
       }
     })
   }
@@ -462,10 +469,37 @@ async function boot(): Promise<void> {
   const swaggerAuthBadge = mountSwaggerAuthBadge(document, {
     getAuthRecord: async () => {
       const res = await auth.current(currentEnv)
-      return res.ok ? res.value : null
+      if (res.ok && res.value?.token) return res.value
+      const live = adapter.readAuth()
+      if (live?.token) {
+        return {
+          type: live.type,
+          token: live.token,
+          schemeName: live.schemeName,
+          environmentId: currentEnv,
+          updatedAt: Date.now(),
+        }
+      }
+      return null
     },
     getAccountName: async () => {
       return auth.activeCredentialName(currentEnv)
+    },
+    getSavedCredentials: async () => {
+      const res = await auth.listSaved()
+      return res.ok ? res.value : []
+    },
+    onSelectAccount: async (credentialId: string) => {
+      const res = await auth.activateSaved(credentialId, currentEnv)
+      if (res.ok) {
+        void syncAuthBadge()
+        return true
+      }
+      return false
+    },
+    onManageAccounts: () => {
+      const launcher = document.querySelector<HTMLElement>('#oac-launcher-btn')
+      if (launcher) launcher.click()
     },
     onRenew: async () => {
       const res = await tokenRefresh.refreshNow(currentEnv)
@@ -475,15 +509,38 @@ async function boot(): Promise<void> {
 
   const syncAuthBadge = async (): Promise<void> => {
     try {
-      const [recRes, name] = await Promise.all([
+      const [recRes, name, savedRes] = await Promise.all([
         auth.current(currentEnv),
         auth.activeCredentialName(currentEnv),
+        auth.listSaved(),
       ])
-      swaggerAuthBadge.update(recRes.ok ? recRes.value : null, name)
+      let record = recRes.ok ? recRes.value : null
+      if (!record?.token) {
+        const live = adapter.readAuth()
+        if (live?.token) {
+          record = {
+            type: live.type,
+            token: live.token,
+            schemeName: live.schemeName,
+            environmentId: currentEnv,
+            updatedAt: Date.now(),
+          }
+        }
+      }
+      swaggerAuthBadge.update(
+        record,
+        name,
+        savedRes.ok ? savedRes.value : [],
+      )
     } catch {
       // ignore
     }
   }
+
+  // Periodic startup re-syncs to catch Swagger UI's async initialization
+  setTimeout(() => void syncAuthBadge(), 400)
+  setTimeout(() => void syncAuthBadge(), 1200)
+  setTimeout(() => void syncAuthBadge(), 2500)
 
   bus.subscribe('AUTH_UPDATED', () => void syncAuthBadge())
   bus.subscribe('AUTH_RESTORED', () => void syncAuthBadge())

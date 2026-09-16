@@ -91,7 +91,10 @@ export const OPEN_PANEL_REQUEST = 'oac:open-panel'
  * window with `{ type: 'hello', windowId }` right after connecting.
  */
 export const PANEL_PORT = 'oac:panel'
-export type PanelPortMessage = { type: 'hello'; windowId: number } | { type: 'close' }
+export type PanelPortMessage =
+  | { type: 'hello'; windowId: number }
+  | { type: 'close' }
+  | { type: 'navigate'; tab: string }
 
 /** Agent → panel broadcast: a forwarded bus event (keeps the panel UI live). */
 export const EVENT_PUSH = 'oac:event'
@@ -103,6 +106,7 @@ export interface EventPush {
 
 /** Bus events the agent mirrors to the panel. */
 export const FORWARDED_EVENTS = [
+  'TAB_NAVIGATE',
   'HISTORY_RECORDED',
   'HISTORY_CLEARED',
   'REQUEST_REPLAYED',

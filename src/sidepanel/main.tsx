@@ -40,11 +40,16 @@ import { PanelShell } from './PanelShell'
  * the launcher/shortcut can toggle, and close ourselves when asked. Runs once,
  * regardless of whether a Swagger page is connected, so the toggle always works.
  */
+let activeBus: EventBus | null = null
+
 function connectToggle(): void {
   try {
     const port = chrome.runtime.connect({ name: PANEL_PORT })
     port.onMessage.addListener((message: PanelPortMessage) => {
       if (message.type === 'close') closeSelf()
+      if (message.type === 'navigate' && message.tab) {
+        activeBus?.publish('TAB_NAVIGATE', { tab: message.tab })
+      }
     })
     void chrome.windows.getCurrent().then((win) => {
       if (win.id != null)
@@ -101,6 +106,7 @@ async function render(root: Root): Promise<void> {
   }
   const storage = new StorageService({ area: chromeLocalArea() })
   const bus = new EventBus()
+  activeBus = bus
   startBridge(bus)
 
   const theme = new ThemeManager({ storage, root: document.documentElement, bus })

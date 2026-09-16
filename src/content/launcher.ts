@@ -96,3 +96,28 @@ export function mountLauncher(doc: Document = document): () => void {
 
   return () => host.remove()
 }
+
+
+/**
+ * Programmatically request the side panel to open and optionally navigate to a tab.
+ */
+export function openSidePanelFromPage(targetTab?: string): void {
+  try {
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome?.runtime &&
+      typeof chrome.runtime.sendMessage === 'function'
+    ) {
+      const p = chrome.runtime.sendMessage({
+        type: OPEN_PANEL_REQUEST,
+        targetTab,
+        forceOpen: true,
+      })
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {})
+      }
+    }
+  } catch {
+    // Extension context invalidated
+  }
+}

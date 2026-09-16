@@ -60,6 +60,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Live autocomplete popup when typing {{ in Swagger inputs and automatic variable replacement before request execution.',
   },
+  {
+    id: 'accountSwitcher',
+    title: '1-Click Multi-Account & Role Switcher',
+    description:
+      'Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -119,6 +125,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       responseVariables: true,
       authBadge: true,
       variableResolution: true,
+      accountSwitcher: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))
