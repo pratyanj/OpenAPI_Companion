@@ -87,8 +87,18 @@
   - **Clipboard Copy & Visual Confirmation**: 1-click copy with animated SVG checkmark feedback (`Copied Python!`, `Copied Fetch!`) for 1.8s, plus outside-click dismissal.
   - **Config Tab & Feature Toggle**: Integrated toggle `copyCodeSnippet` into extension settings and the Config tab with instant classList toggling (`.oac-disable-copy-code-snippet`).
   - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**723 tests passing**).
-- [ ] **10. 📥 Export Response as JSON or CSV File**
-  - **Feature**: 1-click export buttons to download response arrays/objects as `.json` or `.csv` files.
+- [x] **10. Export Response as JSON or CSV File**
+  - **Feature**: 1-click export actions in rendered response toolbars (`.oac-resp-export-btn`) and fallback action bars to instantly download API responses as formatted `.json` or RFC 4180-compliant `.csv` files.
+  - **RFC 4180 Compliant CSV Engine (`export-utils.ts`)**:
+    - Automatic tabular data extraction from arrays of objects and nested collection envelopes (`items`, `data`, `results`, `records`, etc.).
+    - Robust escaping for commas, quotes (`""`), and newlines, plus UTF-8 BOM (`\uFEFF`) prefixing for native compatibility with Microsoft Excel and Google Sheets.
+    - Gracefully disables CSV export and provides helpful tooltips when response payloads are non-tabular.
+  - **Sanitized Filename Generator**: Generates clean, informative filenames like `get_tasks_2026-09-17.json` or `get_tasks_2026-09-17.csv` derived from HTTP method, cleaned endpoint path, and timestamp.
+  - **Dual-Mode Integration**:
+    - **Response Viewer Toolbar**: Sleek `[ Export ▾ ]` dropdown integrated into the dark response viewer toolbar alongside `Copy JSON` and mode toggles.
+    - **Standalone Fallback Bar**: Mounts compact `[ JSON ]` and `[ CSV ]` export buttons on `.response-col_description` if interactive tree view is toggled off in settings.
+  - **Config Tab & Feature Toggle**: Integrated toggle `responseExport` into extension settings and the Config tab with instant classList toggling (`.oac-disable-response-export`).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**746 tests passing**).
 - [ ] **11. ⭐ Endpoint Favorites / Pinning to Top**
   - **Feature**: Star icon on endpoints to pin frequently tested operations into a "⭐ Pinned" section at the top of Swagger.
 - [ ] **12. 📋 Paste cURL to Auto-Fill Operation**

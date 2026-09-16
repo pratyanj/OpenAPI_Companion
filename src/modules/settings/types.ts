@@ -20,6 +20,8 @@ export interface SwaggerFeaturePreferences {
   responseJsonSearch: boolean
   /** Multi-language "Copy Code" dropdown (cURL, PowerShell, Fetch, Axios, Python) */
   copyCodeSnippet: boolean
+  /** 1-Click export response as .json or RFC 4180 .csv file */
+  responseExport: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -32,6 +34,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   accountSwitcher: true,
   responseJsonSearch: true,
   copyCodeSnippet: true,
+  responseExport: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */

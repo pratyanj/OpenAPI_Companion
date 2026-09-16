@@ -78,6 +78,12 @@ const FEATURES: FeatureItem[] = [
     description:
       "Quick copy dropdown next to Swagger's Curl block to instantly copy runnable requests in cURL, PowerShell, Fetch, Axios, and Python (requests).",
   },
+  {
+    id: 'responseExport',
+    title: 'Response Export (JSON & CSV)',
+    description:
+      '1-click export actions in rendered response toolbars to download responses as formatted .json or RFC 4180-compliant .csv files.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -140,6 +146,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       accountSwitcher: true,
       responseJsonSearch: true,
       copyCodeSnippet: true,
+      responseExport: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

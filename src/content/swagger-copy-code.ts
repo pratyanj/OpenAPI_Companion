@@ -42,11 +42,13 @@ body.oac-disable-copy-code-snippet .oac-copy-code-dropdown {
   position: relative !important;
 }
 
-.swagger-ui .curl-command h4 {
+.swagger-ui .responses-inner h4,
+.swagger-ui .curl-command h4,
+.swagger-ui .responses-wrapper h4 {
   display: inline-block !important;
   vertical-align: middle !important;
-  margin: 0 !important;
-  padding: 8px 0 !important;
+  margin: 0 8px 0 0 !important;
+  padding: 6px 0 !important;
 }
 
 .oac-copy-code-container {
@@ -247,13 +249,18 @@ function ensureStyles(doc: Document): void {
  */
 function attachCopyCodeDropdown(curlBlock: HTMLElement, doc: Document): boolean {
   if (curlBlock.getAttribute(ATTACHED_ATTR) === 'true') return false
+  const parent = curlBlock.parentElement
+  if (parent && parent.getAttribute(ATTACHED_ATTR) === 'true') return false
 
   // Find Swagger UI's curl code container
   const codeEl = curlBlock.querySelector('pre code') || curlBlock.querySelector('pre')
   if (!codeEl) return false
 
-  // Determine insertion anchor: right after <h4>Curl</h4> if available
-  const h4 = curlBlock.querySelector('h4')
+  // Determine insertion anchor: <h4>Curl</h4> which is usually a sibling in responses-inner
+  const h4 =
+    (curlBlock.previousElementSibling?.tagName === 'H4' ? (curlBlock.previousElementSibling as HTMLElement) : null) ||
+    parent?.querySelector('h4') ||
+    curlBlock.querySelector('h4')
 
   const container = doc.createElement('div')
   container.className = 'oac-copy-code-container'
@@ -330,17 +337,17 @@ function attachCopyCodeDropdown(curlBlock: HTMLElement, doc: Document): boolean 
   container.appendChild(dropdown)
 
   if (h4 && h4.parentNode) {
-    // Insert right after h4
     if (h4.nextSibling) {
       h4.parentNode.insertBefore(container, h4.nextSibling)
     } else {
       h4.parentNode.appendChild(container)
     }
   } else {
-    curlBlock.insertBefore(container, curlBlock.firstChild)
+    curlBlock.parentElement?.insertBefore(container, curlBlock)
   }
 
   curlBlock.setAttribute(ATTACHED_ATTR, 'true')
+  if (parent) parent.setAttribute(ATTACHED_ATTR, 'true')
   return true
 }
 
@@ -379,7 +386,7 @@ export function mountSwaggerCopyCode(doc: Document = document): SwaggerCopyCodeH
       setTimeout(() => scanAndMount(), 1600)
     }
   }
-  doc.addEventListener('click', onExecuteClick)
+  doc.addEventListener('click', onExecuteClick, true)
 
   // MutationObserver for dynamic DOM changes (e.g. endpoint executions)
   const observer = new MutationObserver(() => {
@@ -400,7 +407,7 @@ export function mountSwaggerCopyCode(doc: Document = document): SwaggerCopyCodeH
     dispose: () => {
       observer.disconnect()
       doc.removeEventListener('click', onDocClick)
-      doc.removeEventListener('click', onExecuteClick)
+      doc.removeEventListener('click', onExecuteClick, true)
       doc.querySelectorAll('.oac-copy-code-container').forEach((el) => el.remove())
       doc.querySelectorAll(`[${ATTACHED_ATTR}]`).forEach((el) => el.removeAttribute(ATTACHED_ATTR))
       const s = doc.getElementById(STYLE_ID)

@@ -439,6 +439,75 @@ describe('swagger-response-viewer', () => {
     handle.dispose()
   })
 
+
+  it('mounts export dropdown in toolbar and toggles open/close', () => {
+    const block = createExecutedResponseBlock(JSON.stringify([{ id: 1, name: 'Item 1' }]))
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerResponseViewer(document)
+    const exportBtn = document.querySelector('.oac-resp-export-btn') as HTMLButtonElement
+    const dropdown = document.querySelector('.oac-resp-export-dropdown') as HTMLElement
+
+    expect(exportBtn).toBeTruthy()
+    expect(dropdown).toBeTruthy()
+    expect(dropdown.classList.contains('oac-hidden')).toBe(true)
+
+    // Open dropdown
+    exportBtn.click()
+    expect(dropdown.classList.contains('oac-hidden')).toBe(false)
+
+    // Outside click closes it
+    document.body.click()
+    expect(dropdown.classList.contains('oac-hidden')).toBe(true)
+
+    handle.dispose()
+  })
+
+  it('triggers JSON and CSV download on export item clicks', () => {
+    const sample = [{ id: 101, title: 'Export Task', done: false }]
+    const block = createExecutedResponseBlock(JSON.stringify(sample))
+    document.body.appendChild(block)
+
+    // Mock download
+    global.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-export-url')
+    global.URL.revokeObjectURL = vi.fn()
+
+    const clickSpy = vi.fn()
+    const originalCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag)
+      if (tag === 'a') {
+        el.click = clickSpy
+      }
+      return el
+    })
+
+    const handle = mountSwaggerResponseViewer(document)
+    const exportBtn = document.querySelector('.oac-resp-export-btn') as HTMLButtonElement
+    exportBtn.click()
+
+    const items = document.querySelectorAll('.oac-resp-export-item')
+    const jsonItem = Array.from(items).find((el) => el.textContent?.includes('JSON')) as HTMLButtonElement
+    const csvItem = Array.from(items).find((el) => el.textContent?.includes('CSV')) as HTMLButtonElement
+
+    expect(jsonItem).toBeTruthy()
+    expect(csvItem).toBeTruthy()
+    expect(csvItem.disabled).toBe(false)
+
+    // Click Export JSON
+    jsonItem.click()
+    expect(clickSpy).toHaveBeenCalledTimes(1)
+    expect(exportBtn.textContent).toContain('Exported JSON!')
+
+    // Click Export CSV
+    exportBtn.click()
+    csvItem.click()
+    expect(clickSpy).toHaveBeenCalledTimes(2)
+    expect(exportBtn.textContent).toContain('Exported CSV!')
+
+    handle.dispose()
+  })
+
   it('disposes cleanly and restores native view', () => {
     const block = createExecutedResponseBlock('{"test":1}')
     document.body.appendChild(block)

@@ -13,6 +13,13 @@
  * - 100% inline SVG vector icons (strict zero-emoji policy)
  */
 
+import {
+  jsonToCsv,
+  sanitizeExportFilename,
+  triggerDownload,
+  isCsvExportable,
+} from '@/utils/export-utils'
+
 export interface SwaggerResponseViewerHandle {
   scanAndMount(root?: ParentNode): number
   dispose(): void
@@ -32,10 +39,87 @@ const SVG_ICONS = {
   collapseAll: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`,
   copy: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
   check: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  download: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
 }
 
 const CSS_STYLES = `
 /* Feature disable toggle */
+body.oac-disable-response-export .oac-resp-export-container {
+  display: none !important;
+}
+
+.swagger-ui .oac-resp-export-container,
+.oac-resp-export-container {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.swagger-ui .oac-resp-export-dropdown,
+.oac-resp-export-dropdown {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  right: 0 !important;
+  z-index: 99999 !important;
+  min-width: 160px !important;
+  background: #202224 !important;
+  border: 1px solid #4a4d52 !important;
+  border-radius: 5px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  padding: 4px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  box-sizing: border-box !important;
+}
+
+.swagger-ui .oac-resp-export-dropdown.oac-hidden,
+.oac-resp-export-dropdown.oac-hidden {
+  display: none !important;
+}
+
+.swagger-ui .oac-resp-export-item,
+.oac-resp-export-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  padding: 6px 9px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #e2e8f0 !important;
+  border-radius: 4px !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+  transition: background 0.12s ease, color 0.12s ease !important;
+}
+
+.swagger-ui .oac-resp-export-item:hover:not(:disabled),
+.oac-resp-export-item:hover:not(:disabled) {
+  background: #2d3034 !important;
+  color: #38bdf8 !important;
+}
+
+.swagger-ui .oac-resp-export-item:disabled,
+.oac-resp-export-item:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.swagger-ui .oac-resp-export-badge,
+.oac-resp-export-badge {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  padding: 1px 5px !important;
+  border-radius: 3px !important;
+  background: #33363b !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+}
+
 body.oac-disable-response-json-search .oac-response-viewer-container {
   display: none !important;
 }
@@ -601,6 +685,39 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     rightSide.appendChild(viewToggle)
     rightSide.appendChild(copyBtn)
 
+    // Export Dropdown
+    const exportContainer = doc.createElement('div')
+    exportContainer.className = 'oac-resp-export-container'
+
+    const exportBtn = doc.createElement('button')
+    exportBtn.type = 'button'
+    exportBtn.className = 'oac-resp-copy-btn oac-resp-export-btn'
+    exportBtn.title = 'Export response as JSON or CSV file'
+    exportBtn.innerHTML = `${SVG_ICONS.download} <span>Export</span> ${SVG_ICONS.chevronDown}`
+
+    const exportDropdown = doc.createElement('div')
+    exportDropdown.className = 'oac-resp-export-dropdown oac-hidden'
+
+    const jsonExportItem = doc.createElement('button')
+    jsonExportItem.type = 'button'
+    jsonExportItem.className = 'oac-resp-export-item'
+    jsonExportItem.innerHTML = `<span>Export JSON</span><span class="oac-resp-export-badge">.json</span>`
+
+    const csvExportItem = doc.createElement('button')
+    csvExportItem.type = 'button'
+    csvExportItem.className = 'oac-resp-export-item'
+    csvExportItem.innerHTML = `<span>Export CSV</span><span class="oac-resp-export-badge">.csv</span>`
+    if (!isCsvExportable(parsed)) {
+      csvExportItem.disabled = true
+      csvExportItem.title = 'Requires array or object payload'
+    }
+
+    exportDropdown.appendChild(jsonExportItem)
+    exportDropdown.appendChild(csvExportItem)
+    exportContainer.appendChild(exportBtn)
+    exportContainer.appendChild(exportDropdown)
+    rightSide.appendChild(exportContainer)
+
     toolbar.appendChild(leftSide)
     toolbar.appendChild(rightSide)
 
@@ -615,6 +732,8 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     // Method to dynamically update viewer when a new response arrives for the same endpoint
     ;(container as any).__oacUpdateResponse = (newParsed: unknown, newRawText: string) => {
       parsed = newParsed
+      csvExportItem.disabled = !isCsvExportable(newParsed)
+      csvExportItem.title = isCsvExportable(newParsed) ? 'Export as RFC 4180 CSV' : 'Requires array or object payload'
       treeView.innerHTML = ''
       const newRoot = renderJsonNode(newParsed, '', true, doc)
       treeView.appendChild(newRoot)
@@ -851,6 +970,70 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       updateMatchHighlighting(searchInput.value)
     })
 
+    // --- EXPORT DROPDOWN & ACTIONS ---
+    exportBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const isHidden = exportDropdown.classList.contains('oac-hidden')
+      doc.querySelectorAll('.oac-resp-export-dropdown').forEach((d) => d.classList.add('oac-hidden'))
+      if (isHidden) {
+        exportDropdown.classList.remove('oac-hidden')
+      }
+    })
+
+    jsonExportItem.addEventListener('click', (e) => {
+      e.stopPropagation()
+      exportDropdown.classList.add('oac-hidden')
+      try {
+        const opblock = nativeCodeContainer.closest('.opblock')
+        const method = opblock?.querySelector('.opblock-summary-method')?.textContent || 'response'
+        const path =
+          opblock?.querySelector('.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path')?.textContent || ''
+        const filename = sanitizeExportFilename(method, path, 'json')
+        const jsonStr = JSON.stringify(parsed, null, 2)
+        triggerDownload(filename, jsonStr, 'application/json', doc)
+
+        exportBtn.classList.add('copied')
+        exportBtn.innerHTML = `${SVG_ICONS.check} <span>Exported JSON!</span>`
+        setTimeout(() => {
+          exportBtn.classList.remove('copied')
+          exportBtn.innerHTML = `${SVG_ICONS.download} <span>Export</span> ${SVG_ICONS.chevronDown}`
+        }, 1800)
+      } catch (err) {
+        console.warn('[OpenAPI Companion] Failed to export JSON:', err)
+      }
+    })
+
+    csvExportItem.addEventListener('click', (e) => {
+      e.stopPropagation()
+      exportDropdown.classList.add('oac-hidden')
+      try {
+        const { csv, error } = jsonToCsv(parsed)
+        if (error || !csv) {
+          exportBtn.innerHTML = `${SVG_ICONS.clear} <span>Cannot export CSV</span>`
+          setTimeout(() => {
+            exportBtn.innerHTML = `${SVG_ICONS.download} <span>Export</span> ${SVG_ICONS.chevronDown}`
+          }, 1800)
+          return
+        }
+
+        const opblock = nativeCodeContainer.closest('.opblock')
+        const method = opblock?.querySelector('.opblock-summary-method')?.textContent || 'response'
+        const path =
+          opblock?.querySelector('.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path')?.textContent || ''
+        const filename = sanitizeExportFilename(method, path, 'csv')
+        triggerDownload(filename, csv, 'text/csv;charset=utf-8;', doc)
+
+        exportBtn.classList.add('copied')
+        exportBtn.innerHTML = `${SVG_ICONS.check} <span>Exported CSV!</span>`
+        setTimeout(() => {
+          exportBtn.classList.remove('copied')
+          exportBtn.innerHTML = `${SVG_ICONS.download} <span>Export</span> ${SVG_ICONS.chevronDown}`
+        }, 1800)
+      } catch (err) {
+        console.warn('[OpenAPI Companion] Failed to export CSV:', err)
+      }
+    })
+
     // --- COPY FORMATTED JSON ---
     copyBtn.addEventListener('click', async () => {
       try {
@@ -906,6 +1089,14 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       setTimeout(() => scanAndMount(), 1500)
     }
   }
+  // Dismiss export dropdown on outside click
+  const onDocExportClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null
+    if (!target?.closest('.oac-resp-export-container')) {
+      doc.querySelectorAll('.oac-resp-export-dropdown').forEach((d) => d.classList.add('oac-hidden'))
+    }
+  }
+  doc.addEventListener('click', onDocExportClick)
   doc.addEventListener('click', onExecuteClick, true)
 
   scanAndMount()
@@ -915,6 +1106,7 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     dispose(): void {
       observer.disconnect()
       doc.removeEventListener('click', onExecuteClick, true)
+    doc.removeEventListener('click', onDocExportClick)
       const containers = doc.querySelectorAll('.oac-response-viewer-container')
       containers.forEach((c) => c.remove())
       const hidden = doc.querySelectorAll('.oac-swagger-raw-hidden')
