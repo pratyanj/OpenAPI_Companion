@@ -39,6 +39,7 @@ import { mountSwaggerResponseViewer } from './swagger-response-viewer'
 import { mountSwaggerCopyCode } from './swagger-copy-code'
 import { mountSwaggerResponseExport } from './swagger-response-export'
 import { mountSwaggerPinnedEndpoints } from './swagger-pinned-endpoints'
+import { mountSwaggerPasteCurl } from './swagger-paste-curl'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -115,6 +116,7 @@ function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Do
   b.classList.toggle('oac-disable-account-switcher', !features.accountSwitcher)
   b.classList.toggle('oac-disable-response-json-search', !features.responseJsonSearch)
   b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
+  b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
 }
 
 async function boot(): Promise<void> {
@@ -268,6 +270,7 @@ async function boot(): Promise<void> {
   })
   await productivity.init()
   mountSwaggerPinnedEndpoints(productivity, document)
+  mountSwaggerPasteCurl(document, productivity)
 
   // The palette is the only thing in the page that needs React, so it's loaded on
   // FIRST USE — a static import would make every page in the browser pay ~170 kB

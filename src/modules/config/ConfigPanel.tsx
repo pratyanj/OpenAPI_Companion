@@ -90,6 +90,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Star favorite buttons directly on endpoint headers and an interactive Pinned Operations tray at the top of Swagger UI.',
   },
+  {
+    id: 'pasteCurl',
+    title: 'Paste cURL to Auto-Fill',
+    description:
+      'Paste raw cURL commands to automatically locate the matching endpoint, activate Try-it-out, and auto-populate parameters and body.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -154,6 +160,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       copyCodeSnippet: true,
       responseExport: true,
       pinnedEndpoints: true,
+      pasteCurl: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

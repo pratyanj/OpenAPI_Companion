@@ -108,8 +108,14 @@
   - **Zero Clutter**: Tray automatically hides when 0 items are favorited.
   - **Config Tab & Feature Toggle**: Integrated toggle `pinnedEndpoints` in settings and Config panel with `.oac-disable-pinned-endpoints`.
   - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**82 test files, 757 tests passing**).
-- [ ] **12. 📋 Paste cURL to Auto-Fill Operation**
-  - **Feature**: Paste a raw cURL command to automatically navigate to the matching endpoint and populate all parameters and body.
+- [x] **12. 📋 Paste cURL to Auto-Fill Operation**
+  - **Header & Keyboard Entry Points**: Injected sleek `[ 📋 Paste cURL ]` action button in Swagger UI header, plus global `Ctrl+Shift+V` / `⌘+Shift+V` shortcut handler.
+  - **Robust cURL Parser (`curl-parser.ts`)**: Extracts HTTP method, full URL, path, query parameters, headers, and request body with multi-line continuations, Windows PowerShell backtick support, and pretty JSON formatting.
+  - **OpenAPI Route Matcher (`endpoint-matcher.ts`)**: Matches raw URLs and nested route segments against templated OpenAPI paths (e.g. `/tasks/42` -> `/tasks/{task_id}`) and extracts path parameter values into dictionaries.
+  - **Interactive Modal & Real-Time Preview**: Displays method badge, matched endpoint badge, extracted path/query parameters pills, and formatted request payload preview with 1-click `[ Paste from Clipboard ]` integration.
+  - **1-Click Auto-Fill Execution**: Automatically scrolls to and expands the matched endpoint, clicks "Try it out", fills path and query parameters, populates request body textarea, and highlights with `.oac-pulse-highlight`.
+  - **Config Tab & Feature Toggle**: Integrated toggle `pasteCurl` into settings and Config panel with `.oac-disable-paste-curl` (12/12 active features).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**85 test files, 776 tests passing**).
 - [ ] **13. 🌐 Global Debug Headers Injector**
   - **Feature**: Configure global headers (e.g. `X-Tenant-ID`, `X-Debug`) that automatically attach to all outgoing Swagger UI requests.
 

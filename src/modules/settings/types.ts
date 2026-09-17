@@ -24,6 +24,8 @@ export interface SwaggerFeaturePreferences {
   responseExport: boolean
   /** 1-Click star favorite buttons and top Pinned Operations quick tray */
   pinnedEndpoints: boolean
+  /** Paste raw cURL commands to auto-fill operation fields in Swagger UI. Default: true */
+  pasteCurl: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -38,6 +40,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   copyCodeSnippet: true,
   responseExport: true,
   pinnedEndpoints: true,
+  pasteCurl: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */
