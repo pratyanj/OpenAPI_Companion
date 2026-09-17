@@ -331,16 +331,14 @@ describe('swagger-auth-badge mounting & interactions', () => {
     handle.dispose()
   })
 
-  it('triggers onManageAccounts when footer button is clicked', () => {
+  it('does not render manage accounts in auth tab footer in dropdown', () => {
     const wrapper = createAuthWrapper()
     document.body.appendChild(wrapper)
 
-    const onManageAccounts = vi.fn()
-    const handle = mountSwaggerAuthBadge(document, { onManageAccounts })
+    const handle = mountSwaggerAuthBadge(document)
     handle.update(null, null, [])
 
     const badge = wrapper.querySelector<HTMLElement>('.oac-auth-status-badge')!
-    // Since 0 saved and 0 auth, badge is initially hidden, let's update with an auth record to show it
     const record: AuthRecord = {
       type: 'bearer',
       token: 'some-token',
@@ -352,11 +350,9 @@ describe('swagger-auth-badge mounting & interactions', () => {
     const identityBtn = badge.querySelector<HTMLButtonElement>('.oac-auth-identity-btn')!
     identityBtn.click()
 
-    const manageBtn = badge.querySelector<HTMLButtonElement>('.oac-account-manage-btn')!
-    manageBtn.click()
-
-    expect(onManageAccounts).toHaveBeenCalled()
-    expect(badge.querySelector('.oac-account-dropdown')).toBeNull()
+    expect(badge.querySelector('.oac-account-dropdown')).not.toBeNull()
+    expect(badge.querySelector('.oac-account-dropdown-footer')).toBeNull()
+    expect(badge.querySelector('.oac-account-manage-btn')).toBeNull()
 
     handle.dispose()
   })

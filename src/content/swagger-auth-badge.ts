@@ -815,23 +815,7 @@ export function mountSwaggerAuthBadge(
     }
     dropdown.appendChild(list)
 
-    const footer = doc.createElement('div')
-    footer.className = 'oac-account-dropdown-footer'
-    const manageBtn = doc.createElement('button')
-    manageBtn.type = 'button'
-    manageBtn.className = 'oac-account-manage-btn'
-    manageBtn.innerHTML = `
-      <span>Manage Accounts in Auth Tab</span>
-      <span class="oac-manage-icon">${SVG_ICONS.externalLink}</span>
-    `
-    manageBtn.addEventListener('click', (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      closeAllDropdowns()
-      options.onManageAccounts?.()
-    })
-    footer.appendChild(manageBtn)
-    dropdown.appendChild(footer)
+// Footer removed per user request
 
     anchor.appendChild(dropdown)
   }
