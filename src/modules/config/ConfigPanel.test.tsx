@@ -24,13 +24,13 @@ function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
 }
 
 describe('ConfigPanel', () => {
-  it('renders all 12 swagger feature toggles with active count', async () => {
+  it('renders all 13 swagger feature toggles with active count', async () => {
     const settings = mockSettings()
     const bus = new EventBus()
     render(<ConfigPanel settings={settings} bus={bus} />)
 
     expect(await screen.findByText(/Swagger In-Page Features/i)).toBeInTheDocument()
-    expect(screen.getByText('12/12 Active')).toBeInTheDocument()
+    expect(screen.getByText('13/13 Active')).toBeInTheDocument()
 
     const mockDataCheckbox = screen.getByLabelText(/Toggle 1-Click Realistic Mock Data/i) as HTMLInputElement
     const jsonFormatCheckbox = screen.getByLabelText(/Toggle JSON Formatter & Auto-Repair Validator/i) as HTMLInputElement
@@ -55,6 +55,9 @@ describe('ConfigPanel', () => {
     expect(copyCodeCheckbox.checked).toBe(true)
     expect(exportCheckbox.checked).toBe(true)
     expect(pinnedCheckbox.checked).toBe(true)
+
+    const globalHeadersCheckbox = screen.getByLabelText(/Toggle Global Debug Headers/i) as HTMLInputElement
+    expect(globalHeadersCheckbox.checked).toBe(true)
   })
 
   it('calls setSwaggerFeature when a toggle is clicked', async () => {

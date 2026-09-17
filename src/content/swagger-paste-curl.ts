@@ -49,12 +49,33 @@ body.oac-disable-paste-curl #oac-paste-curl-modal {
   display: none !important;
 }
 
+/* Header Actions Bar */
+.oac-header-actions-bar {
+  margin-top: 14px !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.oac-header-actions-bar:empty {
+  display: none !important;
+}
+
 /* Header Action Button (in Swagger UI top bar) */
 .oac-paste-curl-btn {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 6px 12px !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  line-height: 30px !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 13px !important;
   background: #0f172a !important;
   color: #f1f5f9 !important;
   border: 1px solid #334155 !important;
@@ -78,8 +99,12 @@ body.oac-disable-paste-curl #oac-paste-curl-modal {
 }
 
 .oac-paste-curl-btn svg {
+  width: 14px !important;
+  height: 14px !important;
   color: #3b82f6 !important;
   flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
 }
 
 /* Modal Overlay & Backdrop */
@@ -821,14 +846,22 @@ export function mountSwaggerPasteCurl(
       openModal()
     })
 
-    if (anchor.classList.contains('information-container') || anchor.classList.contains('info')) {
-      const container = doc.createElement('div')
-      container.style.marginTop = '10px'
-      container.style.display = 'inline-block'
-      container.appendChild(btn)
-      anchor.appendChild(container)
+    let bar = anchor.querySelector<HTMLElement>('.oac-header-actions-bar')
+    if (!bar) {
+      bar = doc.createElement('div')
+      bar.className = 'oac-header-actions-bar'
+      if (anchor.classList.contains('information-container') || anchor.classList.contains('info')) {
+        anchor.appendChild(bar)
+      } else {
+        anchor.insertBefore(bar, anchor.firstChild)
+      }
+    }
+
+    const headersBtn = bar.querySelector('.oac-global-headers-btn')
+    if (headersBtn) {
+      bar.insertBefore(btn, headersBtn)
     } else {
-      anchor.insertBefore(btn, anchor.firstChild)
+      bar.appendChild(btn)
     }
   }
 

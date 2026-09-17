@@ -96,6 +96,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Paste raw cURL commands to automatically locate the matching endpoint, activate Try-it-out, and auto-populate parameters and body.',
   },
+  {
+    id: 'globalHeaders',
+    title: 'Global Debug Headers Injector',
+    description:
+      'Configure global custom HTTP headers (e.g. X-Tenant-ID, X-Debug) automatically injected into all outgoing Swagger UI requests with dynamic variables.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -161,6 +167,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       responseExport: true,
       pinnedEndpoints: true,
       pasteCurl: true,
+      globalHeaders: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

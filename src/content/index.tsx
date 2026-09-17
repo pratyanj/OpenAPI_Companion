@@ -40,6 +40,8 @@ import { mountSwaggerCopyCode } from './swagger-copy-code'
 import { mountSwaggerResponseExport } from './swagger-response-export'
 import { mountSwaggerPinnedEndpoints } from './swagger-pinned-endpoints'
 import { mountSwaggerPasteCurl } from './swagger-paste-curl'
+import { mountSwaggerGlobalHeaders } from './swagger-global-headers'
+import { HeadersService } from '@/modules/headers'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
@@ -100,6 +102,13 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-var-resolution #oac-var-autocomplete-host {
       display: none !important;
     }
+    body.oac-disable-global-headers .oac-global-headers-btn,
+    body.oac-disable-global-headers #oac-global-headers-modal {
+      display: none !important;
+    }
+    body.oac-disable-paste-curl.oac-disable-global-headers .oac-header-actions-bar {
+      display: none !important;
+    }
   `
   doc.head?.appendChild(style)
 }
@@ -117,6 +126,7 @@ function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Do
   b.classList.toggle('oac-disable-response-json-search', !features.responseJsonSearch)
   b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
   b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
+  b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
 }
 
 async function boot(): Promise<void> {
@@ -271,6 +281,8 @@ async function boot(): Promise<void> {
   await productivity.init()
   mountSwaggerPinnedEndpoints(productivity, document)
   mountSwaggerPasteCurl(document, productivity)
+  const headersService = new HeadersService({ storage, projectId: meta.id })
+  mountSwaggerGlobalHeaders(document, headersService)
 
   // The palette is the only thing in the page that needs React, so it's loaded on
   // FIRST USE — a static import would make every page in the browser pay ~170 kB

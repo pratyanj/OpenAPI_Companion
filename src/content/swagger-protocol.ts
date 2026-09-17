@@ -34,6 +34,7 @@ export type BridgeOutbound =
   | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'writeAuth'; snapshot: AuthSnapshot }
   | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'clearAuth' }
   | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'syncVariables'; variables: Record<string, string> }
+  | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'syncGlobalHeaders'; headers: Record<string, string> }
 
 export function isInbound(data: unknown): data is BridgeInbound {
   const d = data as Partial<BridgeInbound> | undefined

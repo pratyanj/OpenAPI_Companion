@@ -82,4 +82,48 @@ describe('main-world network interception', () => {
     const [callUrl] = fetchSpy.mock.calls[0] as [string, RequestInit]
     expect(callUrl).toBe('https://api.example.com/tasks/987')
   })
-})
+  it('injects global debug headers into outgoing fetch requests', async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          tag: BRIDGE_TAG,
+          dir: 'to-main',
+          cmd: 'syncVariables',
+          variables: {
+            TENANT: 'acme_corp',
+          },
+        },
+        source: window,
+      }),
+    )
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          tag: BRIDGE_TAG,
+          dir: 'to-main',
+          cmd: 'syncGlobalHeaders',
+          headers: {
+            'X-Tenant-ID': '{{TENANT}}',
+            'X-Debug': 'true',
+          },
+        },
+        source: window,
+      }),
+    )
+
+    await window.fetch('https://api.example.com/items', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [, callInit] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(callInit.headers).toMatchObject({
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme_corp',
+      'X-Debug': 'true',
+    })
+  })
+});

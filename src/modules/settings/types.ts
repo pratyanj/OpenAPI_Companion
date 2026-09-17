@@ -26,6 +26,8 @@ export interface SwaggerFeaturePreferences {
   pinnedEndpoints: boolean
   /** Paste raw cURL commands to auto-fill operation fields in Swagger UI. Default: true */
   pasteCurl: boolean
+  /** Global custom HTTP debug headers injected into all outgoing requests. Default: true */
+  globalHeaders: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -41,6 +43,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   responseExport: true,
   pinnedEndpoints: true,
   pasteCurl: true,
+  globalHeaders: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */

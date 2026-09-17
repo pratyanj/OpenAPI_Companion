@@ -112,6 +112,11 @@ function applyWrite(snapshot: Parameters<typeof buildAuthorizePayload>[0], attem
 // ---------------------------------------------------------------------------
 
 let activeVariables: Record<string, string> = {}
+let activeGlobalHeaders: Record<string, string> = {}
+
+export function getActiveGlobalHeaders(): Record<string, string> {
+  return activeGlobalHeaders
+}
 
 export function getActiveVariables(): Record<string, string> {
   return activeVariables
@@ -145,6 +150,15 @@ function hookSwaggerInterceptor(): void {
               headers[k] = resolveWithVariables(v, activeVariables)
             }
           }
+          for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+            headers[k] = resolveWithVariables(v, activeVariables)
+          }
+        } else if (Object.keys(activeGlobalHeaders).length > 0) {
+          const headers: Record<string, string> = {}
+          for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+            headers[k] = resolveWithVariables(v, activeVariables)
+          }
+          m.headers = headers
         }
         if (typeof m.body === 'string') {
           m.body = resolveWithVariables(m.body, activeVariables)
@@ -201,6 +215,29 @@ export function hookFetch(): void {
           modifiedBody = resolveWithVariables(modifiedBody, activeVariables)
         }
 
+        // Inject active global headers
+        if (Object.keys(activeGlobalHeaders).length > 0) {
+          if (typeof Headers !== 'undefined' && modifiedHeaders instanceof Headers) {
+            for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+              modifiedHeaders.set(k, resolveWithVariables(v, activeVariables))
+            }
+          } else if (Array.isArray(modifiedHeaders)) {
+            for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+              modifiedHeaders.push([k, resolveWithVariables(v, activeVariables)])
+            }
+          } else if (modifiedHeaders && typeof modifiedHeaders === 'object') {
+            for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+              (modifiedHeaders as Record<string, string>)[k] = resolveWithVariables(v, activeVariables)
+            }
+          } else {
+            const nextHeaders: Record<string, string> = {}
+            for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+              nextHeaders[k] = resolveWithVariables(v, activeVariables)
+            }
+            modifiedHeaders = nextHeaders
+          }
+        }
+
         init = {
           ...init,
           headers: modifiedHeaders,
@@ -247,6 +284,13 @@ export function hookXHR(): void {
     if (typeof body === 'string') {
       body = resolveWithVariables(body, activeVariables)
     }
+    try {
+      for (const [k, v] of Object.entries(activeGlobalHeaders)) {
+        proto.setRequestHeader.call(this, k, resolveWithVariables(v, activeVariables))
+      }
+    } catch {
+      // ignore
+    }
     return origSend.apply(this, [body as Document | XMLHttpRequestBodyInit | null | undefined])
   }
 }
@@ -269,6 +313,9 @@ window.addEventListener('message', (event: MessageEvent) => {
     handshake()
   } else if (message.cmd === 'syncVariables') {
     activeVariables = { ...(message.variables ?? {}) }
+    hookSwaggerInterceptor()
+  } else if (message.cmd === 'syncGlobalHeaders') {
+    activeGlobalHeaders = { ...(message.headers ?? {}) }
     hookSwaggerInterceptor()
   }
 })

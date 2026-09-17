@@ -116,8 +116,13 @@
   - **1-Click Auto-Fill Execution**: Automatically scrolls to and expands the matched endpoint, clicks "Try it out", fills path and query parameters, populates request body textarea, and highlights with `.oac-pulse-highlight`.
   - **Config Tab & Feature Toggle**: Integrated toggle `pasteCurl` into settings and Config panel with `.oac-disable-paste-curl` (12/12 active features).
   - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**85 test files, 776 tests passing**).
-- [ ] **13. 🌐 Global Debug Headers Injector**
-  - **Feature**: Configure global headers (e.g. `X-Tenant-ID`, `X-Debug`) that automatically attach to all outgoing Swagger UI requests.
+- [x] **13. 🌐 Global Debug Headers Injector**
+  - **Persistent Header Storage & Service (`HeadersService`)**: Built per-project key-value store (`projects/<projectId>/global-headers`) supporting enable/disable toggles, add/delete header rules, and active record export.
+  - **MAIN-World Multi-Channel Network Interception**: Injected global headers across Swagger's `requestInterceptor`, native `window.fetch`, and `XMLHttpRequest`, with priority over operation defaults and dynamic variable interpolation (`{{VARIABLE}}`, `{{$uuid}}`, `{{$timestamp}}`).
+  - **Swagger UI Quick Action Bar Button**: Mounted clean `[ Headers ]` action button beside `[ Paste cURL ]` in `.oac-header-actions-bar` with an active count badge (`Headers (N)`).
+  - **Dark-Themed In-Page Management Modal**: Modal matching Swagger/OAC dark slate theme (`#0f172a`, `#1e293b`), quick preset chips (`+ X-Tenant-ID`, `+ X-Debug`, `+ Accept-Language`, `+ X-Request-ID`, `+ Cache-Control`), dynamic row addition, and real-time active header badge sync.
+  - **Config Tab & Feature Toggle**: Integrated toggle `globalHeaders` into settings and Config panel with `.oac-disable-global-headers` (**13/13 active features**).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**86 test files, 786+ tests passing**).
 
 # TODO — Open Action Items
 
