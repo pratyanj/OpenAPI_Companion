@@ -110,4 +110,15 @@ describe('swagger-response-export', () => {
     expect(document.querySelector('.oac-response-export-bar')).toBeNull()
     expect(document.getElementById('oac-response-export-styles')).toBeNull()
   })
+
+  it('respects oac-disable-response-export class on body', () => {
+    const el = createCell('{"message":"ok"}')
+    document.body.appendChild(el)
+    document.body.classList.add('oac-disable-response-export')
+    const handle = mountSwaggerResponseExport(document)
+    const bar = document.querySelector('.oac-response-export-bar')
+    expect(bar).not.toBeNull()
+    handle.dispose()
+    document.body.classList.remove('oac-disable-response-export')
+  })
 })

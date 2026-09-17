@@ -497,4 +497,19 @@ describe('swagger-auth-badge mounting & interactions', () => {
 
     handle.dispose()
   })
+
+  it('mounts into execute bar with oac-execute-account-switcher and oac-op-account-container', () => {
+    const execWrapper = document.createElement('div')
+    execWrapper.className = 'execute-wrapper'
+    execWrapper.innerHTML = '<button class="btn execute opblock-control__btn">Execute</button>'
+    document.body.appendChild(execWrapper)
+
+    const handle = mountSwaggerAuthBadge(document)
+    const opBtn = execWrapper.querySelector('.oac-op-account-switcher')
+    const container = execWrapper.querySelector('.oac-execute-account-switcher')
+    expect(opBtn).not.toBeNull()
+    expect(container).not.toBeNull()
+    handle.dispose()
+    execWrapper.remove()
+  })
 })

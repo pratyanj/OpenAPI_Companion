@@ -34,7 +34,10 @@ const CSS_STYLES = `
 /* Hide when copyCodeSnippet feature is disabled in Config */
 body.oac-disable-copy-code-snippet .oac-copy-code-container,
 body.oac-disable-copy-code-snippet .oac-copy-code-btn,
-body.oac-disable-copy-code-snippet .oac-copy-code-dropdown {
+body.oac-disable-copy-code-snippet .oac-copy-code-dropdown,
+body.oac-disable-copy-code .oac-copy-code-container,
+body.oac-disable-copy-code .oac-copy-code-btn,
+body.oac-disable-copy-code .oac-copy-code-dropdown {
   display: none !important;
 }
 

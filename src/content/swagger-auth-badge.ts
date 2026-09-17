@@ -528,7 +528,17 @@ const CSS_STYLES = `
 body.oac-disable-account-switcher .oac-auth-chevron,
 body.oac-disable-account-switcher .oac-account-dropdown,
 body.oac-disable-account-switcher .oac-op-account-container,
-body.oac-disable-account-switcher .oac-op-account-switcher {
+body.oac-disable-account-switcher .oac-op-account-switcher,
+body.oac-disable-account-switcher .oac-execute-account-switcher,
+body.oac-disable-account-switcher .oac-execute-account-btn,
+body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-execute-account-switcher,
+body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-execute-account-switcher,
+body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-op-account-container,
+body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-op-account-container,
+body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-execute-account-btn,
+body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-execute-account-btn,
+body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-op-account-switcher,
+body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-op-account-switcher {
   display: none !important;
 }
 

@@ -170,4 +170,13 @@ describe('mountSwaggerCopyCode', () => {
     expect(document.querySelector('.oac-copy-code-container')).toBeNull()
     expect(document.getElementById('oac-copy-code-styles')).toBeNull()
   })
+
+  it('hides copy code container when oac-disable-copy-code-snippet is on body', () => {
+    document.body.classList.add('oac-disable-copy-code-snippet')
+    const handle = mountSwaggerCopyCode(document)
+    const container = document.querySelector('.oac-copy-code-container')
+    expect(container).not.toBeNull()
+    handle.dispose()
+    document.body.classList.remove('oac-disable-copy-code-snippet')
+  })
 })

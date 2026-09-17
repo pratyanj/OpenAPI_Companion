@@ -102,6 +102,51 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-var-resolution #oac-var-autocomplete-host {
       display: none !important;
     }
+    body.oac-disable-account-switcher .oac-auth-chevron,
+    body.oac-disable-account-switcher .oac-account-dropdown,
+    body.oac-disable-account-switcher .oac-execute-account-switcher,
+    body.oac-disable-account-switcher .oac-op-account-container,
+    body.oac-disable-account-switcher .oac-execute-account-btn,
+    body.oac-disable-account-switcher .oac-op-account-switcher,
+    body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-execute-account-switcher,
+    body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-execute-account-switcher,
+    body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-op-account-container,
+    body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-op-account-container,
+    body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-execute-account-btn,
+    body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-execute-account-btn,
+    body.oac-disable-account-switcher .swagger-ui .execute-wrapper .oac-op-account-switcher,
+    body.oac-disable-account-switcher .swagger-ui .opblock-body > .btn-group .oac-op-account-switcher {
+      display: none !important;
+    }
+    body.oac-disable-response-json-search .oac-response-viewer-container {
+      display: none !important;
+    }
+    body.oac-disable-response-json-search .oac-swagger-raw-hidden {
+      display: block !important;
+    }
+    body.oac-disable-copy-code-snippet .oac-copy-code-container,
+    body.oac-disable-copy-code-snippet .oac-copy-code-btn,
+    body.oac-disable-copy-code-snippet .oac-copy-code-dropdown,
+    body.oac-disable-copy-code .oac-copy-code-container,
+    body.oac-disable-copy-code .oac-copy-code-btn,
+    body.oac-disable-copy-code .oac-copy-code-dropdown {
+      display: none !important;
+    }
+    body.oac-disable-response-export .oac-response-export-bar,
+    body.oac-disable-response-export .oac-resp-export-container,
+    body.oac-disable-response-export .oac-response-export-btn,
+    body.oac-disable-response-export .oac-resp-export-btn,
+    body.oac-disable-response-export .oac-fallback-export-btn {
+      display: none !important;
+    }
+    body.oac-disable-pinned-endpoints .oac-endpoint-star-btn,
+    body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
+      display: none !important;
+    }
+    body.oac-disable-paste-curl .oac-paste-curl-btn,
+    body.oac-disable-paste-curl #oac-paste-curl-modal {
+      display: none !important;
+    }
     body.oac-disable-global-headers .oac-global-headers-btn,
     body.oac-disable-global-headers #oac-global-headers-modal {
       display: none !important;
@@ -124,6 +169,9 @@ function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Do
   b.classList.toggle('oac-disable-var-resolution', !features.variableResolution)
   b.classList.toggle('oac-disable-account-switcher', !features.accountSwitcher)
   b.classList.toggle('oac-disable-response-json-search', !features.responseJsonSearch)
+  b.classList.toggle('oac-disable-copy-code-snippet', !features.copyCodeSnippet)
+  b.classList.toggle('oac-disable-copy-code', !features.copyCodeSnippet)
+  b.classList.toggle('oac-disable-response-export', !features.responseExport)
   b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
   b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
@@ -260,6 +308,12 @@ async function boot(): Promise<void> {
         Object.keys(changes).some((k) => k.includes('auth'))
       ) {
         void syncAuthBadge()
+      }
+      if (
+        area === 'local' &&
+        Object.keys(changes).some((k) => k.includes('preferences') || k.includes('swaggerFeatures') || k.includes('settings'))
+      ) {
+        void syncSwaggerFeatures()
       }
     })
   }

@@ -30,7 +30,11 @@ const SVG_ICONS = {
 
 const CSS_STYLES = `
 /* Feature disable toggle */
-body.oac-disable-response-export .oac-response-export-bar {
+body.oac-disable-response-export .oac-response-export-bar,
+body.oac-disable-response-export .oac-resp-export-container,
+body.oac-disable-response-export .oac-response-export-btn,
+body.oac-disable-response-export .oac-resp-export-btn,
+body.oac-disable-response-export .oac-fallback-export-btn {
   display: none !important;
 }
 
