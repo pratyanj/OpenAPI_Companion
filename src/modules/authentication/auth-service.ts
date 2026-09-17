@@ -420,6 +420,9 @@ export class AuthenticationService {
     }
     const injected = this.adapter.writeAuth(this.toSnapshot(record))
     if (!injected.ok) return injected
+    await this.storage.set(this.activeCredentialKey(environmentId), credential.id, {
+      immediate: true,
+    })
     const saved = await this.save(record)
     return saved.ok ? ok(record) : saved
   }

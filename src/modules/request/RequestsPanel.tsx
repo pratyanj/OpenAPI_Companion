@@ -165,7 +165,16 @@ export function RequestsPanel({
     }
   }, [service])
 
-  const activeOpenWithBody = openRequests.find((r) => r.body != null && r.body.trim() !== '')
+  const activeOpenRequest = useMemo(() => {
+    return (
+      openRequests.find(
+        (r) =>
+          (r.body != null && r.body.trim() !== '') ||
+          (r.path && Object.keys(r.path).length > 0) ||
+          (r.query && Object.keys(r.query).length > 0),
+      ) || openRequests[0]
+    )
+  }, [openRequests])
 
   // Filtered templates
   const filteredTemplates = useMemo(() => {
@@ -236,7 +245,7 @@ export function RequestsPanel({
     if (!trimmed) return
     const result = await service.saveOpenAsTemplate(trimmed, environmentId)
     if (result.ok && result.value === null) {
-      setCaptureHint('Open a request and enter a body in Swagger first.')
+      setCaptureHint('Click "Try it out" on an operation in Swagger first.')
       return
     }
     if (!result.ok) {
@@ -292,89 +301,7 @@ export function RequestsPanel({
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* ── Top Header Action Buttons ── */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="primary"
-          className="flex flex-1 items-center justify-center gap-1.5 text-xs py-1.5"
-          onClick={openCreateDialog}
-        >
-          <PlusIcon className="h-3.5 w-3.5" />
-          <span>New preset</span>
-        </Button>
-
-        <Button
-          variant="secondary"
-          className="flex flex-1 items-center justify-center gap-1.5 text-xs py-1.5"
-          onClick={() => {
-            setIsCapturing(!isCapturing)
-            setCaptureHint(null)
-          }}
-        >
-          <ZapIcon className="h-3.5 w-3.5 text-amber-500" />
-          <span>Capture open</span>
-        </Button>
-      </div>
-
-      {/* ── Quick Capture from Swagger Banner ── */}
-      {isCapturing && (
-        <div className="flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
-              <ZapIcon className="h-3.5 w-3.5 text-amber-500" />
-              <span>Capture Live Request Body</span>
-            </div>
-            <button
-              type="button"
-              className="text-[11px] text-muted hover:text-text hover:underline"
-              onClick={() => {
-                setIsCapturing(false)
-                setCaptureName('')
-                setCaptureHint(null)
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-
-          {activeOpenWithBody ? (
-            <p className="text-[11px] text-muted">
-              Found open payload for{' '}
-              <span className="font-mono font-medium text-text">
-                {activeOpenWithBody.endpointId}
-              </span>
-            </p>
-          ) : (
-            <p className="text-[11px] text-muted">
-              Captures the request body from whichever Swagger operation is currently open.
-            </p>
-          )}
-
-          <div className="flex gap-2 mt-1">
-            <Input
-              id="oac-capture-name"
-              autoFocus
-              value={captureName}
-              onChange={(e) => setCaptureName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleSaveCapture()
-              }}
-              placeholder="Preset name (e.g. Admin Payload)…"
-              className="flex-1 text-xs"
-            />
-            <Button
-              variant="primary"
-              onClick={() => void handleSaveCapture()}
-              disabled={!captureName.trim()}
-            >
-              Save
-            </Button>
-          </div>
-          {captureHint ? <p className="text-xs text-warning">{captureHint}</p> : null}
-        </div>
-      )}
-
-      {/* ── Search & Filter Bar ── */}
+      {/* ─── Search & Filter Bar ─── */}
       <div className="flex flex-col gap-2">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
@@ -421,7 +348,103 @@ export function RequestsPanel({
 
       <hr className="border-border" />
 
-      {/* ── Preset Cards List ── */}
+      {/* ─── Action Buttons ─── */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="primary"
+          className="flex flex-1 items-center justify-center gap-1.5 text-xs py-1.5"
+          onClick={openCreateDialog}
+          aria-label="New"
+        >
+          <PlusIcon className="h-3.5 w-3.5" />
+          <span>New</span>
+        </Button>
+
+        <Button
+          variant="secondary"
+          className="flex flex-1 items-center justify-center gap-1.5 text-xs py-1.5"
+          onClick={() => {
+            setIsCapturing(!isCapturing)
+            setCaptureHint(null)
+          }}
+          title="Capture active open endpoint from Swagger page"
+          aria-label="Capture live"
+        >
+          <ZapIcon className="h-3.5 w-3.5 text-amber-500" />
+          <span>Capture live</span>
+        </Button>
+      </div>
+
+      {/* ─── Quick Capture from Swagger Banner ─── */}
+      {isCapturing && (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-text">
+              <ZapIcon className="h-3.5 w-3.5 text-amber-500" />
+              <span>Capture Live Endpoint</span>
+            </div>
+            <button
+              type="button"
+              className="text-[11px] text-muted hover:text-text hover:underline"
+              onClick={() => {
+                setIsCapturing(false)
+                setCaptureName('')
+                setCaptureHint(null)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+
+          {activeOpenRequest ? (
+            <div className="flex flex-col gap-0.5">
+              <p className="text-[11px] text-muted">
+                Found open endpoint:{' '}
+                <span className="font-mono font-medium text-text">
+                  {activeOpenRequest.endpointId}
+                </span>
+              </p>
+              <div className="flex items-center gap-2 text-[10px] text-muted">
+                {activeOpenRequest.path && Object.keys(activeOpenRequest.path).length > 0 ? (
+                  <span>{Object.keys(activeOpenRequest.path).length} path param(s)</span>
+                ) : null}
+                {activeOpenRequest.query && Object.keys(activeOpenRequest.query).length > 0 ? (
+                  <span>{Object.keys(activeOpenRequest.query).length} query param(s)</span>
+                ) : null}
+                {activeOpenRequest.body ? <span>Has request body</span> : null}
+              </div>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted">
+              Click &quot;Try it out&quot; on any operation in Swagger to capture its path, query, or body parameters.
+            </p>
+          )}
+
+          <div className="flex gap-2 mt-1">
+            <Input
+              id="oac-capture-name"
+              autoFocus
+              value={captureName}
+              onChange={(e) => setCaptureName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleSaveCapture()
+              }}
+              placeholder="Preset name (e.g. Add Label to Task)..."
+              className="flex-1 text-xs"
+            />
+            <Button
+              variant="primary"
+              onClick={() => void handleSaveCapture()}
+              disabled={!captureName.trim()}
+            >
+              Save
+            </Button>
+          </div>
+          {captureHint ? <p className="text-xs text-warning">{captureHint}</p> : null}
+        </div>
+      )}
+
+      {/* ─── Preset Cards List ─── */}
       {loading ? (
         <div className="flex justify-center py-6">
           <Spinner />

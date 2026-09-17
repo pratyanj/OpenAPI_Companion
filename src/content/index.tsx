@@ -17,6 +17,8 @@ import { docIdentityUrl } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
+import { SettingsService } from '@/modules/settings'
+import type { SwaggerFeaturePreferences } from '@/modules/settings/types'
 import {
   RequestService,
   type CustomTemplateInput,
@@ -28,7 +30,20 @@ import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
 import { WorkflowService, executeWorkflowStep, type WorkflowInput, type WorkflowExportBundle } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
-import { mountLauncher } from './launcher'
+import { mountLauncher, openSidePanelFromPage } from './launcher'
+import { mountSwaggerVariables } from './swagger-variables'
+import { mountSwaggerMockData } from './swagger-mock-data'
+import { mountSaveVariableModal } from './save-variable-modal'
+import { mountSwaggerResponseVariable } from './swagger-response-variable'
+import { mountSwaggerResponseViewer } from './swagger-response-viewer'
+import { mountSwaggerCopyCode } from './swagger-copy-code'
+import { mountSwaggerResponseExport } from './swagger-response-export'
+import { mountSwaggerPinnedEndpoints } from './swagger-pinned-endpoints'
+import { mountSwaggerPasteCurl } from './swagger-paste-curl'
+import { mountSwaggerGlobalHeaders } from './swagger-global-headers'
+import { HeadersService } from '@/modules/headers'
+import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
+import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
@@ -51,6 +66,68 @@ import {
 
 const AGENT_FLAG = 'oacAgent'
 const LOG = '[OpenAPI Companion]'
+
+const SWAGGER_FEATURE_STYLES_ID = 'oac-swagger-feature-styles'
+
+function ensureSwaggerFeatureStyles(doc: Document): void {
+  if (doc.getElementById(SWAGGER_FEATURE_STYLES_ID)) return
+  const style = doc.createElement('style')
+  style.id = SWAGGER_FEATURE_STYLES_ID
+  style.textContent = `
+    body.oac-disable-mock-data .oac-mock-btn-group,
+    body.oac-disable-mock-data .oac-mock-fill-btn,
+    body.oac-disable-mock-data .oac-mock-mode-btn,
+    body.oac-disable-mock-data .oac-mock-dropdown,
+    body.oac-disable-mock-data .oac-mode-select {
+      display: none !important;
+    }
+    body.oac-disable-json-format .oac-json-format-btn,
+    body.oac-disable-json-format .oac-json-syntax-badge {
+      display: none !important;
+    }
+    body.oac-disable-endpoint-history .oac-last-payload-bar-btn,
+    body.oac-disable-endpoint-history .oac-last-payload-btn {
+      display: none !important;
+    }
+    body.oac-disable-mock-data.oac-disable-json-format.oac-disable-endpoint-history .oac-mock-data-bar {
+      display: none !important;
+    }
+    body.oac-disable-response-variables .oac-response-action-bar,
+    body.oac-disable-response-variables .oac-save-var-btn {
+      display: none !important;
+    }
+    body.oac-disable-auth-badge .oac-auth-status-badge {
+      display: none !important;
+    }
+    body.oac-disable-var-resolution #oac-var-autocomplete-host {
+      display: none !important;
+    }
+    body.oac-disable-global-headers .oac-global-headers-btn,
+    body.oac-disable-global-headers #oac-global-headers-modal {
+      display: none !important;
+    }
+    body.oac-disable-paste-curl.oac-disable-global-headers .oac-header-actions-bar {
+      display: none !important;
+    }
+  `
+  doc.head?.appendChild(style)
+}
+
+function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Document = document): void {
+  const b = doc.body
+  if (!b) return
+  b.classList.toggle('oac-disable-mock-data', !features.mockData)
+  b.classList.toggle('oac-disable-json-format', !features.jsonFormat)
+  b.classList.toggle('oac-disable-endpoint-history', !features.endpointHistory)
+  b.classList.toggle('oac-disable-response-variables', !features.responseVariables)
+  b.classList.toggle('oac-disable-auth-badge', !features.authBadge)
+  b.classList.toggle('oac-disable-var-resolution', !features.variableResolution)
+  b.classList.toggle('oac-disable-account-switcher', !features.accountSwitcher)
+  b.classList.toggle('oac-disable-response-json-search', !features.responseJsonSearch)
+  b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
+  b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
+  b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
+}
 
 async function boot(): Promise<void> {
   console.info(`${LOG} content agent loaded:`, location.href)
@@ -86,6 +163,18 @@ async function boot(): Promise<void> {
   )
 
   mountLauncher() // floating button to open the panel from the page
+
+  ensureSwaggerFeatureStyles(document)
+  const settingsService = new SettingsService({ storage, bus })
+  const syncSwaggerFeatures = async (): Promise<void> => {
+    try {
+      const prefs = await settingsService.getPreferences()
+      applySwaggerFeatureClasses(prefs.swaggerFeatures, document)
+    } catch {
+      // ignore
+    }
+  }
+  await syncSwaggerFeatures()
 
   const auth = new AuthenticationService({ storage, adapter, projectId: meta.id, bus })
   const environments = new EnvironmentService({ storage, projectId: meta.id, bus })
@@ -127,6 +216,54 @@ async function boot(): Promise<void> {
   }
   await refreshEnvBaseUrl()
 
+  // Keep active variables synced with both SwaggerBridge (for MAIN-world network interception)
+  // and in-page Swagger UI DOM inputs (autocomplete & operation toolbars).
+  let activeVariables: Record<string, string> = {}
+  let activeSecrets: string[] = []
+
+  const swaggerVars = mountSwaggerVariables({}, [], document)
+  mountSwaggerMockData(document)
+
+  const saveVariableModal = mountSaveVariableModal(environments, bus, document)
+  const saveVarTheme = new ThemeManager({ storage, root: saveVariableModal.themeRoot, bus })
+  void saveVarTheme.init()
+
+  mountSwaggerResponseVariable(saveVariableModal, document)
+  mountSwaggerResponseViewer(document)
+  mountSwaggerCopyCode(document)
+  mountSwaggerResponseExport(document)
+  mountSwaggerEndpointHistory(document, {
+    storageKeyPrefix: `oac_last_payload_${meta.id}_`,
+  })
+
+  const syncActiveVariables = async (): Promise<void> => {
+    const env = await environments.get(currentEnv)
+    if (env.ok && env.value) {
+      activeVariables = env.value.variables ?? {}
+      activeSecrets = env.value.secrets ?? []
+      bridge.syncVariables(activeVariables)
+      swaggerVars.updateVariables(activeVariables, activeSecrets)
+    }
+  }
+  await syncActiveVariables()
+
+  if (typeof chrome !== 'undefined' && chrome?.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (
+        area === 'local' &&
+        Object.keys(changes).some((k) => k.includes('environments') || k.includes('environment'))
+      ) {
+        void syncActiveVariables()
+      }
+      if (
+        area === 'local' &&
+        Object.keys(changes).some((k) => k.includes('auth'))
+      ) {
+        void syncAuthBadge()
+      }
+    })
+  }
+
   // Endpoint search runs IN THE PAGE (top-centered overlay) — the panel is too
   // narrow for it and can't draw over the doc. Triggered by ⌘K here, or by the
   // panel's search button over RPC.
@@ -142,6 +279,10 @@ async function boot(): Promise<void> {
     baseUrl: () => envBaseUrl || location.origin,
   })
   await productivity.init()
+  mountSwaggerPinnedEndpoints(productivity, document)
+  mountSwaggerPasteCurl(document, productivity)
+  const headersService = new HeadersService({ storage, projectId: meta.id })
+  mountSwaggerGlobalHeaders(document, headersService)
 
   // The palette is the only thing in the page that needs React, so it's loaded on
   // FIRST USE — a static import would make every page in the browser pay ~170 kB
@@ -349,7 +490,90 @@ async function boot(): Promise<void> {
     'AUTH_EXPIRED',
     (payload) => void tokenRefresh.refreshIfExpired(payload.environmentId),
   )
+
+  const swaggerAuthBadge = mountSwaggerAuthBadge(document, {
+    getAuthRecord: async () => {
+      const res = await auth.current(currentEnv)
+      if (res.ok && res.value?.token) return res.value
+      const live = adapter.readAuth()
+      if (live?.token) {
+        return {
+          type: live.type,
+          token: live.token,
+          schemeName: live.schemeName,
+          environmentId: currentEnv,
+          updatedAt: Date.now(),
+        }
+      }
+      return null
+    },
+    getAccountName: async () => {
+      return auth.activeCredentialName(currentEnv)
+    },
+    getSavedCredentials: async () => {
+      const res = await auth.listSaved()
+      return res.ok ? res.value : []
+    },
+    onSelectAccount: async (credentialId: string) => {
+      const res = await auth.activateSaved(credentialId, currentEnv)
+      if (res.ok) {
+        void syncAuthBadge()
+        return true
+      }
+      return false
+    },
+    onManageAccounts: () => {
+      const launcher = document.querySelector<HTMLElement>('#oac-launcher-btn')
+      if (launcher) launcher.click()
+    },
+    onRenew: async () => {
+      const res = await tokenRefresh.refreshNow(currentEnv)
+      return res.ok && Boolean(res.value)
+    },
+  })
+
+  const syncAuthBadge = async (): Promise<void> => {
+    try {
+      const [recRes, name, savedRes] = await Promise.all([
+        auth.current(currentEnv),
+        auth.activeCredentialName(currentEnv),
+        auth.listSaved(),
+      ])
+      let record = recRes.ok ? recRes.value : null
+      if (!record?.token) {
+        const live = adapter.readAuth()
+        if (live?.token) {
+          record = {
+            type: live.type,
+            token: live.token,
+            schemeName: live.schemeName,
+            environmentId: currentEnv,
+            updatedAt: Date.now(),
+          }
+        }
+      }
+      swaggerAuthBadge.update(
+        record,
+        name,
+        savedRes.ok ? savedRes.value : [],
+      )
+    } catch {
+      // ignore
+    }
+  }
+
+  // Periodic startup re-syncs to catch Swagger UI's async initialization
+  setTimeout(() => void syncAuthBadge(), 400)
+  setTimeout(() => void syncAuthBadge(), 1200)
+  setTimeout(() => void syncAuthBadge(), 2500)
+
+  bus.subscribe('AUTH_UPDATED', () => void syncAuthBadge())
+  bus.subscribe('AUTH_RESTORED', () => void syncAuthBadge())
+  bus.subscribe('AUTH_CLEARED', () => void syncAuthBadge())
   bus.subscribe('SETTINGS_UPDATED', (payload) => {
+    if (payload.keys.includes('swaggerFeatures') || payload.keys.includes('preferences')) {
+      void syncSwaggerFeatures()
+    }
     if (payload.keys.includes('auto-refresh-token')) {
       void auth.isAutoRefreshEnabled().then((on) => (autoRefreshEnabled = on))
     }
@@ -385,6 +609,7 @@ async function boot(): Promise<void> {
 
   // Always-on: restore auth, auto-restore drafts, watch, and react to DOM changes.
   await auth.restore(currentEnv)
+  void syncAuthBadge()
   await requests.autoRestoreOpen(currentEnv)
   let stopAuthWatch = auth.watch(currentEnv)
 
@@ -447,6 +672,7 @@ async function boot(): Promise<void> {
     }
     requests.autosaveOpen(currentEnv)
     history.scheduleCapture(currentEnv)
+    swaggerAuthBadge.scanAndMount(document)
     void tokenRefresh.noticeResponses(currentEnv) // 401/403 → auto-refresh (if enabled)
     pushState() // keep the panel's read-mirror fresh
   })
@@ -457,11 +683,13 @@ async function boot(): Promise<void> {
     void (async () => {
       currentEnv = payload.environmentId
       await refreshEnvBaseUrl()
+      await syncActiveVariables()
       stopAuthWatch()
       const restored = await auth.restore(currentEnv)
       if (restored.ok && restored.value == null) adapter.clearAuth()
       await requests.autoRestoreOpen(currentEnv)
       stopAuthWatch = auth.watch(currentEnv)
+      void syncAuthBadge()
       pushState()
     })()
   })

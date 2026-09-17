@@ -452,5 +452,28 @@ describe('PresetEditorModal', () => {
       // Feedback text should show
       expect(screen.getByText(/Loaded from Swagger/i)).toBeInTheDocument()
     })
+    it('shows variable suggestions when typing {{ in query parameter value input', async () => {
+      const service = mockService()
+      const envService = {
+        list: vi.fn(async () => ok([{ id: 'default', name: 'Default', variables: { MY_QUERY_VAR: '123' }, secrets: [] }])),
+      } as any
+      render(
+        <PresetEditorModal
+          service={service}
+          environmentService={envService}
+          environmentId="default"
+          initialEndpointId="get /users"
+          initialName="Test"
+          initialQuery={{ filter: '' }}
+          onClose={vi.fn()}
+        />,
+      )
+
+      const queryValInput = screen.getByLabelText('Query parameter 1 value')
+      fireEvent.change(queryValInput, { target: { value: '{{' } })
+
+      expect(await screen.findByRole('listbox', { name: 'Variable suggestions' })).toBeInTheDocument()
+      expect(screen.getByText('{{MY_QUERY_VAR}}')).toBeInTheDocument()
+    })
   })
 })

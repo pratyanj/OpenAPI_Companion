@@ -223,7 +223,11 @@ export function EnvironmentsPanel({
     }
   }, [])
 
-  useEventBus(bus, 'ENVIRONMENT_CHANGED', () => void load())
+  useEventBus(bus, 'ENVIRONMENT_CHANGED', () => {
+    if (!isLocalSavingRef.current) {
+      void load()
+    }
+  })
   useEventBus(bus, 'ENVIRONMENT_CREATED', () => void load())
   useEventBus(bus, 'ENVIRONMENT_DELETED', () => void load())
 

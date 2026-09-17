@@ -84,7 +84,7 @@ export function mountExtractionRuleModal(
                   throw new Error(res.error.message || 'Failed to save rule')
                 }
                 bus.publish('NOTIFY', {
-                  message: `⚡ Auto-extraction rule added for ${rule.endpointId}`,
+                  message: `Auto-extraction rule added for ${rule.endpointId}`,
                   kind: 'success',
                 })
               }

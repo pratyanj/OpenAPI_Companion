@@ -226,6 +226,29 @@ describe('RequestService — templates', () => {
     expect(created.ok && created.value?.body).toBe('{"open":true}')
   })
 
+  it('saves an open request without body (path and query params only)', async () => {
+    const { service } = setup(
+      mockAdapter({
+        readOpenRequests: () => [
+          snapshot({
+            endpointId: 'post /tasks/{task_id}/labels/{label_id}',
+            method: 'post',
+            body: undefined,
+            path: { task_id: 'task_1', label_id: 'lbl_2' },
+            query: { send_notification: 'true' },
+          }),
+        ],
+      }),
+    )
+    const created = await service.saveOpenAsTemplate('Add Label to Task', 'default')
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+    expect(created.value?.endpointId).toBe('post /tasks/{task_id}/labels/{label_id}')
+    expect(created.value?.path).toEqual({ task_id: 'task_1', label_id: 'lbl_2' })
+    expect(created.value?.query).toEqual({ send_notification: 'true' })
+    expect(created.value?.body).toBeUndefined()
+  })
+
   it('applies a template by navigating to and EXECUTING the operation', async () => {
     const replay = vi.fn((): Result<void> => ok(undefined))
     const { service } = setup(mockAdapter({ replay }))

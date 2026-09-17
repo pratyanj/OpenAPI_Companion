@@ -9,11 +9,13 @@ import { SettingsPanel } from './SettingsPanel'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type { ImportSummary } from '@/core/events'
+import { DEFAULT_SWAGGER_FEATURES } from './types'
 
 function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
   return {
-    getPreferences: vi.fn(async () => ({ autoBackup: false, historyLimit: 1000 })),
+    getPreferences: vi.fn(async () => ({ autoBackup: false, historyLimit: 1000, swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES } })),
     setPreference: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
+    setSwaggerFeature: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     resetPreferences: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     getStorageMetrics: vi.fn(async () => ({
       totalBytes: 2048,
@@ -120,4 +122,104 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     await waitFor(() => expect(io.applyImport).toHaveBeenCalledWith('{"backup":true}', 'skip'))
   })
-})
+  it('renders human-readable project details and opens external link', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const settings = mockSettings({
+      getStorageMetrics: vi.fn(async () => ({
+        totalBytes: 2048,
+        projects: [
+          {
+            projectId: 'p1',
+            name: 'TaskUp API',
+            originUrl: 'http://localhost:8008',
+            openApiUrl: 'http://localhost:8008/openapi.json',
+            bytes: 1024,
+          },
+        ],
+      })),
+    })
+    renderPanel(settings)
+    expect(await screen.findByText('TaskUp API')).toBeInTheDocument()
+    expect(screen.getByText('http://localhost:8008')).toBeInTheDocument()
+    const linkBtn = screen.getByRole('button', { name: 'Open TaskUp API in new tab' })
+    fireEvent.click(linkBtn)
+    expect(openSpy).toHaveBeenCalledWith('http://localhost:8008', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
+  })
+
+  it('allows clearing an individual project from the storage list', async () => {
+    const settings = mockSettings({
+      getStorageMetrics: vi.fn(async () => ({
+        totalBytes: 2048,
+        projects: [
+          {
+            projectId: 'p1',
+            name: 'TaskUp API',
+            originUrl: 'http://localhost:8008',
+            bytes: 1024,
+          },
+        ],
+      })),
+    })
+    renderPanel(settings)
+    const deleteBtn = await screen.findByRole('button', { name: 'Clear data for TaskUp API' })
+    fireEvent.click(deleteBtn)
+    expect(await screen.findByRole('dialog', { name: 'Please confirm' })).toBeInTheDocument()
+    expect(screen.getByText(/permanently deletes all saved data for TaskUp API/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(settings.clearProject).toHaveBeenCalledWith('p1'))
+  })
+
+  it('downloads an encrypted backup when a passphrase is typed', async () => {
+    const { io } = renderPanel()
+    const passInput = screen.getByPlaceholderText(/Enter passphrase for encrypted export/i)
+    fireEvent.change(passInput, { target: { value: 'mypassword123' } })
+
+    const downloadBtn = screen.getByRole('button', { name: 'Download encrypted backup' })
+    expect(downloadBtn).toBeInTheDocument()
+    fireEvent.click(downloadBtn)
+
+    await waitFor(() => expect(io.backup).toHaveBeenCalledWith(false, 'mypassword123'))
+  })
+
+  it('prompts for decryption and decrypts an encrypted backup file on restore', async () => {
+    const io = mockIo({
+      isEncrypted: vi.fn((json: string) => json.includes('"encrypted":true')),
+      decryptBackup: vi.fn(async () => ok('{"decrypted":true}')),
+      previewImport: vi.fn(() =>
+        ok({
+          appVersion: '0.1.0',
+          schemaVersion: 1,
+          exportedAt: 1,
+          total: 5,
+          byRoot: { settings: 5 },
+          projectCount: 1,
+          containsSecrets: true,
+        }),
+      ),
+    })
+    renderPanel(mockSettings(), io)
+
+    // Paste encrypted JSON
+    const textarea = screen.getByLabelText('Import JSON')
+    fireEvent.change(textarea, { target: { value: '{"app":"OpenAPI Companion","encrypted":true}' } })
+
+    // Encrypted detected banner appears
+    expect(await screen.findByText('Encrypted Backup Detected')).toBeInTheDocument()
+
+    // Type decrypt passphrase
+    const decryptInput = screen.getByLabelText('Decrypt passphrase')
+    fireEvent.change(decryptInput, { target: { value: 'correct-pass' } })
+
+    // Click Decrypt
+    fireEvent.click(screen.getByRole('button', { name: 'Decrypt' }))
+
+    await waitFor(() => expect(io.decryptBackup).toHaveBeenCalledWith('{"app":"OpenAPI Companion","encrypted":true}', 'correct-pass'))
+    expect(await screen.findByText('5 entries')).toBeInTheDocument()
+    expect(screen.getByText(/Decrypted/i)).toBeInTheDocument()
+
+    // Import button is enabled and applies decrypted payload
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
+    await waitFor(() => expect(io.applyImport).toHaveBeenCalledWith('{"decrypted":true}', 'skip'))
+  })
+});

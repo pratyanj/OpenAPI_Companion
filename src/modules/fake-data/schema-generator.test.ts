@@ -94,4 +94,16 @@ describe('synthesizeFromJsonSample', () => {
     expect(typeof synthesized.active).toBe('boolean')
     expect(typeof synthesized.address.city).toBe('string')
   })
+
+  it('synthesizes realistic values for dummy OpenAPI string fields', () => {
+    const sample = {
+      title: 'string',
+      category: 'string',
+      count: 5,
+    }
+    const synthesized = synthesizeFromJsonSample(sample, { mode: 'realistic' }) as typeof sample
+    expect(synthesized.title).not.toBe('string')
+    expect(synthesized.category).toMatch(/^Category \d+$/)
+    expect(typeof synthesized.count).toBe('number')
+  })
 })

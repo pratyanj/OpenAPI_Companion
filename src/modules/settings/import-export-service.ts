@@ -3,6 +3,7 @@ import { APP_NAME, APP_VERSION, SCHEMA_VERSION, STORAGE_ROOTS } from '@/constant
 import type { EventBus, ImportSummary } from '@/core/events'
 import type { StorageService } from '@/core/storage'
 import type { ExportBundle, ImportMode, ImportPreview } from './types'
+import { encryptBackup, decryptBackup, isEncryptedBackup } from '@/utils/crypto-backup'
 
 /** Inject a downloader (tests spy it; default writes a file via an anchor). */
 export type Downloader = (filename: string, content: string, mime: string) => void
@@ -48,10 +49,12 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 }
 
 export interface ImportExportApi {
-  exportAll(): Promise<Result<string>>
-  backup(auto?: boolean): Promise<Result<string>>
+  exportAll(passphrase?: string): Promise<Result<string>>
+  backup(auto?: boolean, passphrase?: string): Promise<Result<string>>
+  decryptBackup(json: string, passphrase: string): Promise<Result<string>>
+  isEncrypted(json: string): boolean
   previewImport(json: string): Result<ImportPreview>
-  applyImport(json: string, mode: ImportMode): Promise<Result<ImportSummary>>
+  applyImport(json: string, mode: ImportMode, passphrase?: string): Promise<Result<ImportSummary>>
 }
 
 /**
@@ -92,15 +95,24 @@ export class ImportExportService implements ImportExportApi {
     this.download = options.download ?? anchorDownload
   }
 
-  /** Build a JSON backup of every stored entry. */
-  async exportAll(): Promise<Result<string>> {
+  /**
+   * Build a JSON backup of every stored entry.
+   * If a passphrase is provided, credentials are kept and the bundle is encrypted with AES-GCM (PBKDF2).
+   * If omitted, passwords are redacted to ensure plaintext files do not leak credentials.
+   */
+  async exportAll(passphrase?: string): Promise<Result<string>> {
     const keys = await this.storage.list('')
     if (!keys.ok) return keys
     const entries: Record<string, unknown> = {}
+    const hasPassphrase = typeof passphrase === 'string' && passphrase.trim().length > 0
+
     for (const key of keys.value) {
       const got = await this.storage.getData<unknown>(key)
-      if (got.ok && got.value !== null) entries[key] = redactSecrets(key, got.value)
+      if (got.ok && got.value !== null) {
+        entries[key] = hasPassphrase ? got.value : redactSecrets(key, got.value)
+      }
     }
+
     const bundle: ExportBundle = {
       app: APP_NAME,
       appVersion: APP_VERSION,
@@ -108,13 +120,33 @@ export class ImportExportService implements ImportExportApi {
       exportedAt: this.now(),
       entries,
     }
+
+    if (hasPassphrase) {
+      try {
+        const encrypted = await encryptBackup(
+          JSON.stringify(bundle, null, 2),
+          passphrase.trim(),
+          {
+            app: APP_NAME,
+            appVersion: APP_VERSION,
+            schemaVersion: SCHEMA_VERSION,
+            exportedAt: bundle.exportedAt,
+          },
+        )
+        this.bus?.publish('DATA_EXPORTED', { modules: rootsOf(Object.keys(entries)) })
+        return ok(JSON.stringify(encrypted, null, 2))
+      } catch (e) {
+        return err(errors.invalid((e as Error).message || 'Failed to encrypt backup'))
+      }
+    }
+
     this.bus?.publish('DATA_EXPORTED', { modules: rootsOf(Object.keys(entries)) })
     return ok(JSON.stringify(bundle, null, 2))
   }
 
   /** Export and write the bundle to Downloads; emits DATA_BACKED_UP. */
-  async backup(auto = false): Promise<Result<string>> {
-    const exported = await this.exportAll()
+  async backup(auto = false, passphrase?: string): Promise<Result<string>> {
+    const exported = await this.exportAll(passphrase)
     if (!exported.ok) return exported
     const filename = `openapi-companion-backup-${this.now()}.json`
     this.download(filename, exported.value, 'application/json')
@@ -124,6 +156,19 @@ export class ImportExportService implements ImportExportApi {
       filename,
     })
     return ok(filename)
+  }
+
+  isEncrypted(json: string): boolean {
+    return isEncryptedBackup(json)
+  }
+
+  async decryptBackup(json: string, passphrase: string): Promise<Result<string>> {
+    try {
+      const decrypted = await decryptBackup(json, passphrase)
+      return ok(decrypted)
+    } catch (e) {
+      return err(errors.invalid((e as Error).message || 'Decryption failed'))
+    }
   }
 
   private parse(json: string): Result<ExportBundle> {
@@ -150,6 +195,13 @@ export class ImportExportService implements ImportExportApi {
   }
 
   previewImport(json: string): Result<ImportPreview> {
+    if (isEncryptedBackup(json)) {
+      return err({
+        code: 'IMPORT_ENCRYPTED',
+        message: 'This backup is encrypted with a passphrase. Please enter the passphrase to unlock and preview.',
+        recoverable: true,
+      })
+    }
     const parsed = this.parse(json)
     if (!parsed.ok) return parsed
     const bundle = parsed.value
@@ -175,8 +227,21 @@ export class ImportExportService implements ImportExportApi {
     })
   }
 
-  async applyImport(json: string, mode: ImportMode): Promise<Result<ImportSummary>> {
-    const parsed = this.parse(json)
+  async applyImport(json: string, mode: ImportMode, passphrase?: string): Promise<Result<ImportSummary>> {
+    let payload = json
+    if (isEncryptedBackup(json)) {
+      if (!passphrase) {
+        return err({
+          code: 'IMPORT_ENCRYPTED',
+          message: 'Passphrase is required to import this encrypted backup.',
+          recoverable: true,
+        })
+      }
+      const dec = await this.decryptBackup(json, passphrase)
+      if (!dec.ok) return dec
+      payload = dec.value
+    }
+    const parsed = this.parse(payload)
     if (!parsed.ok) return parsed
     let imported = 0
     let skipped = 0

@@ -102,15 +102,20 @@ export class RequestService {
   }
 
   async captureOpen(environmentId: string): Promise<Result<number>> {
-    let saved = 0
-    for (const snapshot of this.adapter.readOpenRequests()) {
-      if (snapshot.body == null || snapshot.body === '') continue
-      if (snapshot.body.length > MAX_SAVED_BODY_BYTES) continue // EC-015: skip oversized bodies
-      const result = await this.saveDraft(this.toRecord(snapshot, environmentId))
-      if (result.ok) saved++
+      let saved = 0
+      for (const snapshot of this.adapter.readOpenRequests()) {
+        const hasBody = snapshot.body != null && snapshot.body !== ''
+        const hasParams =
+          Boolean(snapshot.path && Object.keys(snapshot.path).length > 0) ||
+          Boolean(snapshot.query && Object.keys(snapshot.query).length > 0) ||
+          Boolean(snapshot.headers && Object.keys(snapshot.headers).length > 0)
+        if (!hasBody && !hasParams) continue
+        if (hasBody && snapshot.body!.length > MAX_SAVED_BODY_BYTES) continue // EC-015: skip oversized bodies
+        const result = await this.saveDraft(this.toRecord(snapshot, environmentId))
+        if (result.ok) saved++
+      }
+      return ok(saved)
     }
-    return ok(saved)
-  }
 
   /** Explicitly populate Swagger with the stored draft for an endpoint. */
   async restore(environmentId: string, endpointId: string): Promise<Result<RequestRecord | null>> {
@@ -150,27 +155,41 @@ export class RequestService {
 
   /** Save the first open operation's request as a named template. */
   async saveOpenAsTemplate(
-    name: string,
-    environmentId: string,
-  ): Promise<Result<RequestTemplate | null>> {
-    const open = this.adapter.readOpenRequests().find((r) => r.body != null && r.body !== '')
-    if (!open) return ok(null)
-    return this.saveTemplate(name, this.toRecord(open, environmentId))
-  }
+      name: string,
+      environmentId: string,
+    ): Promise<Result<RequestTemplate | null>> {
+      const openRequests = this.adapter.readOpenRequests()
+      const open =
+        openRequests.find(
+          (r) =>
+            (r.body != null && r.body !== '') ||
+            (r.path && Object.keys(r.path).length > 0) ||
+            (r.query && Object.keys(r.query).length > 0),
+        ) || openRequests[0]
+      if (!open) return ok(null)
+      return this.saveTemplate(name, this.toRecord(open, environmentId))
+    }
 
   /** Get the currently open operation (the one with non-empty body) */
   async getCurrentEndpoint(): Promise<
-    Result<{ endpointId: string; method: string; endpoint: string }>
-  > {
-    const open = this.adapter.readOpenRequests().find((r) => r.body != null && r.body !== '')
-    if (!open) return err(noOpenEndpoint())
-    const path = open.endpointId.split(' ').slice(1).join(' ')
-    return ok({
-      endpointId: open.endpointId,
-      method: open.method,
-      endpoint: path || open.endpointId,
-    })
-  }
+      Result<{ endpointId: string; method: string; endpoint: string }>
+    > {
+      const openRequests = this.adapter.readOpenRequests()
+      const open =
+        openRequests.find(
+          (r) =>
+            (r.body != null && r.body !== '') ||
+            (r.path && Object.keys(r.path).length > 0) ||
+            (r.query && Object.keys(r.query).length > 0),
+        ) || openRequests[0]
+      if (!open) return err(noOpenEndpoint())
+      const path = open.endpointId.split(' ').slice(1).join(' ')
+      return ok({
+        endpointId: open.endpointId,
+        method: open.method,
+        endpoint: path || open.endpointId,
+      })
+    }
 
   /** List all currently open operations (endpoints that have been expanded) */
   async listOpenRequests(): Promise<Result<RequestSnapshot[]>> {

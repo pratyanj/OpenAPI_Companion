@@ -1,8 +1,15 @@
 import { ok, type Result } from '@/types'
-import { settingsKey, projectPrefix, type StorageService } from '@/core/storage'
+import { settingsKey, projectPrefix, projectKey, type StorageService } from '@/core/storage'
+import type { ProjectMeta } from '@/core/project'
 import { STORAGE_ROOTS } from '@/constants'
 import type { EventBus } from '@/core/events'
-import { DEFAULT_PREFERENCES, type Preferences, type StorageMetrics } from './types'
+import {
+  DEFAULT_PREFERENCES,
+  DEFAULT_SWAGGER_FEATURES,
+  type Preferences,
+  type StorageMetrics,
+  type SwaggerFeaturePreferences,
+} from './types'
 
 export interface SettingsServiceOptions {
   storage: StorageService
@@ -15,6 +22,10 @@ const PREFS_KEY = settingsKey('preferences')
 export interface SettingsApi {
   getPreferences(): Promise<Preferences>
   setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): Promise<Result<void>>
+  setSwaggerFeature<K extends keyof SwaggerFeaturePreferences>(
+    key: K,
+    enabled: boolean,
+  ): Promise<Result<void>>
   resetPreferences(): Promise<Result<void>>
   getStorageMetrics(): Promise<StorageMetrics>
   clearProject(projectId: string): Promise<Result<number>>
@@ -38,18 +49,42 @@ export class SettingsService implements SettingsApi {
 
   async getPreferences(): Promise<Preferences> {
     const got = await this.storage.getData<Partial<Preferences>>(PREFS_KEY)
-    // Merge over defaults so a partial/old record still yields every field.
-    return { ...DEFAULT_PREFERENCES, ...(got.ok && got.value ? got.value : {}) }
+    const val = got.ok && got.value ? got.value : {}
+    return {
+      ...DEFAULT_PREFERENCES,
+      ...val,
+      swaggerFeatures: {
+        ...DEFAULT_SWAGGER_FEATURES,
+        ...(val.swaggerFeatures ?? {}),
+      },
+    }
   }
 
   async setPreference<K extends keyof Preferences>(
     key: K,
     value: Preferences[K],
   ): Promise<Result<void>> {
-    const next = { ...(await this.getPreferences()), [key]: value }
+    const current = await this.getPreferences()
+    const next: Preferences = { ...current, [key]: value }
     const written = await this.storage.set(PREFS_KEY, next, { immediate: true })
     if (!written.ok) return written
     this.bus?.publish('SETTINGS_UPDATED', { keys: [String(key)] })
+    return ok(undefined)
+  }
+
+  async setSwaggerFeature<K extends keyof SwaggerFeaturePreferences>(
+    key: K,
+    enabled: boolean,
+  ): Promise<Result<void>> {
+    const current = await this.getPreferences()
+    const nextFeatures: SwaggerFeaturePreferences = {
+      ...current.swaggerFeatures,
+      [key]: enabled,
+    }
+    const next: Preferences = { ...current, swaggerFeatures: nextFeatures }
+    const written = await this.storage.set(PREFS_KEY, next, { immediate: true })
+    if (!written.ok) return written
+    this.bus?.publish('SETTINGS_UPDATED', { keys: ['swaggerFeatures', String(key)] })
     return ok(undefined)
   }
 
@@ -72,7 +107,15 @@ export class SettingsService implements SettingsApi {
     const projects: StorageMetrics['projects'] = []
     for (const id of ids) {
       const bytes = await this.storage.getBytesInUse(projectPrefix(id))
-      projects.push({ projectId: id, bytes: bytes.ok ? bytes.value : 0 })
+      const meta = await this.storage.getData<ProjectMeta>(projectKey(id, 'metadata'))
+      const metaData = meta.ok && meta.value ? meta.value : undefined
+      projects.push({
+        projectId: id,
+        name: metaData?.name,
+        originUrl: metaData?.originUrl,
+        openApiUrl: metaData?.openApiUrl,
+        bytes: bytes.ok ? bytes.value : 0,
+      })
     }
     projects.sort((a, b) => b.bytes - a.bytes)
     return { totalBytes: total.ok ? total.value : 0, projects }
@@ -90,7 +133,7 @@ export class SettingsService implements SettingsApi {
     return ok(keys.value.length)
   }
 
-  /** Wipe every extension key (settings, projects, meta, …) and emit DATA_RESET. */
+  /** Wipe every extension key (settings, projects, meta, ...) and emit DATA_RESET. */
   async clearAll(): Promise<Result<void>> {
     const keys = await this.storage.list('')
     if (!keys.ok) return keys

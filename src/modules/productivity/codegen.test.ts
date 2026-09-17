@@ -82,6 +82,56 @@ describe('generateCode — PowerShell', () => {
   })
 })
 
+describe('generateCode — Python', () => {
+  it('emits python requests code with headers and json literal', () => {
+    const out = generateCode('python', post)
+    expect(out).toContain('import requests')
+    expect(out).toContain("url = 'https://api.example.com/users'")
+    expect(out).toContain('headers = {')
+    expect(out).toContain("'Content-Type': 'application/json'")
+    expect(out).toContain("'Authorization': 'Bearer TKN'")
+    expect(out).toContain('json_data = {')
+    expect(out).toContain("'name': 'Ada'")
+    expect(out).toContain('response = requests.post(url, headers=headers, json=json_data)')
+    expect(out).toContain('print(response.status_code)')
+    expect(out).toContain('print(response.json())')
+  })
+
+  it('omits headers and body when absent in GET request', () => {
+    const out = generateCode('python', get)
+    expect(out).toContain('import requests')
+    expect(out).toContain("url = 'https://api.example.com/ping'")
+    expect(out).not.toContain('headers =')
+    expect(out).not.toContain('json_data =')
+    expect(out).toContain('response = requests.get(url)')
+  })
+
+  it('handles non-JSON raw body using data=', () => {
+    const out = generateCode('python', {
+      method: 'POST',
+      url: 'https://api.example.com/login',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=password&user=admin',
+    })
+    expect(out).toContain("data = 'grant_type=password&user=admin'")
+    expect(out).toContain('response = requests.post(url, headers=headers, data=data)')
+  })
+
+  it('formats python literals correctly for booleans, numbers, and null', () => {
+    const out = generateCode('python', {
+      method: 'PUT',
+      url: 'https://api.example.com/settings',
+      headers: {},
+      body: JSON.stringify({ active: true, disabled: false, count: 5, extra: null }),
+    })
+    expect(out).toContain("'active': True")
+    expect(out).toContain("'disabled': False")
+    expect(out).toContain("'count': 5")
+    expect(out).toContain("'extra': None")
+    expect(out).toContain('response = requests.put(url, json=json_data)')
+  })
+})
+
 describe('generateCode — perf', () => {
   it('generates well under the 30 ms budget', () => {
     const start = performance.now()

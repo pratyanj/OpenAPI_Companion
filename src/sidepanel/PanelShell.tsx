@@ -108,6 +108,27 @@ export function PanelShell({
   const { preference } = useTheme(theme)
 
   useEventBus(bus, 'ENVIRONMENT_CHANGED', (payload) => setActiveEnv(payload.environmentId))
+  useEventBus(bus, 'TAB_NAVIGATE', (payload: unknown) => {
+    const tab = (payload as { tab?: string } | null)?.tab
+    if (tab && TABS.some((t) => t.id === tab)) {
+      setActiveTab(tab)
+    }
+  })
+
+  useEffect(() => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+        chrome.storage.local.get('oac_requested_tab', (res) => {
+          if (res?.oac_requested_tab && TABS.some((t) => t.id === res.oac_requested_tab)) {
+            setActiveTab(res.oac_requested_tab)
+            chrome.storage.local.remove('oac_requested_tab')
+          }
+        })
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   // ⌘K works from the panel too, but the palette itself opens in the page.
   useEffect(() => {

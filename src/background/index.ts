@@ -143,9 +143,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ type: 'PONG', app: APP_NAME })
     return false
   }
-  // In-page launcher button → toggle the panel for the sender's tab.
+  // In-page launcher button or action → toggle or open the panel for the sender's tab.
   if (message?.type === OPEN_PANEL_REQUEST) {
-    toggleSidePanel(sender.tab)
+    if (message.forceOpen) {
+      openSidePanel(sender.tab)
+      if (message.targetTab) {
+        const wid = sender.tab?.windowId
+        const panel = wid != null ? openPanels.get(wid) : undefined
+        if (panel) {
+          panel.postMessage({ type: 'navigate', tab: message.targetTab } satisfies PanelPortMessage)
+        }
+      }
+    } else {
+      toggleSidePanel(sender.tab)
+    }
     return false
   }
   return false

@@ -1,3 +1,129 @@
+
+## 🎯 Today's Action Items & Bugs (V1.1.5 Sprint)
+
+- [x] **1. 🐛 Fix Request Capture for No-Body Endpoints (Path/Query Only) & Rename to "Capture Live"**
+  - **Issue**: In Requests tab, "Capture Open" button fails to capture endpoints that have only path parameters and query parameters with no JSON request body (e.g. `POST /tasks/{task_id}/labels/{label_id}`).
+  - **Fix**: Update capture parser to extract path parameters from Swagger inputs (`input[data-param-name]`) and query parameters even when no body schema exists.
+  - **UI**: Rename button from `"Capture Open"` to `"Capture Live"` with live sync icon and informative tooltip.
+
+- [x] **2. Protected Backup Export & Restore with Passphrase Encryption (AES-GCM)**
+  - **Issue**: Backups previously either exposed credentials in plain text or redacted passwords to prevent leaks, preventing teammates from sharing credentials in backups.
+  - **Feature**: Added optional passphrase encryption using Web Crypto (`AES-GCM` 256-bit + `PBKDF2` 100,000 iterations).
+  - **Export**: Entering a passphrase preserves account passwords (`login.password`) and encrypts the entire backup bundle. Leaving it empty preserves safe redacted export.
+  - **Import / Restore**: Automatically detects encrypted backup bundles and prompts for the passphrase to decrypt credentials, preview contents, and restore safely (**601 tests passed**).
+- [x] **3. ⚡ Debounced Variable Autosave (Smooth Typing, No Per-Keystroke Storage Churn)**
+  - **Issue**: Previously, in the project variable editor, typing immediately set the saving spinner and queued rapid storage writes on every keystroke, causing UI flicker, partial saves ("p", "pa", "pas"), and race conditions when self-published `ENVIRONMENT_CHANGED` events triggered reloads mid-typing.
+  - **Fix**:
+    - Removed premature `setSaving(true)` on keydown so typing is completely smooth and fluid without spinner flickering.
+    - Added a 450ms debounce timer that automatically resets on each keystroke, saving only when the user finishes typing.
+    - Added instant flush on `onBlur` and <kbd>Enter</kbd> (`handleKeyDown`) on both variable name and value fields in Table mode and Raw `.env` editor.
+    - Added `isLocalSavingRef` to ignore self-emitted `ENVIRONMENT_CHANGED` events during local saves, preventing inputs from resetting mid-keystroke.
+    - Enhanced visual feedback: displays subtle spinner only during actual background persistence, followed by a reassuring green `Saved ✓` badge for 2 seconds (**601 tests passed**).
+
+- [x] **4. 🚀 Direct Variable Resolution inside Native Swagger UI (`{{variable}}`)**
+  - **Feature**: Allow developers to type `{{variable}}` placeholders directly into Swagger UI inputs (parameters, query, headers, and request body) on the webpage.
+  - **Dual-Layer Architecture**:
+    - **Interactive DOM Layer (`swagger-variables.ts`)**:
+      - Live autocomplete popup in Shadow DOM triggered by typing `{{` in any Swagger UI input/textarea with keyboard navigation (<kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Enter</kbd>, <kbd>Tab</kbd>, <kbd>Esc</kbd>) for project variables and dynamic variables (`{{$uuid}}`, `{{$timestamp}}`, etc.).
+      - Auto-resolves inputs in-place on native `.btn.execute` click via `setNativeValue` so Swagger's form state updates before execution.
+    - **Network Interceptor Layer (`main-world.ts`)**:
+      - Hooks `window.fetch`, `XMLHttpRequest`, and Swagger UI's `requestInterceptor` in the MAIN execution world.
+      - Resolves `{{VAR}}`, case-insensitive variables, dynamic variables, and URL-encoded `%7B%7BVAR%7D%7D` placeholders across request URLs, headers, and request bodies before HTTP calls leave the browser (**615 tests passed**).
+
+## 🚀 Swagger UI In-Page Enhancements Sprint (13 Points)
+
+- [x] **1. 🪄 1-Click "Fill Realistic Mock Data" (Request Body)**
+  - **Feature**: Injected a subtle floating button bar (`.oac-mock-data-bar`) directly above Swagger UI's request body textarea (`textarea.body-param__text`) without cluttering Swagger's layout.
+  - **1-Click Generation**: Main button (`🪄 Fake Data`) reads either existing JSON in the textarea or Swagger's rendered schema/example (`readSwaggerExample`), parses and synthesizes realistic values (realistic names, emails, phones, dates, UUIDs, and contextual strings) via `synthesizeFromJsonSample`, and writes React state via `setNativeValue`.
+  - **Multi-Mode Support**: Included mode selector dropdown (`✨ Realistic`, `⚡ Minimal`, `⚠️ Boundary`, `🧪 Fuzzing`).
+  - **Keyboard Shortcut**: Added <kbd>Alt+M</kbd> shortcut while focused inside any Swagger body textarea to instantly generate and fill mock data.
+  - **Visual Feedback**: Displays smooth status animations (`✓ Filled!` in green / `⚠️ No Schema` in amber) (**625 tests passing**).
+- [x] **2. ⚡ 1-Click "Save Response Property to Variable" from Swagger Response DOM**
+  - **Feature**: Injected a sleek `⚡ Save to Variable` button directly into Swagger UI's rendered live responses (`.live-responses-table .response-col_description`) alongside Swagger's native controls.
+  - **In-Page Shadow DOM Overlay (`#oac-save-variable-host`)**: Mounts `SaveToVariableDialog` in an isolated top-centered modal overlay over Swagger UI, with candidate properties (`access_token`, `user_id`, `id`, etc.) automatically detected and pre-suggested.
+  - **Text Selection & Property Support**: Supports selecting text inside the response body before clicking to pre-fill the selected value.
+  - **Auto-Sync & Visual Feedback**: Saving immediately persists into active Project Variables, publishes `ENVIRONMENT_CHANGED`, and gives instant `Saved ✓` visual confirmation (**632 tests passing**).
+- [x] ~~**3. ⏱ Response Latency & Timing Benchmark Badge next to Response Code**~~ *(Removed: Omitted to keep Swagger response rendering completely lightweight without extra UI listeners)*
+- [x] **4. 🧹 1-Click JSON Formatter & Syntax Validator on Request Body**
+  - **1-Click JSON Prettification**: Auto-formats request body JSON with 2-space indentation via toolbar button or <kbd>Alt+Shift+F</kbd> shortcut.
+  - **Smart Auto-Repair Engine**: Automatically detects and heals common developer editing syntax errors on format (unclosed string literals, trailing commas, single quotes, unquoted keys, Python literals, comments, missing commas).
+  - **Zero-Clutter Dynamic UI**: Automatically hides the `Format JSON` button when the JSON is already formatted or empty, only appearing when formatting is needed, and hides immediately after formatting.
+  - **Non-Truncating Live Syntax Validator**: Displays clean red error banner on invalid JSON with exact error message, line, and column numbers; completely hidden when JSON is valid or empty. Never shows error text inside button label.
+  - **SVG-Only System Stability**: Replaced all emojis across content scripts with crisp SVG vector icons to prevent system/font crashes (**662 tests passing**).
+- [x] **5. 🔁 "Re-fill Last Sent Payload" (Endpoint Quick History)**
+  - **1-Click Refill**: Instantly restores the exact path, query, header parameters and JSON request body used in the previous execution of any endpoint.
+  - **Dual-Location Integration**:
+    - Request body toolbar (`.oac-mock-data-bar`): Injected directly above the body textarea alongside Format JSON and Fake Data.
+    - Execute wrapper (`.execute-wrapper`): Injected next to native Execute & Clear buttons, covering parameter-only endpoints (GET, DELETE, HEAD) as well as POST/PUT.
+  - **Cross-Session Storage Persistence**: Automatically persists the last sent payload per endpoint in extension local storage (`chrome.storage.local` with memory cache) so previous payloads survive page reloads and tab closures.
+  - **Zero-Clutter Dynamic UI**: Auto-hides when no previous execution exists for an endpoint, becoming smoothly visible as soon as an execution is performed or loaded from storage.
+  - **Keyboard Shortcut**: Added <kbd>Alt+L</kbd> shortcut inside any Swagger operation to immediately restore the last sent payload.
+  - **Clean Status Feedback & SVG Icons**: Flashes green `Restored` status with SVG checkmark on click; never displays error text inside button label (**669 tests passing**).
+- [x] **6. 👤 Active Account & Token Expiry Status Badge next to Swagger Authorize**
+  - **In-Page Status Badge**: Injected directly alongside Swagger UI's native `.auth-wrapper` and Authorize padlock button without layout disruption.
+  - **Smart Identity Resolution**: Automatically detects and displays the active account name and role tag from the credential vault or decoded JWT claims (`role`, `name`, `preferred_username`, `email`, `sub`).
+  - **Real-Time Live Expiry Countdown**: Active timer dynamically counts down token lifetime (`Expires in 14m`, `Expiring in 45s`, `Expired 2m ago`, or `Active`), transitioning through color themes (green -> amber -> soft red).
+  - **1-Click Token Renewal**: Embedded `Renew` button triggers `TokenRefreshService.refreshNow()` with spinning SVG feedback and confirmation; never shows error text in button labels.
+  - **100% SVG Vector Icons**: Strict zero-emoji compliance using clean inline SVGs (`user`, `clock`, `refresh`, `check`, `key`) (**686 tests passing**).
+- [x] **7. 1-Click Multi-Account / Role Switcher in Swagger Header**
+  - **Feature**: Compact dropdown in the Swagger header to switch between accounts (Admin, Staff, Customer) and re-authorize Swagger instantly.
+- [x] **8. 🔍 Response JSON Search & Node Collapsing**
+  - **Interactive Collapsible JSON Tree**: Automatically mounts an expandable/collapsible JSON tree on rendered Swagger response bodies with type-based syntax coloring (keys, strings, numbers, booleans, null) and summary badges (`{ 4 keys }`, `[ 12 items ]`).
+  - **Real-Time Keyword Search**: Fast query filtering with active match counter (`2 / 5 matches`), previous/next navigation buttons, and keyboard shortcuts (<kbd>Enter</kbd> / <kbd>Shift+Enter</kbd>).
+  - **Auto-Expansion on Match**: Automatically expands any collapsed parent and ancestor nodes when search matches are located inside them, scrolling the active match into view.
+  - **Tree vs. Raw View Switcher**: 1-click segmented toggle (`[ Tree | Raw ]`) allows switching back to Swagger UI's native pre block at any time without page reload.
+  - **1-Click Copy Actions**: Formatted 2-space indented JSON copy with SVG check feedback, plus 1-click JSON path copy (e.g. `items[0].name`) when clicking any property key.
+  - **Config Tab & Feature Toggle**: Integrated toggle `responseJsonSearch` into extension settings and the Config tab with instant classList toggling (`.oac-disable-response-json-search`).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**710 tests passing**).
+- [x] **9. Multi-Language "Copy Code" Dropdown (cURL, PowerShell, Fetch, Axios, Python)**
+  - **Feature**: Injected a sleek `[ Copy Code ▾ ]` dropdown button directly alongside Swagger UI's native Curl block (`.curl-command`) next to `<h4>Curl</h4>` and Swagger's native clipboard button without layout disruption.
+  - **5 Supported Languages & Frameworks**:
+    - **cURL (Bash / Linux / macOS)**: Pure cURL with escaped parameters and headers.
+    - **cURL (PowerShell)**: Native `Invoke-RestMethod` with hashtable headers and PowerShell escaped quotes.
+    - **JavaScript (Fetch API)**: Async `fetch()` with method, parsed headers, and JSON stringified body.
+    - **JavaScript (Axios)**: Async `axios()` configuration object with lowercase method and data payload.
+    - **Python (Requests)**: Idiomatic Python `requests` code formatting JSON bodies into native Python dictionary literals (`True`, `False`, `None`, lists, dicts) or raw data payloads.
+  - **Accurate cURL Parser**: `parseCurlCommand` extracts exact method, resolved URL (including path/query parameters), headers, and request body directly from Swagger UI's executed Curl block.
+  - **Clipboard Copy & Visual Confirmation**: 1-click copy with animated SVG checkmark feedback (`Copied Python!`, `Copied Fetch!`) for 1.8s, plus outside-click dismissal.
+  - **Config Tab & Feature Toggle**: Integrated toggle `copyCodeSnippet` into extension settings and the Config tab with instant classList toggling (`.oac-disable-copy-code-snippet`).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**723 tests passing**).
+- [x] **10. Export Response as JSON or CSV File**
+  - **Feature**: 1-click export actions in rendered response toolbars (`.oac-resp-export-btn`) and fallback action bars to instantly download API responses as formatted `.json` or RFC 4180-compliant `.csv` files.
+  - **RFC 4180 Compliant CSV Engine (`export-utils.ts`)**:
+    - Automatic tabular data extraction from arrays of objects and nested collection envelopes (`items`, `data`, `results`, `records`, etc.).
+    - Robust escaping for commas, quotes (`""`), and newlines, plus UTF-8 BOM (`\uFEFF`) prefixing for native compatibility with Microsoft Excel and Google Sheets.
+    - Gracefully disables CSV export and provides helpful tooltips when response payloads are non-tabular.
+  - **Sanitized Filename Generator**: Generates clean, informative filenames like `get_tasks_2026-09-17.json` or `get_tasks_2026-09-17.csv` derived from HTTP method, cleaned endpoint path, and timestamp.
+  - **Dual-Mode Integration**:
+    - **Response Viewer Toolbar**: Sleek `[ Export ▾ ]` dropdown integrated into the dark response viewer toolbar alongside `Copy JSON` and mode toggles.
+    - **Standalone Fallback Bar**: Mounts compact `[ JSON ]` and `[ CSV ]` export buttons on `.response-col_description` if interactive tree view is toggled off in settings.
+  - **Config Tab & Feature Toggle**: Integrated toggle `responseExport` into extension settings and the Config tab with instant classList toggling (`.oac-disable-response-export`).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**746 tests passing**).
+- [x] **11. ⭐ Endpoint Favorites / Pinning to Top**
+  - **Star Icon Placement**: Placed directly to the left of the HTTP method badge (`★ [GET] /tasks/`) on Swagger operation headers.
+  - **Accordion Isolation**: Clicking the star prevents event propagation and default actions so the operation accordion never toggles.
+  - **Pinned Operations Tray**: Compact Quick-Access Cards grid rendered at the top of Swagger UI above the first tag section.
+  - **1-Click "Jump & Open"**: Clicking any card or its "Open" button smoothly scrolls down, auto-expands the collapsed accordion, and applies a prominent pulse highlight animation (`.oac-pulse-highlight`).
+  - **Real-Time Synchronization**: Directly integrated with `ProductivityService`, `FAVORITE_TOGGLED` event bus, Command Palette, and side panel.
+  - **Zero Clutter**: Tray automatically hides when 0 items are favorited.
+  - **Config Tab & Feature Toggle**: Integrated toggle `pinnedEndpoints` in settings and Config panel with `.oac-disable-pinned-endpoints`.
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**82 test files, 757 tests passing**).
+- [x] **12. 📋 Paste cURL to Auto-Fill Operation**
+  - **Header & Keyboard Entry Points**: Injected sleek `[ 📋 Paste cURL ]` action button in Swagger UI header, plus global `Ctrl+Shift+V` / `⌘+Shift+V` shortcut handler.
+  - **Robust cURL Parser (`curl-parser.ts`)**: Extracts HTTP method, full URL, path, query parameters, headers, and request body with multi-line continuations, Windows PowerShell backtick support, and pretty JSON formatting.
+  - **OpenAPI Route Matcher (`endpoint-matcher.ts`)**: Matches raw URLs and nested route segments against templated OpenAPI paths (e.g. `/tasks/42` -> `/tasks/{task_id}`) and extracts path parameter values into dictionaries.
+  - **Interactive Modal & Real-Time Preview**: Displays method badge, matched endpoint badge, extracted path/query parameters pills, and formatted request payload preview with 1-click `[ Paste from Clipboard ]` integration.
+  - **1-Click Auto-Fill Execution**: Automatically scrolls to and expands the matched endpoint, clicks "Try it out", fills path and query parameters, populates request body textarea, and highlights with `.oac-pulse-highlight`.
+  - **Config Tab & Feature Toggle**: Integrated toggle `pasteCurl` into settings and Config panel with `.oac-disable-paste-curl` (12/12 active features).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**85 test files, 776 tests passing**).
+- [x] **13. 🌐 Global Debug Headers Injector**
+  - **Persistent Header Storage & Service (`HeadersService`)**: Built per-project key-value store (`projects/<projectId>/global-headers`) supporting enable/disable toggles, add/delete header rules, and active record export.
+  - **MAIN-World Multi-Channel Network Interception**: Injected global headers across Swagger's `requestInterceptor`, native `window.fetch`, and `XMLHttpRequest`, with priority over operation defaults and dynamic variable interpolation (`{{VARIABLE}}`, `{{$uuid}}`, `{{$timestamp}}`).
+  - **Swagger UI Quick Action Bar Button**: Mounted clean `[ Headers ]` action button beside `[ Paste cURL ]` in `.oac-header-actions-bar` with an active count badge (`Headers (N)`).
+  - **Dark-Themed In-Page Management Modal**: Modal matching Swagger/OAC dark slate theme (`#0f172a`, `#1e293b`), quick preset chips (`+ X-Tenant-ID`, `+ X-Debug`, `+ Accept-Language`, `+ X-Request-ID`, `+ Cache-Control`), dynamic row addition, and real-time active header badge sync.
+  - **Config Tab & Feature Toggle**: Integrated toggle `globalHeaders` into settings and Config panel with `.oac-disable-global-headers` (**13/13 active features**).
+  - **100% SVG Icons & Stability**: Strict zero-emoji compliance using clean inline SVGs (**86 test files, 786+ tests passing**).
+
 # TODO — Open Action Items
 
 > Running tracker for OpenAPI Companion. Checked items are done; unchecked need action. Last updated: 2026-07-01.

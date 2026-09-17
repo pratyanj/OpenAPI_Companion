@@ -194,4 +194,62 @@ describe('ImportExportService.applyImport', () => {
     expect(exported.value).toContain('TOKEN_KEPT')
     expect(exported.value).toContain('admin@acme.io')
   })
+
+  it('includes saved passwords in export when protected by a passphrase, and successfully restores them', async () => {
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => 0 })
+    const key = 'projects/p1/auth-vault/cred_admin'
+    await storage.set(key, {
+      id: 'cred_admin',
+      name: 'admin',
+      type: 'bearer',
+      token: 'TOKEN_KEPT',
+      createdAt: 0,
+      login: {
+        url: '/auth/login',
+        username: 'admin@acme.io',
+        password: 'SUPER_SECRET',
+        usernameField: 'email',
+        passwordField: 'password',
+      },
+    })
+    const io = new ImportExportService({ storage, now: () => 0 })
+
+    // Export with passphrase
+    const exported = await io.exportAll('my-passphrase')
+    expect(exported.ok).toBe(true)
+    if (!exported.ok) return
+
+    // Plaintext password is not visible in the ciphertext JSON
+    expect(exported.value).not.toContain('SUPER_SECRET')
+    expect(io.isEncrypted(exported.value)).toBe(true)
+
+    // previewImport detects encryption
+    const previewRes = io.previewImport(exported.value)
+    expect(previewRes.ok).toBe(false)
+    if (!previewRes.ok) {
+      expect(previewRes.error.code).toBe('IMPORT_ENCRYPTED')
+    }
+
+    // Decrypting with wrong passphrase fails
+    const badDecrypt = await io.decryptBackup(exported.value, 'wrong-pass')
+    expect(badDecrypt.ok).toBe(false)
+
+    // Decrypting with correct passphrase succeeds and reveals password
+    const goodDecrypt = await io.decryptBackup(exported.value, 'my-passphrase')
+    expect(goodDecrypt.ok).toBe(true)
+    if (!goodDecrypt.ok) return
+    expect(goodDecrypt.value).toContain('SUPER_SECRET')
+
+    // Applying import with passphrase restores the password into storage
+    const targetArea = createFakeArea()
+    const targetStorage = new StorageService({ area: targetArea, now: () => 0 })
+    const targetIo = new ImportExportService({ storage: targetStorage, now: () => 0 })
+
+    const importRes = await targetIo.applyImport(exported.value, 'replace', 'my-passphrase')
+    expect(importRes.ok).toBe(true)
+
+    const restoredCred = await targetStorage.getData<{ login?: { password?: string } }>(key)
+    expect(restoredCred.ok && restoredCred.value?.login?.password).toBe('SUPER_SECRET')
+  })
 })
