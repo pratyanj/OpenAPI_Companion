@@ -14,6 +14,10 @@ export interface HistoryEntry {
 export interface HistoryRecord extends HistoryEntry {
   requestBody?: string
   responseBody?: string
+  queryParams?: Record<string, string>
+  pathParams?: Record<string, string>
+  headers?: Record<string, string>
+  requestUrl?: string
 }
 
 export interface HistoryQuery {

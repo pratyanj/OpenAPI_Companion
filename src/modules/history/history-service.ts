@@ -33,6 +33,10 @@ export interface HistoryInput {
   requestBody?: string
   responseBody?: string
   durationMs?: number
+  queryParams?: Record<string, string>
+  pathParams?: Record<string, string>
+  headers?: Record<string, string>
+  requestUrl?: string
 }
 
 const notFound = (id: string): AppError => ({
@@ -112,6 +116,10 @@ export class HistoryService {
       ...entry,
       requestBody: capBody(input.requestBody),
       responseBody: capBody(input.responseBody),
+      queryParams: input.queryParams,
+      pathParams: input.pathParams,
+      headers: input.headers,
+      requestUrl: input.requestUrl,
     }
 
     const next = [entry, ...(await this.readIndex())]
@@ -199,6 +207,10 @@ export class HistoryService {
         requestBody: res.requestBody,
         responseBody: res.responseBody,
         durationMs: res.durationMs,
+        queryParams: res.queryParams,
+        pathParams: res.pathParams,
+        headers: res.headers,
+        requestUrl: res.requestUrl,
       })
       if (result.ok) recorded++
     }
@@ -235,7 +247,13 @@ export class HistoryService {
     if (!got.ok) return got
     if (!got.value) return err(notFound(id))
     const record = got.value
-    const replayed = this.adapter.replay(record.endpointId, record.requestBody)
+    const replayed = this.adapter.replay(
+      record.endpointId,
+      record.requestBody,
+      record.pathParams,
+      record.queryParams,
+      record.headers,
+    )
     if (!replayed.ok) return replayed
     this.bus?.publish('REQUEST_REPLAYED', { sourceId: id, newRecordId: id })
     return ok(record)

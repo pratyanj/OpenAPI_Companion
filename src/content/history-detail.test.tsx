@@ -13,6 +13,8 @@ const mockRecord: HistoryRecord = {
   status: 200,
   requestBody: '{"email":"admin@example.com"}',
   responseBody: '{"token":"xyz789"}',
+  queryParams: { redirect: 'dashboard', source: 'mobile' },
+  pathParams: { tenant: 'acme' },
   timestamp: Date.now(),
   environmentId: 'default',
 }
@@ -57,6 +59,11 @@ describe('mountHistoryDetail (in-page history request detail overlay)', () => {
     expect(el).not.toBeNull()
     expect(el?.getAttribute('aria-label')).toBe('Request detail')
     expect(overlay.isOpen()).toBe(true)
+    expect(el?.textContent).toContain('Query Parameters')
+    expect(el?.textContent).toContain('redirect')
+    expect(el?.textContent).toContain('dashboard')
+    expect(el?.textContent).toContain('Path Parameters')
+    expect(el?.textContent).toContain('tenant')
 
     await act(async () => {
       overlay.close()

@@ -161,8 +161,9 @@ export class RemoteSwaggerAdapter implements SwaggerAdapter {
     body?: string,
     path?: Record<string, string>,
     query?: Record<string, string>,
+    headers?: Record<string, string>,
   ): Result<void> {
-    void rpcResult('adapter.replay', endpointId, body, path, query)
+    void rpcResult('adapter.replay', endpointId, body, path, query, headers)
     return ok(undefined)
   }
   isRequestBodyEmpty(endpointId: string): boolean {
@@ -233,8 +234,8 @@ export function createRemoteRequestService(): RequestPanelService {
       const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
       return {
         exampleBody: open?.body || exec?.requestBody || undefined,
-        path: open?.path || undefined,
-        query: open?.query || undefined,
+        path: open?.path || exec?.pathParams || undefined,
+        query: open?.query || exec?.queryParams || undefined,
       }
     },
     getSwaggerDefaultsAsync: async (endpointId: string) => {
@@ -252,8 +253,8 @@ export function createRemoteRequestService(): RequestPanelService {
       const exec = latestState.adapter.executedResponses.find((r) => r.endpointId === endpointId)
       return {
         exampleBody: open?.body || exec?.requestBody || undefined,
-        path: open?.path || undefined,
-        query: open?.query || undefined,
+        path: open?.path || exec?.pathParams || undefined,
+        query: open?.query || exec?.queryParams || undefined,
       }
     },
   }

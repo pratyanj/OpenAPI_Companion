@@ -158,8 +158,33 @@ describe('HistoryService', () => {
 
     const result = await service.replay(rec.value.id)
     expect(result.ok).toBe(true)
-    expect(replay).toHaveBeenCalledWith('post /users', '{"a":1}')
+    expect(replay).toHaveBeenCalledWith('post /users', '{"a":1}', undefined, undefined, undefined)
     expect(replayed).toHaveBeenCalledWith({ sourceId: rec.value.id, newRecordId: rec.value.id })
+  })
+
+  it('replays a record with query parameters, path parameters, and headers', async () => {
+    const replay = vi.fn((): Result<void> => ok(undefined))
+    const { service } = setup(mockAdapter({ replay }))
+    const rec = await service.record(
+      input({
+        endpointId: 'post /tasks/{task_id}/labels/{label_id}',
+        endpoint: '/tasks/{task_id}/labels/{label_id}',
+        queryParams: { tag: 'urgent', filter: 'active' },
+        pathParams: { task_id: '42', label_id: '7' },
+        headers: { 'X-Tenant-ID': 'corp-1' },
+      }),
+    )
+    if (!rec.ok) return
+
+    const result = await service.replay(rec.value.id)
+    expect(result.ok).toBe(true)
+    expect(replay).toHaveBeenCalledWith(
+      'post /tasks/{task_id}/labels/{label_id}',
+      '{"a":1}',
+      { task_id: '42', label_id: '7' },
+      { tag: 'urgent', filter: 'active' },
+      { 'X-Tenant-ID': 'corp-1' },
+    )
   })
 
   it('locates an endpoint via the adapter without executing it', () => {

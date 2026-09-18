@@ -27,10 +27,27 @@ const CODE_LANGS: { lang: CodeLang; label: string }[] = [
   { lang: 'axios', label: 'Copy as Axios' },
 ]
 
-/** Full request URL from the origin + recorded path (path already absolute). */
-function fullUrl(baseUrl: string | undefined, endpoint: string): string {
+/** Full request URL from the origin + recorded path/query (path already absolute or relative). */
+function fullUrl(
+  baseUrl: string | undefined,
+  endpoint: string,
+  queryParams?: Record<string, string>,
+  requestUrl?: string,
+): string {
+  if (requestUrl && requestUrl.startsWith('http')) {
+    return requestUrl
+  }
   const base = (baseUrl ?? '').replace(/\/+$/, '')
-  return endpoint.startsWith('http') ? endpoint : `${base}${endpoint}`
+  let full = endpoint.startsWith('http') ? endpoint : `${base}${endpoint}`
+  if (queryParams && Object.keys(queryParams).length > 0 && !full.includes('?')) {
+    const qs = Object.entries(queryParams)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&')
+    if (qs) {
+      full += `?${qs}`
+    }
+  }
+  return full
 }
 
 const TABS: TabDef[] = [
@@ -153,13 +170,15 @@ export function HistoryDetail({
   const response = prettify(record.responseBody)
   const toggleWrap = () => setWrap((v) => !v)
 
-  // Everything here is derivable from what history stores (method, path, bodies).
-  // Headers aren't captured (DD-033), so no header/HAR options — see the panel.
-  const url = fullUrl(baseUrl, record.endpoint)
+  const url = fullUrl(baseUrl, record.endpoint, record.queryParams, record.requestUrl)
+  const reqHeaders: Record<string, string> = {
+    ...(record.headers ?? {}),
+    ...(record.requestBody ? { 'Content-Type': 'application/json' } : {}),
+  }
   const codeReq: CodeGenRequest = {
     method: record.method,
     url,
-    headers: record.requestBody ? { 'Content-Type': 'application/json' } : {},
+    headers: reqHeaders,
     body: record.requestBody,
   }
   const copyItems = [
@@ -168,6 +187,14 @@ export function HistoryDetail({
       label,
       onSelect: () => void copyText(generateCode(lang, codeReq)),
     })),
+    ...(record.queryParams && Object.keys(record.queryParams).length > 0
+      ? [
+          {
+            label: 'Copy Query Parameters (JSON)',
+            onSelect: () => void copyText(JSON.stringify(record.queryParams, null, 2)),
+          },
+        ]
+      : []),
     ...(record.requestBody
       ? [{ label: 'Copy Request body', onSelect: () => void copyText(record.requestBody ?? '') }]
       : []),
@@ -185,7 +212,13 @@ export function HistoryDetail({
             {record.method}
           </span>
           <span className="min-w-0 flex-1 break-all font-mono text-xs text-text">
-            {record.endpoint}
+            {record.requestUrl ? (
+              record.requestUrl.replace(/^https?:\/\/[^/]+/i, '') || record.endpoint
+            ) : record.queryParams && Object.keys(record.queryParams).length > 0 ? (
+              `${record.endpoint}${record.endpoint.includes('?') ? '&' : '?'}${new URLSearchParams(record.queryParams).toString()}`
+            ) : (
+              record.endpoint
+            )}
           </span>
           {/* Copy menu — URL, code snippets, and the stored bodies. */}
           <Menu
@@ -241,7 +274,86 @@ export function HistoryDetail({
       <Tabs tabs={TABS} activeId={tab} onChange={setTab} />
 
       {tab === 'request' ? (
-        <Panel body={request} wrap={wrap} onToggleWrap={toggleWrap} />
+        <div className="flex flex-col gap-3">
+          {/* Query Parameters Section */}
+          {record.queryParams && Object.keys(record.queryParams).length > 0 ? (
+            <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-text">Query Parameters</span>
+                <span className="text-[10px] text-muted">
+                  {Object.keys(record.queryParams).length} params
+                </span>
+              </div>
+              <div className="flex flex-col divide-y divide-border/40">
+                {Object.entries(record.queryParams).map(([key, val]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between py-1 font-mono text-[11px]"
+                  >
+                    <span className="text-primary font-medium">{key}</span>
+                    <span className="text-text max-w-[65%] truncate text-right">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Path Parameters Section */}
+          {record.pathParams && Object.keys(record.pathParams).length > 0 ? (
+            <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-text">Path Parameters</span>
+                <span className="text-[10px] text-muted">
+                  {Object.keys(record.pathParams).length} params
+                </span>
+              </div>
+              <div className="flex flex-col divide-y divide-border/40">
+                {Object.entries(record.pathParams).map(([key, val]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between py-1 font-mono text-[11px]"
+                  >
+                    <span className="text-primary font-medium">{key}</span>
+                    <span className="text-text max-w-[65%] truncate text-right">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Request Headers Section */}
+          {record.headers && Object.keys(record.headers).length > 0 ? (
+            <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-text">Request Headers</span>
+                <span className="text-[10px] text-muted">
+                  {Object.keys(record.headers).length} headers
+                </span>
+              </div>
+              <div className="flex flex-col divide-y divide-border/40">
+                {Object.entries(record.headers).map(([key, val]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between py-1 font-mono text-[11px]"
+                  >
+                    <span className="text-muted font-medium">{key}</span>
+                    <span className="text-text max-w-[65%] truncate text-right">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Request Body Section */}
+          <div className="flex flex-col gap-1">
+            {(record.queryParams && Object.keys(record.queryParams).length > 0) ||
+            (record.pathParams && Object.keys(record.pathParams).length > 0) ||
+            (record.headers && Object.keys(record.headers).length > 0) ? (
+              <span className="text-[11px] font-semibold text-text">Request Body</span>
+            ) : null}
+            <Panel body={request} wrap={wrap} onToggleWrap={toggleWrap} />
+          </div>
+        </div>
       ) : (
         <Panel
           body={response}
