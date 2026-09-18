@@ -28,14 +28,27 @@ export function setNativeValue(
 ): void {
   if (el instanceof HTMLSelectElement) {
     el.value = value
-    el.dispatchEvent(new Event('change', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
     return
   }
+
+  // Reset React internal _valueTracker if present
+  const tracker = (el as any)._valueTracker
+  if (tracker) {
+    try {
+      tracker.setValue('')
+    } catch {
+      // ignore
+    }
+  }
+
   const proto =
     el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
   const descriptor = Object.getOwnPropertyDescriptor(proto, 'value')
   descriptor?.set?.call(el, value)
-  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+  el.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  el.dispatchEvent(new Event('blur', { bubbles: true, composed: true }))
 }
 
 /**
@@ -369,10 +382,10 @@ export function writeRequestParameters(
     // Find candidate input in the block
     let input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null = null
 
-    // 1. Check data-param-name attribute
+    // 1. Check data-param-name, name, data-name, id, aria-label
     const escaped = cleanName.replace(/"/g, '\\"')
     input = block.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      `input[data-param-name="${escaped}"], select[data-param-name="${escaped}"], textarea[data-param-name="${escaped}"]`,
+      `input[data-param-name="${escaped}"], select[data-param-name="${escaped}"], textarea[data-param-name="${escaped}"], input[name="${escaped}"], select[name="${escaped}"], textarea[name="${escaped}"], input[data-name="${escaped}"]`,
     )
 
     // 2. Check row matching
@@ -392,7 +405,7 @@ export function writeRequestParameters(
       )
     }
 
-    // 4. Search parameter rows by text label
+    // 4. Search parameter rows by text label (clearing required and asterisks)
     if (!input) {
       const allRows = Array.from(
         block.querySelectorAll('.parameters-container tr, table.parameters tr'),
@@ -401,7 +414,9 @@ export function writeRequestParameters(
         const label = r
           .querySelector('.parameter__name')
           ?.textContent?.trim()
-          .replace(/\s*\*\s*$/, '')
+          .replace(/\s*\*.*$/s, '')
+          .replace(/\s+required\s*$/i, '')
+          .trim()
         if (label && label.toLowerCase() === cleanName.toLowerCase()) {
           input = r.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
             'input, select, textarea',

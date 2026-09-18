@@ -1,3 +1,8 @@
+// Signal to isolated content scripts that the MAIN world agent is active
+if (typeof document !== 'undefined' && document.documentElement) {
+  document.documentElement.dataset.oacMainWorld = 'true'
+}
+
 /**
  * MAIN-world content script — runs in the PAGE's JavaScript world, where
  * Swagger's system object lives (the isolated content script cannot see it).
@@ -298,6 +303,164 @@ export function hookXHR(): void {
 // Initialize network hooks immediately
 hookFetch()
 hookXHR()
+hookExecuteClick()
+
+
+// ---------------------------------------------------------------------------
+// Native Execute Click Interceptor & Swagger UI Parameter Synchronization
+// ---------------------------------------------------------------------------
+
+export function hookExecuteClick(doc: Document = document): () => void {
+  const bypassing = new WeakSet<Element>()
+
+  function onExecuteClick(e: MouseEvent): void {
+    if (doc.body?.classList.contains('oac-disable-var-resolution')) return
+    const path = e.composedPath?.() ?? []
+    const target =
+      path.find(
+        (node): node is Element => node instanceof Element && node.matches?.('.btn.execute, .execute'),
+      ) ?? (e.target as Element | null)?.closest?.('.btn.execute, .execute')
+    if (!target) return
+
+    if (bypassing.has(target)) {
+      bypassing.delete(target)
+      return
+    }
+
+    if (target.hasAttribute('data-oac-resolving')) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      return
+    }
+
+    const block = target.closest('.opblock')
+    if (!block) return
+
+    // Extract endpoint path & method
+    const method = block.querySelector('.opblock-summary-method')?.textContent?.trim().toLowerCase()
+    const pathEl = block.querySelector('.opblock-summary-path')
+    const endpointPath =
+      pathEl?.getAttribute('data-path') ||
+      pathEl?.querySelector('a span, span')?.textContent?.trim() ||
+      pathEl?.textContent?.trim()
+
+    const swagger = resolveSwaggerUi() as Record<string, any> | undefined
+    const pathMethod = endpointPath && method ? [endpointPath, method] : null
+
+    const inputs = Array.from(
+      block.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        'input.parameter, select.parameter, textarea.parameter, textarea.body-param__text, input, select, textarea',
+      ),
+    )
+
+    let needsHold = false
+
+    for (const input of inputs) {
+      const val = input.value
+      if (!val) continue
+
+      let nextVal = val
+      if (val.includes('{{')) {
+        nextVal = resolveWithVariables(val, activeVariables)
+        if (nextVal !== val) {
+          needsHold = true
+        }
+      }
+
+      // Update DOM & React tracker if value was resolved or different
+      if (nextVal !== val) {
+        const tracker = (input as any)._valueTracker
+        if (tracker) {
+          try {
+            tracker.setValue('')
+          } catch {
+            // ignore
+          }
+        }
+        const valueSetter = Object.getOwnPropertyDescriptor(input, 'value')?.set
+        const prototype = Object.getPrototypeOf(input)
+        const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set
+        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+          prototypeValueSetter.call(input, nextVal)
+        } else if (valueSetter) {
+          valueSetter.call(input, nextVal)
+        } else {
+          input.value = nextVal
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+        input.dispatchEvent(new Event('blur', { bubbles: true, composed: true }))
+      }
+
+      // Sync to Swagger UI Redux state directly if specActions.changeParam is available
+      if (swagger?.specActions?.changeParam && pathMethod) {
+        let paramName = input.getAttribute('data-param-name') || input.getAttribute('name')
+        let paramIn = input.getAttribute('data-param-in')
+
+        if (!paramName || !paramIn) {
+          const row = input.closest('tr')
+          if (row) {
+            if (!paramName) {
+              paramName =
+                row
+                  .querySelector('.parameter__name')
+                  ?.textContent?.trim()
+                  ?.replace(/\s*\*.*$/s, '')
+                  ?.replace(/\s+required\s*$/i, '')
+                  ?.trim() || ''
+            }
+            if (!paramIn) {
+              const inText = row.querySelector('.parameter__in')?.textContent?.trim() || ''
+              paramIn = inText.replace(/[()]/g, '').trim()
+            }
+          }
+        }
+
+        if (!paramIn && endpointPath) {
+          paramIn = endpointPath.includes(`{${paramName}}`) ? 'path' : 'query'
+        }
+
+        if (paramName) {
+          try {
+            swagger.specActions.changeParam(pathMethod, paramName, paramIn || 'query', nextVal, false)
+          } catch (err) {
+            console.warn('[OpenAPI Companion] changeParam failed:', err)
+          }
+        }
+      }
+    }
+
+    // Always clear validation errors in Swagger UI Redux state so stale error boxes disappear
+    if (swagger?.specActions?.clearValidateParams && pathMethod) {
+      try {
+        swagger.specActions.clearValidateParams(pathMethod)
+      } catch {
+        // ignore
+      }
+    }
+
+    if (needsHold) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+
+      target.setAttribute('data-oac-resolving', 'true')
+      setTimeout(() => {
+        target.removeAttribute('data-oac-resolving')
+        bypassing.add(target)
+        if (target instanceof HTMLElement) {
+          target.click()
+        }
+      }, 60)
+    }
+  }
+
+  doc.addEventListener('click', onExecuteClick as EventListener, true)
+  return () => {
+    doc.removeEventListener('click', onExecuteClick as EventListener, true)
+  }
+}
 
 window.addEventListener('message', (event: MessageEvent) => {
   if ((event.source && event.source !== window) || !isOutbound(event.data)) return

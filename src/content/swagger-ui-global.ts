@@ -16,12 +16,30 @@
 
 export interface SwaggerUiGlobal {
   getConfigs?: () => { url?: string; urls?: Array<{ url: string }> } | undefined
-  getState?: () => { toJS?: () => unknown } | undefined
+  getState?: () => { toJS?: () => unknown; getIn?: (path: unknown[]) => unknown } | undefined
   authActions?: {
     authorize?: (payload: Record<string, unknown>) => void
     logout?: (schemeNames: string[]) => void
   }
   preauthorizeApiKey?: (name: string, value: string) => void
+  specActions?: {
+    changeParam?: (
+      pathMethod: unknown,
+      paramName: string,
+      paramIn: string,
+      value: unknown,
+      isXml?: boolean,
+    ) => void
+    clearValidateParams?: (pathMethod: unknown) => void
+    validateParams?: (pathMethod: unknown, isOAS3?: boolean) => void
+  }
+  specSelectors?: {
+    parameterValues?: (
+      pathMethod: unknown,
+      isXml?: boolean,
+    ) => { toJS?: () => Record<string, unknown> } | undefined
+    parameters?: (pathMethod: unknown) => unknown
+  }
 }
 
 /**
@@ -35,6 +53,7 @@ export function isSwaggerUi(value: unknown): value is SwaggerUiGlobal {
     typeof candidate.getConfigs === 'function' ||
     typeof candidate.getState === 'function' ||
     typeof candidate.preauthorizeApiKey === 'function' ||
+    (typeof candidate.specActions === 'object' && candidate.specActions !== null) ||
     (typeof candidate.authActions === 'object' && candidate.authActions !== null)
   )
 }
@@ -46,8 +65,14 @@ declare const ui: unknown
 
 /** Swagger's system object, however the page exposed it. */
 export function resolveSwaggerUi(): SwaggerUiGlobal | undefined {
-  const fromWindow = (window as unknown as { ui?: unknown }).ui
-  if (isSwaggerUi(fromWindow)) return fromWindow
+  const win = window as unknown as {
+    ui?: unknown
+    swaggerUi?: unknown
+    swagger_ui?: unknown
+  }
+  if (isSwaggerUi(win.ui)) return win.ui
+  if (isSwaggerUi(win.swaggerUi)) return win.swaggerUi
+  if (isSwaggerUi(win.swagger_ui)) return win.swagger_ui
 
   const fromLexical: unknown = typeof ui !== 'undefined' ? ui : undefined
   return isSwaggerUi(fromLexical) ? fromLexical : undefined
