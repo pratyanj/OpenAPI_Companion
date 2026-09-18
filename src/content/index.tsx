@@ -75,57 +75,59 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
   style.id = SWAGGER_FEATURE_STYLES_ID
   style.textContent = `
     /* OpenAPI Companion Theme Tokens - Swagger 2 Light Default */
-    :root, .swagger-ui {
+    :root, .swagger-ui, body.oac-light-mode, body.oac-light-mode .swagger-ui {
       --oac-bg: #ffffff;
-      --oac-bg-subtle: #f8fafc;
-      --oac-bg-hover: #f1f5f9;
-      --oac-border: #e2e8f0;
-      --oac-border-subtle: #cbd5e1;
-      --oac-text: #1e293b;
-      --oac-text-muted: #64748b;
+      --oac-bg-subtle: #f6f8fa;
+      --oac-bg-hover: #f3f4f6;
+      --oac-border: #d0d7de;
+      --oac-border-subtle: #e1e4e8;
+      --oac-text: #24292f;
+      --oac-text-muted: #57606a;
       --oac-btn-bg: #ffffff;
-      --oac-btn-text: #1e293b;
-      --oac-btn-border: #cbd5e1;
-      --oac-btn-hover-bg: #f8fafc;
+      --oac-btn-text: #24292f;
+      --oac-btn-border: #d0d7de;
+      --oac-btn-hover-bg: #f6f8fa;
       --oac-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       --oac-shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.12);
     }
 
-    /* Dark Mode Overrides (when host page or Swagger UI uses dark themes) */
+    /* Dark Mode Overrides - Neutral Charcoal matching drf-yasg and Swagger Dark Theme */
+    body.oac-dark-mode,
+    body.oac-dark-mode .swagger-ui,
     html.dark, body.dark, body.theme-dark, html.theme-dark,
     .swagger-ui.dark, .swagger-ui.theme-dark, .theme-dark .swagger-ui,
     [data-theme="dark"], [data-theme="dark"] .swagger-ui, [data-bs-theme="dark"] {
-      --oac-bg: #1e293b;
-      --oac-bg-subtle: #0f172a;
-      --oac-bg-hover: #334155;
-      --oac-border: #334155;
-      --oac-border-subtle: #475569;
-      --oac-text: #f8fafc;
-      --oac-text-muted: #94a3b8;
-      --oac-btn-bg: #1e293b;
-      --oac-btn-text: #f1f5f9;
-      --oac-btn-border: #475569;
-      --oac-btn-hover-bg: #334155;
-      --oac-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-      --oac-shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.6);
+      --oac-bg: #1c2128;
+      --oac-bg-subtle: #161b22;
+      --oac-bg-hover: #30363d;
+      --oac-border: #3c444d;
+      --oac-border-subtle: #484f58;
+      --oac-text: #f0f6fc;
+      --oac-text-muted: #8b949e;
+      --oac-btn-bg: #21262d;
+      --oac-btn-text: #f0f6fc;
+      --oac-btn-border: #3c444d;
+      --oac-btn-hover-bg: #30363d;
+      --oac-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      --oac-shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.7);
     }
 
     @media (prefers-color-scheme: dark) {
-      :root:not(.light):not([data-theme="light"]),
-      body:not(.light):not([data-theme="light"]) .swagger-ui {
-        --oac-bg: #1e293b;
-        --oac-bg-subtle: #0f172a;
-        --oac-bg-hover: #334155;
-        --oac-border: #334155;
-        --oac-border-subtle: #475569;
-        --oac-text: #f8fafc;
-        --oac-text-muted: #94a3b8;
-        --oac-btn-bg: #1e293b;
-        --oac-btn-text: #f1f5f9;
-        --oac-btn-border: #475569;
-        --oac-btn-hover-bg: #334155;
-        --oac-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-        --oac-shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.6);
+      :root:not(.light):not([data-theme="light"]):not(.oac-light-mode),
+      body:not(.light):not([data-theme="light"]):not(.oac-light-mode) .swagger-ui {
+        --oac-bg: #1c2128;
+        --oac-bg-subtle: #161b22;
+        --oac-bg-hover: #30363d;
+        --oac-border: #3c444d;
+        --oac-border-subtle: #484f58;
+        --oac-text: #f0f6fc;
+        --oac-text-muted: #8b949e;
+        --oac-btn-bg: #21262d;
+        --oac-btn-text: #f0f6fc;
+        --oac-btn-border: #3c444d;
+        --oac-btn-hover-bg: #30363d;
+        --oac-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        --oac-shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.7);
       }
     }
     body.oac-disable-mock-data .oac-mock-btn-group,
@@ -212,6 +214,141 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
   doc.head?.appendChild(style)
 }
 
+
+function parseRgbColor(str: string): { r: number; g: number; b: number } | null {
+  const match = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+  if (!match) return null
+  const a = match[4] !== undefined ? parseFloat(match[4]) : 1
+  if (a === 0) return null // fully transparent
+  return {
+    r: parseInt(match[1], 10),
+    g: parseInt(match[2], 10),
+    b: parseInt(match[3], 10),
+  }
+}
+
+export function detectSwaggerTheme(doc: Document = document): boolean {
+  try {
+    const root = doc.documentElement
+    const body = doc.body
+    if (!body) return false
+
+    // 1. Explicit dark classes/attributes on root or body
+    if (
+      root.classList.contains('dark') ||
+      root.classList.contains('theme-dark') ||
+      body.classList.contains('dark') ||
+      body.classList.contains('theme-dark') ||
+      root.getAttribute('data-theme') === 'dark' ||
+      root.getAttribute('data-bs-theme') === 'dark' ||
+      body.getAttribute('data-theme') === 'dark'
+    ) {
+      return true
+    }
+
+    const swaggerEl = doc.querySelector('.swagger-ui') as HTMLElement | null
+    if (swaggerEl) {
+      if (
+        swaggerEl.classList.contains('dark') ||
+        swaggerEl.classList.contains('theme-dark') ||
+        swaggerEl.getAttribute('data-theme') === 'dark'
+      ) {
+        return true
+      }
+    }
+
+    // 2. Computed background color brightness inspection
+    // (Swagger Dark Theme extension, drf-yasg dark stylesheets, Dark Reader, custom dark CSS)
+    const elementsToCheck: (HTMLElement | null)[] = [
+      swaggerEl,
+      body,
+      root,
+      doc.querySelector('.swagger-ui .wrapper') as HTMLElement | null,
+      doc.querySelector('.swagger-ui .info') as HTMLElement | null,
+    ]
+
+    for (const el of elementsToCheck) {
+      if (!el) continue
+      const style = window.getComputedStyle(el)
+      const bg = style.backgroundColor
+      if (bg && bg !== 'transparent') {
+        const rgb = parseRgbColor(bg)
+        if (rgb) {
+          // Perceptual brightness formula: (r*299 + g*587 + b*114) / 1000
+          const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000
+          return brightness < 128
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return false
+}
+
+export function syncSwaggerTheme(doc: Document = document): boolean {
+  if (!doc.body) return false
+  const isDark = detectSwaggerTheme(doc)
+  doc.body.classList.toggle('oac-dark-mode', isDark)
+  doc.body.classList.toggle('oac-light-mode', !isDark)
+  return isDark
+}
+
+export function initSwaggerThemeSync(doc: Document = document): () => void {
+  syncSwaggerTheme(doc)
+
+  // Periodic startup syncs as stylesheets and templates finish rendering
+  const t1 = setTimeout(() => syncSwaggerTheme(doc), 100)
+  const t2 = setTimeout(() => syncSwaggerTheme(doc), 400)
+  const t3 = setTimeout(() => syncSwaggerTheme(doc), 1200)
+  const t4 = setTimeout(() => syncSwaggerTheme(doc), 2500)
+
+  // 1. Delegated click listener: reacts immediately when user clicks the lightbulb icon or topbar controls
+  const onClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null
+    if (!target) return
+    if (
+      target.closest('.topbar, .download-url-wrapper') ||
+      target.closest('button[title*="theme" i], button[aria-label*="theme" i], [class*="theme" i]')
+    ) {
+      syncSwaggerTheme(doc)
+      setTimeout(() => syncSwaggerTheme(doc), 50)
+      setTimeout(() => syncSwaggerTheme(doc), 250)
+    }
+  }
+  doc.addEventListener('click', onClick, true)
+
+  // 2. MutationObserver: watches for injected dark theme stylesheets or class changes
+  const observer = new MutationObserver(() => {
+    syncSwaggerTheme(doc)
+  })
+  if (doc.head) {
+    observer.observe(doc.head, { childList: true, subtree: true })
+  }
+  if (doc.documentElement) {
+    observer.observe(doc.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+  }
+  if (doc.body) {
+    observer.observe(doc.body, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+  }
+
+  // 3. Media query listener
+  const mql = window.matchMedia?.('(prefers-color-scheme: dark)')
+  const onMediaChange = () => syncSwaggerTheme(doc)
+  mql?.addEventListener?.('change', onMediaChange)
+
+  return () => {
+    clearTimeout(t1)
+    clearTimeout(t2)
+    clearTimeout(t3)
+    clearTimeout(t4)
+    doc.removeEventListener('click', onClick, true)
+    observer.disconnect()
+    mql?.removeEventListener?.('change', onMediaChange)
+  }
+}
+
 function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Document = document): void {
   const b = doc.body
   if (!b) return
@@ -267,6 +404,7 @@ async function boot(): Promise<void> {
   mountLauncher() // floating button to open the panel from the page
 
   ensureSwaggerFeatureStyles(document)
+  initSwaggerThemeSync(document)
   const settingsService = new SettingsService({ storage, bus })
   const syncSwaggerFeatures = async (): Promise<void> => {
     try {
@@ -917,12 +1055,13 @@ async function boot(): Promise<void> {
       requests.getSwaggerDefaults(endpointId as string),
     'adapter.writeRequest': ([id, data]) =>
       adapter.writeRequest(id as string, data as RequestSnapshot),
-    'adapter.replay': ([id, body, path, query]) =>
+    'adapter.replay': ([id, body, path, query, headers]) =>
       adapter.replay(
         id as string,
         body as string | undefined,
         path as Record<string, string> | undefined,
         query as Record<string, string> | undefined,
+        headers as Record<string, string> | undefined,
       ),
     'adapter.openEndpoint': ([id]) => adapter.openEndpoint(id as string),
     'adapter.writeAuth': ([a]) => adapter.writeAuth(a as AuthSnapshot),
