@@ -93,6 +93,7 @@ const FEATURES: FeatureItem[] = [
   {
     id: 'pasteCurl',
     title: 'Paste cURL to Auto-Fill',
+    shortcut: 'Ctrl+Shift+V',
     description:
       'Paste raw cURL commands to automatically locate the matching endpoint, activate Try-it-out, and auto-populate parameters and body.',
   },

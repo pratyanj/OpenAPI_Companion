@@ -58,6 +58,11 @@ describe('ConfigPanel', () => {
 
     const globalHeadersCheckbox = screen.getByLabelText(/Toggle Global Debug Headers/i) as HTMLInputElement
     expect(globalHeadersCheckbox.checked).toBe(true)
+
+    expect(screen.getByText('Ctrl+Shift+V')).toBeInTheDocument()
+    expect(screen.getByText('Alt+M')).toBeInTheDocument()
+    expect(screen.getByText('Alt+Shift+F')).toBeInTheDocument()
+    expect(screen.getByText('Alt+L')).toBeInTheDocument()
   })
 
   it('calls setSwaggerFeature when a toggle is clicked', async () => {

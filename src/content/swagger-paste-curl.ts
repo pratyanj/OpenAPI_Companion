@@ -852,7 +852,7 @@ export function mountSwaggerPasteCurl(
     const btn = doc.createElement('button')
     btn.type = 'button'
     btn.className = BTN_CLASS
-    btn.title = 'Paste raw cURL to auto-fill operation parameters and body'
+    btn.title = 'Paste raw cURL to auto-fill operation parameters and body (Ctrl+Shift+V)'
     btn.innerHTML = `${SVG_ICONS.clipboard}<span>Paste cURL</span>`
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
