@@ -136,4 +136,67 @@ describe('swagger-variables (in-page Swagger UI integration)', () => {
     const host = document.getElementById('oac-swagger-var-autocomplete-host')!
     expect(host.shadowRoot!.textContent).toContain('NEW_VAR')
   })
+
+  it('holds execution on initial click to put values first, then executes with resolved values', async () => {
+    document.body.innerHTML = opblockHtml('PATCH', '/teams/{team_id}', '', '{{ID}}')
+
+    handle = mountSwaggerVariables({ ID: '501' }, [])
+
+    const block = document.querySelector('.opblock')!
+    const input = block.querySelector<HTMLInputElement>('input.parameter')!
+    const executeBtn = block.querySelector<HTMLButtonElement>('.btn.execute')!
+
+    const executedClicks: string[] = []
+    executeBtn.addEventListener('click', () => {
+      executedClicks.push(input.value)
+    })
+
+    // Click execute while input still has {{ID}}
+    executeBtn.click()
+
+    // 1. Value is immediately put into the input
+    expect(input.value).toBe('501')
+    // 2. Initial execution was held so native execute listener was NOT triggered yet with raw {{ID}}
+    expect(executedClicks.length).toBe(0)
+
+    // Wait for the delayed execution after values are populated
+    await new Promise((r) => setTimeout(r, 80))
+
+    // 3. Execution was re-triggered and Swagger received the resolved value '501'
+    expect(executedClicks).toEqual(['501'])
+  })
+
+  it('resolves multiple parameters and holds execution until all are populated', async () => {
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <input class="parameter" data-param="team_id" value="{{ID}}" />
+        <input class="parameter" data-param="user_id" value="{{USER_ID}}" />
+        <button class="btn execute">Execute</button>
+      </div>
+    `
+
+    handle = mountSwaggerVariables({ ID: '10', USER_ID: '20' }, [])
+
+    const block = document.querySelector('.opblock')!
+    const teamInput = block.querySelector<HTMLInputElement>('input[data-param="team_id"]')!
+    const userInput = block.querySelector<HTMLInputElement>('input[data-param="user_id"]')!
+    const executeBtn = block.querySelector<HTMLButtonElement>('.btn.execute')!
+
+    let executedWith: { team: string; user: string } | null = null
+    executeBtn.addEventListener('click', () => {
+      executedWith = { team: teamInput.value, user: userInput.value }
+    })
+
+    executeBtn.click()
+
+    // Values replaced immediately
+    expect(teamInput.value).toBe('10')
+    expect(userInput.value).toBe('20')
+    // Held
+    expect(executedWith).toBeNull()
+
+    // Fires after delay
+    await new Promise((r) => setTimeout(r, 80))
+    expect(executedWith).toEqual({ team: '10', user: '20' })
+  })
 })

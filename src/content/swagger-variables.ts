@@ -301,6 +301,7 @@ export function mountSwaggerVariables(
 
   function onInput(e: Event): void {
     if (doc.body?.classList.contains('oac-disable-var-resolution')) return
+    if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
     const target = e.target as Element | null
     if (!isSwaggerInputField(target)) {
       if (activeInput) closeAutocomplete()
@@ -373,6 +374,8 @@ export function mountSwaggerVariables(
   // Pre-Execution Click Interceptor
   // ---------------------------------------------------------------------------
 
+  const bypassingElements = new WeakSet<Element>()
+
   function onExecuteClick(e: Event): void {
     if (doc.body?.classList.contains('oac-disable-var-resolution')) return
     const path = e.composedPath?.() ?? []
@@ -380,9 +383,39 @@ export function mountSwaggerVariables(
       (node): node is Element => node instanceof Element && node.matches?.('.btn.execute, .execute'),
     )
     if (!target) return
+
+    // If this execution click was re-triggered after resolving variables, let it execute natively
+    if (bypassingElements.has(target)) {
+      bypassingElements.delete(target)
+      return
+    }
+
+    // Ignore duplicate clicks while resolution is in flight
+    if (target.hasAttribute('data-oac-resolving')) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      return
+    }
+
     const block = target.closest('.opblock')
-    if (block) {
-      resolveOperationInputs(block)
+    if (!block) return
+
+    const resolvedCount = resolveOperationInputs(block)
+    if (resolvedCount > 0) {
+      // Hold execution so Swagger UI's React/Redux state can receive the updated values first
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+
+      target.setAttribute('data-oac-resolving', 'true')
+      setTimeout(() => {
+        target.removeAttribute('data-oac-resolving')
+        bypassingElements.add(target)
+        if (target instanceof HTMLElement) {
+          target.click()
+        }
+      }, 50)
     }
   }
 
