@@ -135,6 +135,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
     accordionControl.addEventListener('click', accordionSpy)
 
     const stopPropagationSpy = vi.fn()
+    const stopImmediatePropagationSpy = vi.fn()
     const preventDefaultSpy = vi.fn()
 
     const event = new MouseEvent('click', {
@@ -142,11 +143,13 @@ describe('mountSwaggerPinnedEndpoints', () => {
       cancelable: true,
     })
     event.stopPropagation = stopPropagationSpy
+    event.stopImmediatePropagation = stopImmediatePropagationSpy
     event.preventDefault = preventDefaultSpy
 
     starBtn.dispatchEvent(event)
 
     expect(stopPropagationSpy).toHaveBeenCalled()
+    expect(stopImmediatePropagationSpy).toHaveBeenCalled()
     expect(preventDefaultSpy).toHaveBeenCalled()
     expect(mockProductivity.toggleFavorite).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -159,12 +162,15 @@ describe('mountSwaggerPinnedEndpoints', () => {
     handle.dispose()
   })
 
-  it('renders pinned tray at top and auto-hides when empty', async () => {
+  it('renders pinned tray at top with empty state when empty and populates on favorite', async () => {
     const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
     const tray = doc.getElementById('oac-pinned-endpoints-tray')!
     expect(tray).toBeDefined()
-    // Initially empty, should have oac-tray-hidden class
-    expect(tray.classList.contains('oac-tray-hidden')).toBe(true)
+    // Initially empty: should render empty state guidance and badge 0
+    expect(tray.classList.contains('oac-tray-hidden')).toBe(false)
+    expect(tray.querySelector('.oac-pinned-count-badge')?.textContent).toBe('0')
+    expect(tray.querySelector('.oac-pinned-empty-state')).not.toBeNull()
+    expect(tray.querySelector('.oac-pinned-empty-text')?.textContent).toContain('No pinned operations yet')
 
     // Add a favorite
     favoritesList.push({
@@ -177,6 +183,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
 
     handle.renderTray()
     expect(tray.classList.contains('oac-tray-hidden')).toBe(false)
+    expect(tray.querySelector('.oac-pinned-empty-state')).toBeNull()
     expect(tray.querySelector('.oac-pinned-tray-title')?.textContent).toBe('Pinned Operations')
     expect(tray.querySelector('.oac-pinned-count-badge')?.textContent).toBe('1')
 

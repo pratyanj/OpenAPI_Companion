@@ -3,12 +3,13 @@
  *
  * Provides:
  * - 1-Click star favorite buttons to the left of HTTP method badges on operation headers.
- * - Event propagation protection: clicking the star never toggles the Swagger accordion.
- * - Top-level "Pinned Operations" tray above Swagger UI tag sections.
+ * - Event propagation protection: clicking the star never toggles the Swagger accordion (Chrome & Firefox).
+ * - Top-level "Pinned Operations" tray above Swagger UI tag sections / below filter box.
  * - 1-Click "Jump & Open": smoothly scrolls to any pinned operation and auto-expands it with a pulse highlight.
  * - Full real-time synchronization with ProductivityService and FAVORITE_TOGGLED events.
  * - Strict zero-emoji compliance: 100% inline SVG vector icons.
  * - High performance: debounced, filtered MutationObserver, memoized tray rendering, zero infinite loops.
+ * - Cross-browser compatible: zero :has() pseudo-class usage for complete Firefox compatibility.
  */
 
 import { endpointIdOf, findAnyBlock } from '@/adapters/swagger/swagger-request-dom'
@@ -81,7 +82,7 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   margin: 14px 0 20px 0 !important;
   padding: 12px 16px !important;
   background: var(--oac-bg, #ffffff) !important;
-  border: 1px solid var(--oac-border, #e2e8f0) !important;
+  border: 1px solid var(--oac-border, #d0d7de) !important;
   border-left: 4px solid #f59e0b !important;
   border-radius: 6px !important;
   box-shadow: var(--oac-shadow, 0 2px 8px rgba(0, 0, 0, 0.05)) !important;
@@ -109,7 +110,7 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
 .oac-pinned-tray-title {
   font-size: 13px !important;
   font-weight: 700 !important;
-  color: var(--oac-text, #1e293b) !important;
+  color: var(--oac-text, #24292f) !important;
   letter-spacing: -0.01em !important;
   margin: 0 !important;
 }
@@ -123,6 +124,36 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   border-radius: 9999px !important;
 }
 
+body.oac-dark-mode .oac-pinned-count-badge {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+}
+
+.oac-pinned-empty-state {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+  padding: 10px 14px !important;
+  font-size: 12px !important;
+  color: var(--oac-text-muted, #57606a) !important;
+  background: var(--oac-bg-subtle, #f6f8fa) !important;
+  border: 1px dashed var(--oac-border, #d0d7de) !important;
+  border-radius: 6px !important;
+}
+
+.oac-pinned-empty-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #f59e0b !important;
+  flex-shrink: 0 !important;
+}
+
+.oac-pinned-empty-text {
+  line-height: 1.4 !important;
+}
+
 .oac-pinned-tray-toggle-btn {
   display: inline-flex !important;
   align-items: center !important;
@@ -131,15 +162,15 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   height: 22px !important;
   background: transparent !important;
   border: none !important;
-  color: #64748b !important;
+  color: var(--oac-text-muted, #57606a) !important;
   border-radius: 4px !important;
   cursor: pointer !important;
   transition: background 0.15s ease !important;
 }
 
 .oac-pinned-tray-toggle-btn:hover {
-  background: #f1f5f9 !important;
-  color: #0f172a !important;
+  background: var(--oac-bg-hover, #f3f4f6) !important;
+  color: var(--oac-text, #24292f) !important;
 }
 
 .oac-pinned-cards-grid {
@@ -159,8 +190,8 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   align-items: center !important;
   justify-content: space-between !important;
   padding: 7px 10px !important;
-  background: var(--oac-bg-subtle, #f8fafc) !important;
-  border: 1px solid var(--oac-border, #e2e8f0) !important;
+  background: var(--oac-bg-subtle, #f6f8fa) !important;
+  border: 1px solid var(--oac-border, #d0d7de) !important;
   border-radius: 6px !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
@@ -169,8 +200,8 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
 }
 
 .oac-pinned-card:hover {
-  background: var(--oac-bg-hover, #f1f5f9) !important;
-  border-color: var(--oac-border-subtle, #cbd5e1) !important;
+  background: var(--oac-bg-hover, #f3f4f6) !important;
+  border-color: var(--oac-border-subtle, #e1e4e8) !important;
   transform: translateY(-1px) !important;
   box-shadow: var(--oac-shadow, 0 3px 6px rgba(0, 0, 0, 0.05)) !important;
 }
@@ -213,7 +244,7 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   font-family: monospace !important;
   font-size: 11px !important;
   font-weight: 600 !important;
-  color: #1e293b !important;
+  color: var(--oac-text, #24292f) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -221,7 +252,7 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
 
 .oac-pinned-summary {
   font-size: 10px !important;
-  color: #64748b !important;
+  color: var(--oac-text-muted, #57606a) !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -242,16 +273,27 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   font-size: 10px !important;
   font-weight: 500 !important;
   color: #3b82f6 !important;
-  background: #eff6ff !important;
-  border: 1px solid #bfdbfe !important;
+  background: var(--oac-btn-bg, #eff6ff) !important;
+  border: 1px solid var(--oac-btn-border, #bfdbfe) !important;
   border-radius: 4px !important;
   cursor: pointer !important;
   transition: all 0.12s ease !important;
 }
 
+body.oac-dark-mode .oac-pinned-jump-btn {
+  color: #60a5fa !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
 .oac-pinned-jump-btn:hover {
   background: #dbeafe !important;
   color: #1d4ed8 !important;
+}
+
+body.oac-dark-mode .oac-pinned-jump-btn:hover {
+  background: rgba(59, 130, 246, 0.24) !important;
+  color: #93c5fd !important;
 }
 
 .oac-pinned-unpin-btn {
@@ -366,34 +408,31 @@ export function mountSwaggerPinnedEndpoints(
         trayElement.id = TRAY_ID
       }
 
-      const anchor = doc.querySelector(
-        '.opblock-tag-section, .opblock, .swagger-ui .wrapper .block-desktop, .swagger-ui section.block-desktop, .swagger-ui .wrapper > section',
-      )
-      if (anchor && anchor.parentNode) {
-        anchor.parentNode.insertBefore(trayElement, anchor)
+      // 1. Try after filter container (e.g. drf-yasg Filter by tag or Swagger filter box)
+      const filterContainer = doc.querySelector('.swagger-ui .filter-container, .swagger-ui .filter-box')
+      if (filterContainer && filterContainer.parentNode) {
+        filterContainer.parentNode.insertBefore(trayElement, filterContainer.nextSibling)
       } else {
-        const endpointsSection = doc.querySelector('.swagger-ui .wrapper:has(.opblock), .swagger-ui .wrapper:has(.opblock-tag-section)')
-        if (endpointsSection) {
-          endpointsSection.insertBefore(trayElement, endpointsSection.firstChild)
+        // 2. Try before tag section or first opblock
+        const opSection = doc.querySelector('.opblock-tag-section, .opblock')
+        if (opSection && opSection.parentNode) {
+          opSection.parentNode.insertBefore(trayElement, opSection)
         } else {
-          const mainContainer = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
-          if (mainContainer) {
-            mainContainer.insertBefore(trayElement, mainContainer.firstChild)
+          // 3. Try scheme container
+          const schemeContainer = doc.querySelector('.swagger-ui .scheme-container')
+          if (schemeContainer && schemeContainer.parentNode) {
+            schemeContainer.parentNode.insertBefore(trayElement, schemeContainer.nextSibling)
           } else {
-            doc.body?.appendChild(trayElement)
+            // 4. Try wrapper or main container (safe standard DOM traversal without :has)
+            const wrapper = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
+            if (wrapper) {
+              wrapper.insertBefore(trayElement, wrapper.firstChild)
+            } else {
+              doc.body?.appendChild(trayElement)
+            }
           }
         }
       }
-    }
-
-    // Auto-hide when 0 items are pinned
-    if (favorites.length === 0) {
-      trayElement.classList.add('oac-tray-hidden')
-      if (trayElement.children.length > 0) {
-        trayElement.innerHTML = ''
-      }
-      lastRenderedFingerprint = fingerprint
-      return
     }
 
     // If already rendered with exact same favorites and state, skip to avoid touching DOM
@@ -432,6 +471,20 @@ export function mountSwaggerPinnedEndpoints(
     header.appendChild(titleGroup)
     header.appendChild(toggleBtn)
     trayElement.appendChild(header)
+
+    // Empty state: render clean helpful guidance when 0 endpoints are starred
+    if (favorites.length === 0) {
+      if (!isTrayCollapsed) {
+        const emptyState = doc.createElement('div')
+        emptyState.className = 'oac-pinned-empty-state'
+        emptyState.innerHTML = `
+          <span class="oac-pinned-empty-icon">${SVG_ICONS.starOutline}</span>
+          <span class="oac-pinned-empty-text">No pinned operations yet. Click the star icon next to any endpoint below to pin it here for quick 1-click access.</span>
+        `
+        trayElement.appendChild(emptyState)
+      }
+      return
+    }
 
     // Grid of cards
     const grid = doc.createElement('div')
@@ -540,7 +593,7 @@ export function mountSwaggerPinnedEndpoints(
 
   /**
    * Scans .opblock elements and attaches star buttons directly to the left of the method badge.
-   * NOTE: This does NOT call renderTray() — star button attachment is isolated and pure.
+   * NOTE: This does NOT call renderTray() - star button attachment is isolated and pure.
    */
   function scanAndMount(root: ParentNode = doc): number {
     if (isScanning) return 0
@@ -564,7 +617,8 @@ export function mountSwaggerPinnedEndpoints(
         const pathEl = summary.querySelector(
           '.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path',
         )
-        const pathText = pathEl?.textContent?.trim() || endpointId.split(' ')[1] || ''
+        const rawPath = pathEl?.textContent?.trim() || endpointId.split(' ')[1] || ''
+        const pathText = rawPath.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
         const methodText = methodEl.textContent?.trim().toLowerCase() || endpointId.split(' ')[0] || 'get'
         const summaryDesc = summary.querySelector('.opblock-summary-description')?.textContent?.trim()
 
@@ -583,9 +637,10 @@ export function mountSwaggerPinnedEndpoints(
           starBtn.title = 'Pin to top (Favorite)'
         }
 
-        // Starring toggle click handler: STOP PROPAGATION to prevent accordion toggle!
+        // Starring toggle click handler: STOP PROPAGATION on both Chrome & Firefox to prevent accordion toggle!
         starBtn.addEventListener('click', async (e) => {
           e.stopPropagation()
+          e.stopImmediatePropagation()
           e.preventDefault()
 
           await productivity.toggleFavorite({
@@ -649,7 +704,7 @@ export function mountSwaggerPinnedEndpoints(
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       const addedCount = scanAndMount()
-      if (addedCount > 0 && getFavoritesList().length > 0) {
+      if (addedCount > 0) {
         lastRenderedFingerprint = ''
         renderTray()
       }
