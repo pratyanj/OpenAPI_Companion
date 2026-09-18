@@ -6,6 +6,24 @@ import { StorageService } from '@/core/storage'
 import { createFakeArea } from '@/tests/fake-storage'
 
 describe('swagger-global-headers', () => {
+  it('mounts asynchronously when Swagger UI renders after initial call (OAS3 dynamic loading)', async () => {
+    const emptyDoc = document.implementation.createHTMLDocument('Empty')
+    emptyDoc.body.innerHTML = '<div id="swagger-ui"></div>'
+    const handle = mountSwaggerGlobalHeaders(emptyDoc, headersService)
+
+    expect(emptyDoc.querySelector('.oac-global-headers-btn')).toBeNull()
+
+    const info = emptyDoc.createElement('div')
+    info.className = 'swagger-ui'
+    info.innerHTML = '<div class="info"><h2 class="title">Loaded API</h2></div>'
+    emptyDoc.body.appendChild(info)
+
+    await new Promise((r) => setTimeout(r, 150))
+    expect(emptyDoc.querySelector('.oac-global-headers-btn')).not.toBeNull()
+
+    handle.dispose()
+  })
+
   let doc: Document
   let storage: StorageService
   let headersService: HeadersService

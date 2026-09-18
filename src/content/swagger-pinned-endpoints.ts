@@ -80,11 +80,11 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   box-sizing: border-box !important;
   margin: 14px 0 20px 0 !important;
   padding: 12px 16px !important;
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--oac-bg, #ffffff) !important;
+  border: 1px solid var(--oac-border, #e2e8f0) !important;
   border-left: 4px solid #f59e0b !important;
   border-radius: 6px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: var(--oac-shadow, 0 2px 8px rgba(0, 0, 0, 0.05)) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   transition: all 0.2s ease !important;
 }
@@ -109,7 +109,7 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
 .oac-pinned-tray-title {
   font-size: 13px !important;
   font-weight: 700 !important;
-  color: #1e293b !important;
+  color: var(--oac-text, #1e293b) !important;
   letter-spacing: -0.01em !important;
   margin: 0 !important;
 }
@@ -159,8 +159,8 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
   align-items: center !important;
   justify-content: space-between !important;
   padding: 7px 10px !important;
-  background: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--oac-bg-subtle, #f8fafc) !important;
+  border: 1px solid var(--oac-border, #e2e8f0) !important;
   border-radius: 6px !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
@@ -169,10 +169,10 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
 }
 
 .oac-pinned-card:hover {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
+  background: var(--oac-bg-hover, #f1f5f9) !important;
+  border-color: var(--oac-border-subtle, #cbd5e1) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: var(--oac-shadow, 0 3px 6px rgba(0, 0, 0, 0.05)) !important;
 }
 
 .oac-pinned-card-main {
@@ -367,16 +367,21 @@ export function mountSwaggerPinnedEndpoints(
       }
 
       const anchor = doc.querySelector(
-        '.opblock-tag-section, .opblock, .swagger-ui .wrapper:not(.information-container)',
+        '.opblock-tag-section, .opblock, .swagger-ui .wrapper .block-desktop, .swagger-ui section.block-desktop, .swagger-ui .wrapper > section',
       )
       if (anchor && anchor.parentNode) {
         anchor.parentNode.insertBefore(trayElement, anchor)
       } else {
-        const mainContainer = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
-        if (mainContainer) {
-          mainContainer.insertBefore(trayElement, mainContainer.firstChild)
+        const endpointsSection = doc.querySelector('.swagger-ui .wrapper:has(.opblock), .swagger-ui .wrapper:has(.opblock-tag-section)')
+        if (endpointsSection) {
+          endpointsSection.insertBefore(trayElement, endpointsSection.firstChild)
         } else {
-          doc.body?.appendChild(trayElement)
+          const mainContainer = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
+          if (mainContainer) {
+            mainContainer.insertBefore(trayElement, mainContainer.firstChild)
+          } else {
+            doc.body?.appendChild(trayElement)
+          }
         }
       }
     }

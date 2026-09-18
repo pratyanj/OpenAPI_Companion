@@ -72,9 +72,9 @@ body.oac-disable-copy-code .oac-copy-code-dropdown {
   padding: 0 9px !important;
   font-size: 11px !important;
   font-weight: 500 !important;
-  color: #3b4151 !important;
-  background: #ffffff !important;
-  border: 1px solid #d9d9d9 !important;
+  color: var(--oac-btn-text, #3b4151) !important;
+  background: var(--oac-btn-bg, #ffffff) !important;
+  border: 1px solid var(--oac-btn-border, #d9d9d9) !important;
   border-radius: 4px !important;
   cursor: pointer !important;
   line-height: 1 !important;
@@ -107,8 +107,8 @@ body.oac-disable-copy-code .oac-copy-code-dropdown {
   left: 0 !important;
   z-index: 99999 !important;
   min-width: 200px !important;
-  background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  background: var(--oac-bg, #ffffff) !important;
+  border: 1px solid var(--oac-border, #cbd5e1) !important;
   border-radius: 6px !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
   padding: 4px !important;

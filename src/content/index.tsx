@@ -74,6 +74,60 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
   const style = doc.createElement('style')
   style.id = SWAGGER_FEATURE_STYLES_ID
   style.textContent = `
+    /* OpenAPI Companion Theme Tokens - Swagger 2 Light Default */
+    :root, .swagger-ui {
+      --oac-bg: #ffffff;
+      --oac-bg-subtle: #f8fafc;
+      --oac-bg-hover: #f1f5f9;
+      --oac-border: #e2e8f0;
+      --oac-border-subtle: #cbd5e1;
+      --oac-text: #1e293b;
+      --oac-text-muted: #64748b;
+      --oac-btn-bg: #ffffff;
+      --oac-btn-text: #1e293b;
+      --oac-btn-border: #cbd5e1;
+      --oac-btn-hover-bg: #f8fafc;
+      --oac-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --oac-shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Dark Mode Overrides (when host page or Swagger UI uses dark themes) */
+    html.dark, body.dark, body.theme-dark, html.theme-dark,
+    .swagger-ui.dark, .swagger-ui.theme-dark, .theme-dark .swagger-ui,
+    [data-theme="dark"], [data-theme="dark"] .swagger-ui, [data-bs-theme="dark"] {
+      --oac-bg: #1e293b;
+      --oac-bg-subtle: #0f172a;
+      --oac-bg-hover: #334155;
+      --oac-border: #334155;
+      --oac-border-subtle: #475569;
+      --oac-text: #f8fafc;
+      --oac-text-muted: #94a3b8;
+      --oac-btn-bg: #1e293b;
+      --oac-btn-text: #f1f5f9;
+      --oac-btn-border: #475569;
+      --oac-btn-hover-bg: #334155;
+      --oac-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --oac-shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not(.light):not([data-theme="light"]),
+      body:not(.light):not([data-theme="light"]) .swagger-ui {
+        --oac-bg: #1e293b;
+        --oac-bg-subtle: #0f172a;
+        --oac-bg-hover: #334155;
+        --oac-border: #334155;
+        --oac-border-subtle: #475569;
+        --oac-text: #f8fafc;
+        --oac-text-muted: #94a3b8;
+        --oac-btn-bg: #1e293b;
+        --oac-btn-text: #f1f5f9;
+        --oac-btn-border: #475569;
+        --oac-btn-hover-bg: #334155;
+        --oac-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        --oac-shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.6);
+      }
+    }
     body.oac-disable-mock-data .oac-mock-btn-group,
     body.oac-disable-mock-data .oac-mock-fill-btn,
     body.oac-disable-mock-data .oac-mock-mode-btn,

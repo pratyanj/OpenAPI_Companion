@@ -63,9 +63,9 @@ body:not(.oac-disable-response-json-search) .oac-has-viewer .oac-response-export
   padding: 0 8px !important;
   font-size: 10px !important;
   font-weight: 500 !important;
-  color: #3b4151 !important;
-  background: #ffffff !important;
-  border: 1px solid #d9d9d9 !important;
+  color: var(--oac-btn-text, #3b4151) !important;
+  background: var(--oac-btn-bg, #ffffff) !important;
+  border: 1px solid var(--oac-btn-border, #d9d9d9) !important;
   border-radius: 4px !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;

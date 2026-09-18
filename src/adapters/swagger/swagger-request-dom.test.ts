@@ -23,6 +23,35 @@ function opblock(method: string, path: string, body = ''): string {
 }
 
 describe('swagger-request-dom', () => {
+  it('normalizes zero-width spaces in endpoint path (OAS3 compatibility)', () => {
+    document.body.innerHTML = `
+      <div class="opblock">
+        <div class="opblock-summary">
+          <span class="opblock-summary-method">POST</span>
+          <span class="opblock-summary-path">/\u200Bapi/\u200Borders/\u200B</span>
+        </div>
+      </div>`
+    const block = document.querySelector('.opblock')!
+    expect(endpointIdOf(block)).toBe('post /api/orders/')
+  })
+
+  it('writes request body into OpenAPI 3 .opblock-section-request-body textarea', () => {
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <div class="opblock-summary">
+          <span class="opblock-summary-method">POST</span>
+          <span class="opblock-summary-path" data-path="/api/products"></span>
+        </div>
+        <div class="opblock-section-request-body">
+          <textarea class="body-param__text"></textarea>
+        </div>
+      </div>`
+    const success = writeRequestBody(document, 'post /api/products', '{"name":"Coffee"}')
+    expect(success).toBe(true)
+    const textarea = document.querySelector<HTMLTextAreaElement>('.body-param__text')!
+    expect(textarea.value).toBe('{"name":"Coffee"}')
+  })
+
   afterEach(() => {
     document.body.innerHTML = ''
   })

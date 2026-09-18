@@ -64,14 +64,14 @@ const CSS_STYLES = `
   gap: 6px !important;
   margin: 0 !important;
   padding: 3px 8px !important;
-  background: #ffffff !important;
-  border: 1px solid #d1d5db !important;
+  background: var(--oac-bg, #ffffff) !important;
+  border: 1px solid var(--oac-border, #d1d5db) !important;
   border-radius: 4px !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: var(--oac-shadow, 0 1px 2px rgba(0, 0, 0, 0.04)) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 11px !important;
   font-weight: 500 !important;
-  color: #374151 !important;
+  color: var(--oac-text, #374151) !important;
   user-select: none !important;
   line-height: 1.4 !important;
   transition: all 0.15s ease !important;
@@ -285,14 +285,14 @@ const CSS_STYLES = `
   min-width: 140px !important;
   padding: 8px 18px !important;
   margin: 0 !important;
-  background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  background: var(--oac-btn-bg, #ffffff) !important;
+  border: 1px solid var(--oac-btn-border, #cbd5e1) !important;
   border-radius: 4px !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: var(--oac-shadow, 0 1px 2px rgba(0, 0, 0, 0.05)) !important;
   font-family: inherit !important;
   font-size: 13px !important;
   font-weight: 700 !important;
-  color: #334155 !important;
+  color: var(--oac-btn-text, #334155) !important;
   cursor: pointer !important;
   outline: none !important;
   line-height: 1.4 !important;
@@ -306,9 +306,9 @@ const CSS_STYLES = `
 .swagger-ui .opblock-body > .btn-group .oac-execute-account-btn:hover,
 .swagger-ui .execute-wrapper .oac-op-account-switcher:hover,
 .swagger-ui .opblock-body > .btn-group .oac-op-account-switcher:hover {
-  background: #f8fafc !important;
-  border-color: #94a3af !important;
-  color: #0f172a !important;
+  background: var(--oac-btn-hover-bg, #f8fafc) !important;
+  border-color: #3b82f6 !important;
+  color: var(--oac-text, #0f172a) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
 }
 
@@ -340,9 +340,10 @@ const CSS_STYLES = `
   right: 0;
   min-width: 240px;
   max-width: 320px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--oac-bg, #ffffff);
+  border: 1px solid var(--oac-border, #e5e7eb);
   border-radius: 6px;
+  color: var(--oac-text, #1e293b);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
   z-index: 99999;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -367,8 +368,8 @@ const CSS_STYLES = `
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px 6px;
-  border-bottom: 1px solid #f3f4f6;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--oac-border, #f3f4f6);
+  background: var(--oac-bg-subtle, #f9fafb);
 }
 
 .oac-account-dropdown-title {
@@ -407,7 +408,7 @@ const CSS_STYLES = `
 }
 
 .oac-account-item:hover {
-  background: #f3f4f6;
+  background: var(--oac-bg-hover, #f3f4f6);
 }
 
 .oac-account-item.active {
@@ -1106,6 +1107,20 @@ export function mountSwaggerAuthBadge(
     }
   }, 10_000)
 
+  // Watch for newly opened operation blocks to attach account switchers
+  let authDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  const authObserver = new MutationObserver(() => {
+    if (authDebounceTimer) clearTimeout(authDebounceTimer)
+    authDebounceTimer = setTimeout(() => {
+      if (scanAndMount() > 0) {
+        updateBadgeElements()
+      }
+    }, 150)
+  })
+  if (doc.body) {
+    authObserver.observe(doc.body, { childList: true, subtree: true })
+  }
+
   return {
     update(
       record: AuthRecord | null,
@@ -1119,6 +1134,8 @@ export function mountSwaggerAuthBadge(
     },
     scanAndMount,
     dispose(): void {
+      authObserver.disconnect()
+      if (authDebounceTimer) clearTimeout(authDebounceTimer)
       clearInterval(timer)
       doc.removeEventListener('click', onDocClick)
       doc.removeEventListener('keydown', onDocKeyDown)

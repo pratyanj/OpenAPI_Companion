@@ -59,8 +59,8 @@ const CSS_STYLES = `
 .oac-mock-btn-group {
   display: inline-flex;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--oac-btn-bg, #ffffff);
+  border: 1px solid var(--oac-btn-border, #cbd5e1);
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   overflow: hidden;
@@ -217,8 +217,9 @@ const CSS_STYLES = `
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--oac-bg, #ffffff);
+  border: 1px solid var(--oac-border, #cbd5e1);
+  color: var(--oac-text, #1e293b);
   border-radius: 6px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   padding: 4px;

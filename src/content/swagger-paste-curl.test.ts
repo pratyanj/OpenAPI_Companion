@@ -3,6 +3,27 @@ import { mountSwaggerPasteCurl } from './swagger-paste-curl'
 import type { ProductivityService } from '@/modules/productivity/productivity-service'
 
 describe('swagger-paste-curl', () => {
+  it('mounts asynchronously when Swagger UI renders after initial call (OAS3 dynamic loading)', async () => {
+    const emptyDoc = document.implementation.createHTMLDocument('Empty')
+    emptyDoc.body.innerHTML = '<div id="swagger-ui"></div>'
+    const handle = mountSwaggerPasteCurl(emptyDoc, mockProductivity as unknown as ProductivityService)
+
+    // Button should not be present initially
+    expect(emptyDoc.querySelector('.oac-paste-curl-btn')).toBeNull()
+
+    // Simulate async Swagger UI render
+    const info = emptyDoc.createElement('div')
+    info.className = 'swagger-ui'
+    info.innerHTML = '<div class="info"><h2 class="title">Loaded API</h2></div>'
+    emptyDoc.body.appendChild(info)
+
+    // Wait for observer debounced scan
+    await new Promise((r) => setTimeout(r, 150))
+    expect(emptyDoc.querySelector('.oac-paste-curl-btn')).not.toBeNull()
+
+    handle.dispose()
+  })
+
   let doc: Document
   let mockProductivity: any
 

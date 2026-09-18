@@ -13,7 +13,7 @@ import type { RequestSnapshot } from '../types'
 
 const OPEN_BLOCK = '.opblock.is-open'
 const ANY_BLOCK = '.opblock'
-const BODY_TEXTAREA = 'textarea.body-param__text'
+const BODY_TEXTAREA = 'textarea.body-param__text, .opblock-section-request-body textarea, .body-param textarea'
 // The clickable header. Swagger 5.x wraps it in a `.opblock-summary-control`
 // button; 3.x/4.x put the handler on `.opblock-summary` itself — try both.
 const SUMMARY_CONTROL = '.opblock-summary-control'
@@ -70,7 +70,8 @@ export function observeExecutions(
 export function endpointIdOf(block: Element): string | null {
   const method = block.querySelector('.opblock-summary-method')?.textContent?.trim().toLowerCase()
   const pathEl = block.querySelector('.opblock-summary-path')
-  const path = pathEl?.getAttribute('data-path') ?? pathEl?.textContent?.trim()
+  const rawPath = pathEl?.getAttribute('data-path') ?? pathEl?.textContent?.trim()
+  const path = rawPath ? rawPath.replace(/[\u200B-\u200D\uFEFF]/g, '') : null
   return method && path ? `${method} ${path}` : null
 }
 

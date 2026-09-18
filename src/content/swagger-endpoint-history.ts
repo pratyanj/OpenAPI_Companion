@@ -59,10 +59,10 @@ const CSS_STYLES = `
   width: 100%;
   margin: 0 0 10px 0 !important;
   padding: 8px 14px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--oac-btn-bg, #ffffff);
+  border: 1px solid var(--oac-btn-border, #cbd5e1);
   border-radius: 4px;
-  color: #334155;
+  color: var(--oac-btn-text, #334155);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -93,8 +93,8 @@ const CSS_STYLES = `
 .oac-last-payload-group {
   display: inline-flex;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--oac-btn-bg, #ffffff);
+  border: 1px solid var(--oac-btn-border, #cbd5e1);
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   overflow: hidden;

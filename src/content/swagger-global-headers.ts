@@ -77,26 +77,26 @@ body.oac-disable-global-headers #oac-global-headers-modal {
   box-sizing: border-box !important;
   margin: 0 !important;
   padding: 0 13px !important;
-  background: #0f172a !important;
-  color: #f1f5f9 !important;
-  border: 1px solid #334155 !important;
+  background: var(--oac-btn-bg, #ffffff) !important;
+  color: var(--oac-btn-text, #1e293b) !important;
+  border: 1px solid var(--oac-btn-border, #cbd5e1) !important;
   border-radius: 6px !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 12px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: var(--oac-shadow, 0 1px 3px rgba(0, 0, 0, 0.08)) !important;
   vertical-align: middle !important;
   user-select: none !important;
 }
 
 .oac-global-headers-btn:hover {
-  background: #1e293b !important;
+  background: var(--oac-btn-hover-bg, #f8fafc) !important;
   border-color: #3b82f6 !important;
-  color: #ffffff !important;
+  color: var(--oac-text, #1e293b) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
 }
 
 .oac-global-headers-btn svg {
@@ -778,9 +778,12 @@ export function mountSwaggerGlobalHeaders(
   function scanAndMount(root: ParentNode = doc): void {
     if (doc.querySelector(`.${BTN_CLASS}`)) return
 
-    const anchor =
-      doc.querySelector('.swagger-ui .information-container, .swagger-ui .info, .swagger-ui .scheme-container') ??
-      doc.querySelector('.swagger-ui .wrapper')
+    const infoEl = doc.querySelector('.swagger-ui .info')
+    const infoContainer = doc.querySelector('.swagger-ui .information-container')
+    const schemeContainer = doc.querySelector('.swagger-ui .scheme-container')
+    const wrapper = doc.querySelector('.swagger-ui .wrapper')
+
+    const anchor = infoEl ?? infoContainer ?? schemeContainer ?? wrapper
     if (!anchor) return
 
     const btn = doc.createElement('button')
@@ -793,20 +796,43 @@ export function mountSwaggerGlobalHeaders(
       openModal()
     })
 
-    let bar = anchor.querySelector<HTMLElement>('.oac-header-actions-bar')
+    let bar = doc.querySelector<HTMLElement>('.oac-header-actions-bar')
     if (!bar) {
       bar = doc.createElement('div')
       bar.className = 'oac-header-actions-bar'
-      if (anchor.classList.contains('information-container') || anchor.classList.contains('info')) {
-        anchor.appendChild(bar)
-      } else {
-        anchor.insertBefore(bar, anchor.firstChild)
+      if (infoEl) {
+        infoEl.appendChild(bar)
+      } else if (infoContainer) {
+        const block = infoContainer.querySelector('.block') ?? infoContainer
+        block.appendChild(bar)
+      } else if (schemeContainer) {
+        schemeContainer.insertBefore(bar, schemeContainer.firstChild)
+      } else if (wrapper) {
+        wrapper.insertBefore(bar, wrapper.firstChild)
       }
     }
 
     bar.appendChild(btn)
     updateHeaderButton()
   }
+
+  // MutationObserver for dynamic OpenAPI 3 rendering
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  const observer = new MutationObserver(() => {
+    if (doc.querySelector(`.${BTN_CLASS}`)) return
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      scanAndMount()
+    }, 100)
+  })
+  if (doc.body) {
+    observer.observe(doc.body, { childList: true, subtree: true })
+  }
+
+  // Periodic startup retries for async spec loads
+  const t1 = setTimeout(() => scanAndMount(), 300)
+  const t2 = setTimeout(() => scanAndMount(), 800)
+  const t3 = setTimeout(() => scanAndMount(), 2000)
 
   scanAndMount()
 
@@ -815,6 +841,11 @@ export function mountSwaggerGlobalHeaders(
     closeModal,
     scanAndMount,
     dispose: () => {
+      observer.disconnect()
+      if (debounceTimer) clearTimeout(debounceTimer)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
       doc.getElementById(STYLE_ID)?.remove()
       doc.getElementById(MODAL_ID)?.remove()
       doc.querySelectorAll(`.${BTN_CLASS}`).forEach((el) => el.remove())
