@@ -375,7 +375,7 @@ const CSS_STYLES = `
 .oac-account-dropdown-title {
   font-size: 9px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--oac-text-muted, #6b7280);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -383,8 +383,8 @@ const CSS_STYLES = `
 .oac-account-count-pill {
   font-size: 9px;
   font-weight: 600;
-  color: #374151;
-  background: #e5e7eb;
+  color: var(--oac-text, #374151);
+  background: var(--oac-bg-hover, #e5e7eb);
   padding: 1px 5px;
   border-radius: 10px;
 }
@@ -403,7 +403,7 @@ const CSS_STYLES = `
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.12s ease;
-  color: #374151;
+  color: var(--oac-text, #374151);
   text-decoration: none;
 }
 
@@ -412,8 +412,8 @@ const CSS_STYLES = `
 }
 
 .oac-account-item.active {
-  background: #f0fdf4;
-  color: #166534;
+  background: rgba(22, 163, 74, 0.12);
+  color: #22c55e;
 }
 
 .oac-account-check {
@@ -423,14 +423,14 @@ const CSS_STYLES = `
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: #16a34a;
+  color: #22c55e;
 }
 
 .oac-account-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #d1d5db;
+  background: var(--oac-border, #d1d5db);
 }
 
 .oac-account-info {
@@ -449,6 +449,7 @@ const CSS_STYLES = `
 .oac-account-item-name {
   font-size: 11px;
   font-weight: 600;
+  color: var(--oac-text, #1e293b);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -456,7 +457,7 @@ const CSS_STYLES = `
 
 .oac-account-user-sub {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--oac-text-muted, #6b7280);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -471,37 +472,37 @@ const CSS_STYLES = `
 }
 
 .oac-account-status-pill.active {
-  background: #dcfce7;
-  color: #15803d;
+  background: rgba(34, 197, 94, 0.18);
+  color: #22c55e;
 }
 
 .oac-account-status-pill.expiring {
-  background: #fef3c7;
-  color: #b45309;
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
 }
 
 .oac-account-status-pill.expired {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
 }
 
 .oac-account-empty {
   padding: 12px 10px;
   text-align: center;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--oac-text-muted, #6b7280);
 }
 
 .oac-account-empty-sub {
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--oac-text-muted, #9ca3af);
   margin-top: 2px;
 }
 
 .oac-account-dropdown-footer {
   padding: 6px 8px;
-  border-top: 1px solid #f3f4f6;
-  background: #f9fafb;
+  border-top: 1px solid var(--oac-border, #f3f4f6);
+  background: var(--oac-bg-subtle, #f9fafb);
 }
 
 .oac-account-manage-btn {
@@ -513,7 +514,7 @@ const CSS_STYLES = `
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #4b5563;
+  color: var(--oac-text-muted, #4b5563);
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
@@ -521,8 +522,8 @@ const CSS_STYLES = `
 }
 
 .oac-account-manage-btn:hover {
-  background: #e5e7eb;
-  color: #111827;
+  background: var(--oac-bg-hover, #e5e7eb);
+  color: var(--oac-text, #111827);
 }
 
 /* Feature Toggle Disabling */

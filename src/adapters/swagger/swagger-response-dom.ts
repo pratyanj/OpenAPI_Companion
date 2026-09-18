@@ -1,5 +1,6 @@
 import type { ExecutedResponse } from '../types'
-import { endpointIdOf } from './swagger-request-dom'
+import { endpointIdOf, readParametersFromBlock } from './swagger-request-dom'
+import { parseCurl } from '@/utils/curl-parser'
 
 /**
  * Reads executed responses from Swagger UI's rendered "live response" DOM
@@ -56,14 +57,113 @@ export function readExecutedResponses(doc: Document = document): ExecutedRespons
     const responseBody = bodyTextOf(live)
     const requestBody = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')?.value
 
-    results.push({
+    // Read parameters directly from Swagger UI inputs
+    const { path: rawPath, query: rawQuery, headers: rawHeaders } = readParametersFromBlock(block)
+    const queryParams: Record<string, string> = {}
+    for (const [k, v] of Object.entries(rawQuery)) {
+      if (v != null && v !== '') queryParams[k] = v.trim()
+    }
+    const pathParams: Record<string, string> = {}
+    for (const [k, v] of Object.entries(rawPath)) {
+      if (v != null && v !== '') pathParams[k] = v.trim()
+    }
+    const headers: Record<string, string> = {}
+    for (const [k, v] of Object.entries(rawHeaders)) {
+      if (v != null && v !== '') headers[k] = v.trim()
+    }
+
+    // Look for rendered executed Request URL or cURL command in the block/responses
+    const urlNode = block.querySelector(
+      '.request-url pre, .responses-inner .url pre, .responses-inner .request-url pre, .request-url, .responses-inner .url',
+    )
+    let requestUrl = urlNode?.textContent?.trim() || undefined
+
+    // Fallback: check cURL command pre
+    const curlNode = block.querySelector('.curl-command pre, .curl pre')
+    const curlText = curlNode?.textContent?.trim()
+    if (curlText) {
+      try {
+        const parsedCurl = parseCurl(curlText)
+        if (!requestUrl && parsedCurl.url) {
+          requestUrl = parsedCurl.url
+        }
+        if (parsedCurl.queryParams) {
+          for (const [k, v] of Object.entries(parsedCurl.queryParams)) {
+            if (v != null && v !== '') queryParams[k] = v
+          }
+        }
+        if (parsedCurl.headers) {
+          for (const [k, v] of Object.entries(parsedCurl.headers)) {
+            if (v != null && v !== '' && !headers[k]) headers[k] = v
+          }
+        }
+      } catch {
+        // ignore curl parse failure
+      }
+    }
+
+    // Parse searchParams from requestUrl
+    if (requestUrl) {
+      try {
+        const dummyBase = 'http://localhost'
+        const parsedUrl = new URL(requestUrl.startsWith('http') ? requestUrl : `${dummyBase}${requestUrl}`)
+        parsedUrl.searchParams.forEach((val, key) => {
+          if (val != null && val !== '') {
+            queryParams[key] = val
+          }
+        })
+      } catch {
+        const qIdx = requestUrl.indexOf('?')
+        if (qIdx >= 0) {
+          const searchParams = new URLSearchParams(requestUrl.slice(qIdx + 1))
+          searchParams.forEach((val, key) => {
+            if (val != null && val !== '') {
+              queryParams[key] = val
+            }
+          })
+        }
+      }
+    }
+
+    // Extract path parameters from URL path if template has {param} and pathParams is incomplete
+    if (requestUrl && endpoint.includes('{')) {
+      try {
+        const dummyBase = 'http://localhost'
+        const parsedUrl = new URL(requestUrl.startsWith('http') ? requestUrl : `${dummyBase}${requestUrl}`)
+        const epSegments = endpoint.split('/').filter(Boolean)
+        const urlSegments = parsedUrl.pathname.split('/').filter(Boolean)
+        const offset = urlSegments.length - epSegments.length
+        if (offset >= 0) {
+          for (let i = 0; i < epSegments.length; i++) {
+            const epSeg = epSegments[i]
+            if (epSeg.startsWith('{') && epSeg.endsWith('}')) {
+              const paramName = epSeg.slice(1, -1).trim()
+              const segVal = urlSegments[offset + i]
+              if (segVal && !pathParams[paramName]) {
+                pathParams[paramName] = decodeURIComponent(segVal)
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore path extraction failure
+      }
+    }
+
+    const res: ExecutedResponse = {
       endpointId,
       method,
       endpoint,
       requestBody: requestBody || undefined,
       status,
       responseBody: responseBody || undefined,
-    })
+    }
+    if (Object.keys(queryParams).length > 0) res.queryParams = queryParams
+    if (Object.keys(pathParams).length > 0) res.pathParams = pathParams
+    if (Object.keys(headers).length > 0) res.headers = headers
+    if (requestUrl) res.requestUrl = requestUrl
+
+    results.push(res)
   }
   return results
 }

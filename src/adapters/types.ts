@@ -51,6 +51,10 @@ export interface ExecutedResponse {
   status: number
   responseBody?: string
   durationMs?: number
+  queryParams?: Record<string, string>
+  pathParams?: Record<string, string>
+  headers?: Record<string, string>
+  requestUrl?: string
 }
 
 /**
