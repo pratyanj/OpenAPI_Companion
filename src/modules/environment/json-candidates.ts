@@ -12,14 +12,25 @@ export function extractJsonCandidates(raw: string): JsonCandidate[] {
     const candidates: JsonCandidate[] = []
 
     function toVarName(path: string): string {
-      return path
-        .replace(/\[\d+\]/g, '')
+      const rootArrayMatch = path.match(/^\[(\d+)\](?:\.(.+))?$/)
+      if (rootArrayMatch) {
+        const index = parseInt(rootArrayMatch[1], 10)
+        const subPath = rootArrayMatch[2] || ''
+        const base = subPath ? toVarName(subPath) : 'VALUE'
+        return index > 0 ? `${base}_${index}` : base
+      }
+
+      const normalized = path
+        .replace(/\[0\]/g, '')
+        .replace(/\[(\d+)\]/g, (_, idx) => `_${idx}`)
         .replace(/[^a-zA-Z0-9_.]/g, '_')
         .replace(/[.]/g, '_')
         .replace(/([a-z])([A-Z])/g, '$1_$2')
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '')
         .toUpperCase()
+
+      return normalized || 'VAR'
     }
 
     function isSecretKey(key: string): boolean {

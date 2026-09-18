@@ -184,4 +184,66 @@ describe('SaveToVariableDialog', () => {
       )
     })
   })
+
+  it('highlights only the selected candidate when array candidates share the base property', async () => {
+    const service = mockEnvService()
+    const rawJson = JSON.stringify([
+      { id: 1, name: 'Engineering' },
+      { id: 2, name: 'Cloud Infrastructure' },
+    ])
+
+    render(<SaveToVariableDialog responseBody={rawJson} service={service} onClose={vi.fn()} />)
+
+    await screen.findByText('Save Response Value to Variable')
+    const name0Btn = screen.getByRole('button', { name: '[0].name' })
+    const name1Btn = screen.getByRole('button', { name: '[1].name' })
+
+    // Click [1].name
+    fireEvent.click(name1Btn)
+
+    // [1].name must have active primary highlight class
+    expect(name1Btn.className).toContain('bg-primary')
+    // [0].name must NOT have active primary highlight class
+    expect(name0Btn.className).not.toContain('bg-primary')
+
+    expect(screen.getByDisplayValue('NAME_1')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Cloud Infrastructure')).toBeInTheDocument()
+
+    // Click [0].name
+    fireEvent.click(name0Btn)
+
+    // Now [0].name must be active and [1].name must NOT be active
+    expect(name0Btn.className).toContain('bg-primary')
+    expect(name1Btn.className).not.toContain('bg-primary')
+
+    expect(screen.getByDisplayValue('NAME')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Engineering')).toBeInTheDocument()
+  })
+
+  it('matches initial candidate by initialValue', async () => {
+    const service = mockEnvService()
+    const rawJson = JSON.stringify([
+      { id: 1, name: 'Engineering' },
+      { id: 2, name: 'Cloud Infrastructure' },
+    ])
+
+    render(
+      <SaveToVariableDialog
+        responseBody={rawJson}
+        service={service}
+        initialValue='Cloud Infrastructure'
+        onClose={vi.fn()}
+      />,
+    )
+
+    await screen.findByText('Save Response Value to Variable')
+    const name0Btn = screen.getByRole('button', { name: '[0].name' })
+    const name1Btn = screen.getByRole('button', { name: '[1].name' })
+
+    // Should automatically match [1].name
+    expect(name1Btn.className).toContain('bg-primary')
+    expect(name0Btn.className).not.toContain('bg-primary')
+    expect(screen.getByDisplayValue('NAME_1')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Cloud Infrastructure')).toBeInTheDocument()
+  })
 })

@@ -30,15 +30,23 @@ export function SaveToVariableDialog({
 
   const initialCand = useMemo(() => {
     if (initialProperty) {
+      const propLower = initialProperty.toLowerCase()
       const match = candidates.find(
         (c) =>
-          c.property.toLowerCase() === initialProperty.toLowerCase() ||
-          c.suggestedName.toLowerCase() === initialProperty.toLowerCase(),
+          c.path.toLowerCase() === propLower ||
+          c.suggestedName.toLowerCase() === propLower,
+      )
+      if (match) return match
+    }
+    if (initialValue) {
+      const valTrimmed = initialValue.trim().toLowerCase()
+      const match = candidates.find(
+        (c) => c.value.trim().toLowerCase() === valTrimmed,
       )
       if (match) return match
     }
     return candidates[0] ?? null
-  }, [candidates, initialProperty])
+  }, [candidates, initialProperty, initialValue])
 
   const [activeEnv, setActiveEnv] = useState<Environment | null>(null)
   const [activeId, setActiveId] = useState('default')
@@ -168,7 +176,7 @@ export function SaveToVariableDialog({
                 </span>
                 <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto rounded-md border border-border bg-surface p-2">
                   {candidates.map((c, i) => {
-                    const isSelected = selectedCandidate === c || name === c.suggestedName
+                    const isSelected = selectedCandidate ? selectedCandidate.path === c.path : false
                     return (
                       <button
                         key={i}

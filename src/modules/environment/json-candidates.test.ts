@@ -30,6 +30,38 @@ describe('json-candidates', () => {
       expect(idCand).toBeDefined()
       expect(idCand?.value).toBe('42')
     })
+
+    it('generates distinct suggested variable names for array items', () => {
+      const json = JSON.stringify([
+        { id: 101, name: 'Engineering', description: 'Core' },
+        { id: 102, name: 'Cloud & Infrastructure', description: 'DevOps' },
+      ])
+      const candidates = extractJsonCandidates(json)
+      const id0 = candidates.find((c) => c.path === '[0].id')
+      const id1 = candidates.find((c) => c.path === '[1].id')
+      const name0 = candidates.find((c) => c.path === '[0].name')
+      const name1 = candidates.find((c) => c.path === '[1].name')
+
+      expect(id0?.suggestedName).toBe('ID')
+      expect(id1?.suggestedName).toBe('ID_1')
+      expect(name0?.suggestedName).toBe('NAME')
+      expect(name1?.suggestedName).toBe('NAME_1')
+    })
+
+    it('generates distinct suggested variable names for nested array items', () => {
+      const json = JSON.stringify({
+        items: [
+          { id: 'a', name: 'First' },
+          { id: 'b', name: 'Second' },
+        ],
+      })
+      const candidates = extractJsonCandidates(json)
+      const id0 = candidates.find((c) => c.path === 'items[0].id')
+      const id1 = candidates.find((c) => c.path === 'items[1].id')
+
+      expect(id0?.suggestedName).toBe('ITEMS_ID')
+      expect(id1?.suggestedName).toBe('ITEMS_1_ID')
+    })
   })
 
   describe('extractValueByPath', () => {
