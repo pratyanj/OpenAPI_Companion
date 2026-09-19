@@ -350,7 +350,7 @@ export function hookExecuteClick(doc: Document = document): () => void {
       pathEl?.querySelector('a span, span')?.textContent?.trim() ||
       pathEl?.textContent?.trim()
 
-    const swagger = resolveSwaggerUi() as Record<string, any> | undefined
+    const swagger = resolveSwaggerUi()
     const pathMethod = endpointPath && method ? [endpointPath, method] : null
 
     const inputs = Array.from(
@@ -375,7 +375,7 @@ export function hookExecuteClick(doc: Document = document): () => void {
 
       // Update DOM & React tracker if value was resolved or different
       if (nextVal !== val) {
-        const tracker = (input as any)._valueTracker
+        const tracker = (input as HTMLInputElement & { _valueTracker?: { setValue: (v: string) => void } })._valueTracker
         if (tracker) {
           try {
             tracker.setValue('')

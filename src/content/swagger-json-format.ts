@@ -34,7 +34,7 @@ export interface JsonValidationResult {
  * error text and line/column details.
  */
 export function cleanErrorMessage(msg: string): string {
-  let cleaned = msg.replace(/^JSON\.parse:\s*/i, '')
+  const cleaned = msg.replace(/^JSON\.parse:\s*/i, '')
 
   const v8Dump = cleaned.match(/^(Unexpected token [^,]+),\s*"[\s\S]*"\s*is not valid JSON$/i)
   if (v8Dump) {
@@ -137,7 +137,7 @@ export function repairJsonString(input: string): string {
         return line.replace(/:\s*"([^"]*)\s*$/, ': "$1"')
       }
       if (/,\s*$/.test(line)) {
-        return line.replace(/,\s*$/, '\",')
+        return line.replace(/,\s*$/, '",')
       }
       return line + '"'
     }
@@ -161,7 +161,7 @@ export function repairJsonString(input: string): string {
   str = str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"')
 
   // 7. Quote unquoted object keys like { name: "val" } -> { "name": "val" }
-  str = str.replace(/([{\[,]\s*)([a-zA-Z0-9_$-]+)\s*:/g, '$1"$2":')
+  str = str.replace(/([{[,]\s*)([a-zA-Z0-9_$-]+)\s*:/g, '$1"$2":')
 
   // 8. Fix missing commas between properties on separate lines: e.g. "val"\n"key":
   str = str.replace(/(["\dtruefalsenull\]}])\s*\n\s*(["{])/gi, '$1,\n$2')

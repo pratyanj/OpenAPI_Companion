@@ -838,7 +838,7 @@ export function mountSwaggerPasteCurl(
   /**
    * Injects the "Paste cURL" button into the Swagger UI header.
    */
-  function scanAndMount(root: ParentNode = doc): void {
+  function scanAndMount(_root: ParentNode = doc): void {
     if (doc.querySelector(`.${BTN_CLASS}`)) return
 
     const infoEl = doc.querySelector('.swagger-ui .info')

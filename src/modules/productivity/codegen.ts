@@ -142,7 +142,7 @@ function pythonCode(req: CodeGenRequest): string {
   if (headerEntries.length) {
     lines.push('headers = {')
     for (const [k, v] of headerEntries) {
-      lines.push(`    '${k.replace(/'/g, "\\\'")}': '${v.replace(/'/g, "\\\'")}',`)
+      lines.push(`    '${k.replace(/'/g, "\\'")}': '${v.replace(/'/g, "\\'")}',`)
     }
     lines.push('}')
   }

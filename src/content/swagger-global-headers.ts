@@ -454,14 +454,6 @@ function ensureStyles(doc: Document): void {
   doc.head?.appendChild(style)
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 export function mountSwaggerGlobalHeaders(
   doc: Document = document,
   headersService?: HeadersService,
@@ -780,7 +772,7 @@ export function mountSwaggerGlobalHeaders(
     }
   }
 
-  function scanAndMount(root: ParentNode = doc): void {
+  function scanAndMount(_root: ParentNode = doc): void {
     if (doc.querySelector(`.${BTN_CLASS}`)) return
 
     const infoEl = doc.querySelector('.swagger-ui .info')

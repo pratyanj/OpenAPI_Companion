@@ -406,7 +406,7 @@ describe('swagger-auth-badge mounting & interactions', () => {
     expect(dropdown?.textContent).toContain('Staff')
 
     // Click Staff to switch account directly from execute bar
-    const staffItem = dropdown?.querySelector<HTMLElement>(
+    const staffItem = dropdown!.querySelector<HTMLElement>(
       '.oac-account-item[data-cred-id="cred-staff"]',
     )!
     staffItem.click()

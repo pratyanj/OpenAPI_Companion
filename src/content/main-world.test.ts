@@ -138,7 +138,7 @@ describe('main-world execute parameter synchronization', () => {
 
   afterEach(() => {
     unhook?.()
-    delete (window as any).ui
+    delete (window as unknown as { ui?: unknown }).ui
     document.body.innerHTML = ''
     vi.restoreAllMocks()
   })
@@ -162,7 +162,7 @@ describe('main-world execute parameter synchronization', () => {
 
     const changeParamSpy = vi.fn()
     const clearValidateParamsSpy = vi.fn()
-    ;(window as any).ui = {
+    ;(window as unknown as { ui?: unknown }).ui = {
       specActions: {
         changeParam: changeParamSpy,
         clearValidateParams: clearValidateParamsSpy,
@@ -253,7 +253,7 @@ describe('main-world execute parameter synchronization', () => {
   it('syncs existing DOM values to changeParam and clears validation errors even if inputs were already resolved', () => {
     const changeParamSpy = vi.fn()
     const clearValidateParamsSpy = vi.fn()
-    ;(window as any).ui = {
+    ;(window as unknown as { ui?: unknown }).ui = {
       specActions: {
         changeParam: changeParamSpy,
         clearValidateParams: clearValidateParamsSpy,

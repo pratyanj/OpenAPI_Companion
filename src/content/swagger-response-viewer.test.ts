@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mountSwaggerResponseViewer, extractRawJsonText } from './swagger-response-viewer'
 
-function createExecutedResponseBlock(bodyJson: string, isJson = true): HTMLElement {
+function createExecutedResponseBlock(bodyJson: string, _isJson = true): HTMLElement {
   const container = document.createElement('div')
   container.className = 'opblock is-open'
   container.innerHTML = `

@@ -569,7 +569,11 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
         return
       }
       existingContainer.setAttribute('data-oac-last-raw', rawText)
-      const updateFn = (existingContainer as any).__oacUpdateResponse
+      const updateFn = (
+        existingContainer as HTMLElement & {
+          __oacUpdateResponse?: (p: unknown, r: string) => void
+        }
+      ).__oacUpdateResponse
       if (typeof updateFn === 'function') {
         updateFn(parsed, rawText)
         return
@@ -735,7 +739,11 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     treeView.appendChild(rootNode)
 
     // Method to dynamically update viewer when a new response arrives for the same endpoint
-    ;(container as any).__oacUpdateResponse = (newParsed: unknown, newRawText: string) => {
+    ;(
+      container as HTMLElement & {
+        __oacUpdateResponse?: (newParsed: unknown, _newRawText: string) => void
+      }
+    ).__oacUpdateResponse = (newParsed: unknown, _newRawText: string) => {
       parsed = newParsed
       csvExportItem.disabled = !isCsvExportable(newParsed)
       csvExportItem.title = isCsvExportable(newParsed)

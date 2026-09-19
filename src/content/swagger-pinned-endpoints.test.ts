@@ -5,9 +5,9 @@ import type { EndpointListItem } from '@/modules/productivity/types'
 
 describe('mountSwaggerPinnedEndpoints', () => {
   let doc: Document
-  let mockProductivity: any
+  let mockProductivity: unknown
   let favoritesList: EndpointListItem[]
-  let busSubscribers: Record<string, Function[]>
+  let busSubscribers: Record<string, ((payload?: unknown) => void)[]>
 
   beforeEach(() => {
     doc = document.implementation.createHTMLDocument('Swagger UI Test')
@@ -54,7 +54,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
     mockProductivity = {
       getFavorites: vi.fn(() => favoritesList),
       isFavorite: vi.fn((id: string) => favoritesList.some((f) => f.endpointId === id)),
-      toggleFavorite: vi.fn(async (info: any) => {
+      toggleFavorite: vi.fn(async (info: EndpointListItem) => {
         const idx = favoritesList.findIndex((f) => f.endpointId === info.endpointId)
         if (idx >= 0) {
           favoritesList.splice(idx, 1)
@@ -69,14 +69,14 @@ describe('mountSwaggerPinnedEndpoints', () => {
         }
       }),
       bus: {
-        subscribe: vi.fn((event: string, cb: Function) => {
+        subscribe: vi.fn((event: string, cb: (payload?: unknown) => void) => {
           if (!busSubscribers[event]) busSubscribers[event] = []
           busSubscribers[event].push(cb)
           return () => {
             busSubscribers[event] = busSubscribers[event].filter((fn) => fn !== cb)
           }
         }),
-        emit: (event: string, payload: any) => {
+        emit: (event: string, payload: unknown) => {
           if (busSubscribers[event]) {
             busSubscribers[event].forEach((fn) => fn(payload))
           }

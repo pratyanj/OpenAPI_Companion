@@ -25,7 +25,7 @@ export interface SwaggerDefaultsResult {
   query?: Record<string, string>
 }
 
-export function isAuthEndpoint(endpointId: string, summary?: string, name?: string): boolean {
+function isAuthEndpoint(endpointId: string, summary?: string, name?: string): boolean {
   const text = `${endpointId} ${summary ?? ''} ${name ?? ''}`.toLowerCase()
   return /(login|signin|sign-in|auth|token|signup|sign-up|register|authenticate|oauth)/i.test(text)
 }

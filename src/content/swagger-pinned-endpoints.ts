@@ -702,7 +702,11 @@ export function mountSwaggerPinnedEndpoints(
   renderTray()
 
   // Subscribe to EventBus if available
-  const busUnsub = (productivity as any).bus?.subscribe('FAVORITE_TOGGLED', () => {
+  const busUnsub = (
+    productivity as unknown as {
+      bus?: { subscribe: (event: string, cb: () => void) => () => void }
+    }
+  ).bus?.subscribe('FAVORITE_TOGGLED', () => {
     updateStarButtons()
     lastRenderedFingerprint = ''
     renderTray()

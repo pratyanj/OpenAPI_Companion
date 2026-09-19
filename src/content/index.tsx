@@ -35,7 +35,7 @@ import {
   type WorkflowExportBundle,
 } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
-import { mountLauncher, openSidePanelFromPage } from './launcher'
+import { mountLauncher } from './launcher'
 import { mountSwaggerVariables } from './swagger-variables'
 import { mountSwaggerMockData } from './swagger-mock-data'
 import { mountSaveVariableModal } from './save-variable-modal'

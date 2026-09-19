@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { PresetEditorModal } from './PresetEditorModal'
 import { validateJsonWithVariables, extractPathParams } from './json-utils'
 import type { RequestPanelService, RequestTemplate } from './types'
+import type { EnvironmentPanelService } from '@/modules/environment'
 import { ok, type Result } from '@/types'
 
 const existingTemplate: RequestTemplate = {
@@ -458,7 +459,7 @@ describe('PresetEditorModal', () => {
         list: vi.fn(async () =>
           ok([{ id: 'default', name: 'Default', variables: { MY_QUERY_VAR: '123' }, secrets: [] }]),
         ),
-      } as any
+      } as unknown as EnvironmentPanelService
       render(
         <PresetEditorModal
           service={service}

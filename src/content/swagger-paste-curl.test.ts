@@ -28,7 +28,7 @@ describe('swagger-paste-curl', () => {
   })
 
   let doc: Document
-  let mockProductivity: any
+  let mockProductivity: unknown
 
   beforeEach(() => {
     doc = document.implementation.createHTMLDocument('Swagger Test')

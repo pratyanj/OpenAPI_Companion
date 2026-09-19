@@ -53,7 +53,7 @@ export function WorkflowRunnerModal({
       }
     })
     return unsub
-  }, [bus, workflow?.id])
+  }, [bus, workflow])
 
   // Listen for real-time step completion from EventBus
   useEffect(() => {
@@ -85,7 +85,7 @@ export function WorkflowRunnerModal({
       }
     })
     return unsub
-  }, [bus, workflow?.id])
+  }, [bus, workflow])
 
   // Listen for workflow completion from EventBus
   useEffect(() => {
@@ -97,7 +97,7 @@ export function WorkflowRunnerModal({
       }
     })
     return unsub
-  }, [bus, workflow?.id])
+  }, [bus, workflow])
 
   const startExecution = async () => {
     if (!workflow || isRunning) return
@@ -186,8 +186,6 @@ export function WorkflowRunnerModal({
     )
   }
 
-  if (!isOpen || !workflow) return null
-
   // Ensure effective results always prefers summary.results if completed
   const effectiveResults = useMemo(() => {
     if (summary?.results && summary.results.length > 0) {
@@ -195,6 +193,8 @@ export function WorkflowRunnerModal({
     }
     return stepResults
   }, [summary, stepResults])
+
+  if (!isOpen || !workflow) return null
 
   const totalSteps = workflow.steps.length
   const completedCount = summary ? summary.completedSteps : effectiveResults.length

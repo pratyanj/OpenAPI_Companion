@@ -64,7 +64,7 @@ describe('swagger-json-format', () => {
     })
 
     it('extracts concise error message from verbose V8 parse error dumps', () => {
-      const raw = 'Unexpected token \'}\', \"{\\n  \\"a\\": 1\\n}\" is not valid JSON'
+      const raw = 'Unexpected token \'}\', "{\\n  \\"a\\": 1\\n}" is not valid JSON'
       expect(cleanErrorMessage(raw)).toBe("Unexpected token '}' is not valid JSON")
     })
 

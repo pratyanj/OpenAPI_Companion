@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mountSwaggerMockData, extractJsonCandidate, fillMockData } from './swagger-mock-data'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { mountSwaggerMockData, extractJsonCandidate } from './swagger-mock-data'
 
 function createOpblock(method: string, path: string, body = '', example = ''): HTMLElement {
   const div = document.createElement('div')
@@ -33,7 +33,7 @@ describe('swagger-mock-data', () => {
     document.body.appendChild(block)
     const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
 
-    const candidate = extractJsonCandidate(textarea, block, document) as any
+    const candidate = extractJsonCandidate(textarea, block, document) as Record<string, unknown>
     expect(candidate).toEqual({ username: 'alice', count: 5 })
   })
 
@@ -42,7 +42,7 @@ describe('swagger-mock-data', () => {
     document.body.appendChild(block)
     const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
 
-    const candidate = extractJsonCandidate(textarea, block, document) as any
+    const candidate = extractJsonCandidate(textarea, block, document) as Record<string, unknown>
     expect(candidate).toEqual({ title: 'Task Title', is_done: false })
   })
 

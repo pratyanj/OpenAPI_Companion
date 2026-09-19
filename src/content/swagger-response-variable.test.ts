@@ -151,7 +151,7 @@ describe('swagger-response-variable', () => {
 
     btn.click()
 
-    const openCall = (mockModal.open as any).mock.calls[0][0]
+    const openCall = vi.mocked(mockModal.open).mock.calls[0][0]
     expect(typeof openCall.onSaved).toBe('function')
 
     openCall.onSaved()

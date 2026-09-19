@@ -48,7 +48,7 @@ describe('HeadersService', () => {
 
   it('toggles header state and filters active headers record', async () => {
     const r1 = await service.addHeader({ name: 'X-Debug', value: 'true', enabled: true })
-    const r2 = await service.addHeader({ name: 'X-Trace-ID', value: 'trace_abc', enabled: true })
+    await service.addHeader({ name: 'X-Trace-ID', value: 'trace_abc', enabled: true })
 
     expect(Object.keys(service.getActiveHeadersRecord()).length).toBe(2)
 

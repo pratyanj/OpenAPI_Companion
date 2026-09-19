@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Button,
-  Badge,
   Input,
   EmptyState,
   WorkflowIcon,
-  RunIcon,
   PlayIcon,
   CalendarIcon,
   PinIcon,
