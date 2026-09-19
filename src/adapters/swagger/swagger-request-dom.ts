@@ -13,7 +13,8 @@ import type { RequestSnapshot } from '../types'
 
 const OPEN_BLOCK = '.opblock.is-open'
 const ANY_BLOCK = '.opblock'
-const BODY_TEXTAREA = 'textarea.body-param__text, .opblock-section-request-body textarea, .body-param textarea'
+const BODY_TEXTAREA =
+  'textarea.body-param__text, .opblock-section-request-body textarea, .body-param textarea'
 // The clickable header. Swagger 5.x wraps it in a `.opblock-summary-control`
 // button; 3.x/4.x put the handler on `.opblock-summary` itself — try both.
 const SUMMARY_CONTROL = '.opblock-summary-control'
@@ -33,7 +34,9 @@ export function setNativeValue(
   }
 
   // Reset React internal _valueTracker if present
-  const tracker = (el as any)._valueTracker
+  const tracker = (
+    el as unknown as { _valueTracker?: { setValue: (v: string) => void } }
+  )._valueTracker
   if (tracker) {
     try {
       tracker.setValue('')

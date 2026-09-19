@@ -474,18 +474,21 @@ export function mountSwaggerGlobalHeaders(
 
   // Load existing headers asynchronously
   if (headersService) {
-    headersService.load().then((items) => {
-      if (currentHeaders.length === 0) {
-        currentHeaders = [...items]
-        updateHeaderButton()
-        dispatchSync()
-        if (modalEl && !modalEl.classList.contains('oac-hidden')) {
-          renderRows()
+    headersService
+      .load()
+      .then((items) => {
+        if (currentHeaders.length === 0) {
+          currentHeaders = [...items]
+          updateHeaderButton()
+          dispatchSync()
+          if (modalEl && !modalEl.classList.contains('oac-hidden')) {
+            renderRows()
+          }
         }
-      }
-    }).catch((err) => {
-      console.warn('[OpenAPI Companion] Failed to load global headers:', err)
-    })
+      })
+      .catch((err) => {
+        console.warn('[OpenAPI Companion] Failed to load global headers:', err)
+      })
   }
 
   function dispatchSync(): void {
@@ -673,7 +676,9 @@ export function mountSwaggerGlobalHeaders(
         enabled: true,
       })
       renderRows()
-      const lastInput = listContainer.querySelector<HTMLInputElement>('.oac-gh-row:last-child .oac-gh-input-name')
+      const lastInput = listContainer.querySelector<HTMLInputElement>(
+        '.oac-gh-row:last-child .oac-gh-input-name',
+      )
       lastInput?.focus()
     })
 

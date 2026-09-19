@@ -13,7 +13,11 @@ import { DEFAULT_SWAGGER_FEATURES } from './types'
 
 function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
   return {
-    getPreferences: vi.fn(async () => ({ autoBackup: false, historyLimit: 1000, swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES } })),
+    getPreferences: vi.fn(async () => ({
+      autoBackup: false,
+      historyLimit: 1000,
+      swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES },
+    })),
     setPreference: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     setSwaggerFeature: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
     resetPreferences: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
@@ -165,7 +169,9 @@ describe('SettingsPanel', () => {
     const deleteBtn = await screen.findByRole('button', { name: 'Clear data for TaskUp API' })
     fireEvent.click(deleteBtn)
     expect(await screen.findByRole('dialog', { name: 'Please confirm' })).toBeInTheDocument()
-    expect(screen.getByText(/permanently deletes all saved data for TaskUp API/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/permanently deletes all saved data for TaskUp API/i),
+    ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(settings.clearProject).toHaveBeenCalledWith('p1'))
   })
@@ -202,7 +208,9 @@ describe('SettingsPanel', () => {
 
     // Paste encrypted JSON
     const textarea = screen.getByLabelText('Import JSON')
-    fireEvent.change(textarea, { target: { value: '{"app":"OpenAPI Companion","encrypted":true}' } })
+    fireEvent.change(textarea, {
+      target: { value: '{"app":"OpenAPI Companion","encrypted":true}' },
+    })
 
     // Encrypted detected banner appears
     expect(await screen.findByText('Encrypted Backup Detected')).toBeInTheDocument()
@@ -214,7 +222,12 @@ describe('SettingsPanel', () => {
     // Click Decrypt
     fireEvent.click(screen.getByRole('button', { name: 'Decrypt' }))
 
-    await waitFor(() => expect(io.decryptBackup).toHaveBeenCalledWith('{"app":"OpenAPI Companion","encrypted":true}', 'correct-pass'))
+    await waitFor(() =>
+      expect(io.decryptBackup).toHaveBeenCalledWith(
+        '{"app":"OpenAPI Companion","encrypted":true}',
+        'correct-pass',
+      ),
+    )
     expect(await screen.findByText('5 entries')).toBeInTheDocument()
     expect(screen.getByText(/Decrypted/i)).toBeInTheDocument()
 
@@ -222,4 +235,4 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     await waitFor(() => expect(io.applyImport).toHaveBeenCalledWith('{"decrypted":true}', 'skip'))
   })
-});
+})

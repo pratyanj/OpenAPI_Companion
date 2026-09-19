@@ -4,7 +4,15 @@ import type { EventBus, ImportSummary } from '@/core/events'
 import { useTheme } from '@/hooks'
 import type { ThemeManager, ThemePreference } from '@/services'
 import { APP_NAME, APP_VERSION } from '@/constants'
-import { Badge, Button, Dialog, DeleteIcon, ExternalLinkIcon, EyeIcon, LockIcon } from '@/components'
+import {
+  Badge,
+  Button,
+  Dialog,
+  DeleteIcon,
+  ExternalLinkIcon,
+  EyeIcon,
+  LockIcon,
+} from '@/components'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type { ImportMode, ImportPreview, Preferences, StorageMetrics } from './types'
@@ -110,7 +118,11 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
 
   const openUrl = (url: string) => {
     try {
-      if (typeof chrome !== 'undefined' && chrome.tabs && typeof chrome.tabs.create === 'function') {
+      if (
+        typeof chrome !== 'undefined' &&
+        chrome.tabs &&
+        typeof chrome.tabs.create === 'function'
+      ) {
         void chrome.tabs.create({ url })
       } else {
         window.open(url, '_blank', 'noopener,noreferrer')
@@ -193,7 +205,9 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
     setBusy(true)
     const payloadToImport = decryptedPayload || importText
     const pass = decryptedPayload ? undefined : decryptPassphrase.trim() || undefined
-    const r: Result<ImportSummary> = pass ? await io.applyImport(payloadToImport, importMode, pass) : await io.applyImport(payloadToImport, importMode)
+    const r: Result<ImportSummary> = pass
+      ? await io.applyImport(payloadToImport, importMode, pass)
+      : await io.applyImport(payloadToImport, importMode)
     if (r.ok) {
       notify('success', `Imported ${r.value.imported}, skipped ${r.value.skipped}.`)
       setImportText('')
@@ -250,7 +264,10 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
                 >
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate font-medium text-text text-[11px]" title={displayName}>
+                      <span
+                        className="truncate font-medium text-text text-[11px]"
+                        title={displayName}
+                      >
                         {displayName}
                       </span>
                       {targetUrl ? (
@@ -266,7 +283,10 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
                       ) : null}
                     </div>
                     {p.originUrl ? (
-                      <span className="truncate font-mono text-[10px] text-muted" title={p.originUrl}>
+                      <span
+                        className="truncate font-mono text-[10px] text-muted"
+                        title={p.originUrl}
+                      >
                         {p.originUrl}
                       </span>
                     ) : (
@@ -280,7 +300,9 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
                     <span className="font-mono text-[11px] text-text">{formatBytes(p.bytes)}</span>
                     <button
                       type="button"
-                      onClick={() => setConfirm({ type: 'single', projectId: p.projectId, name: p.name })}
+                      onClick={() =>
+                        setConfirm({ type: 'single', projectId: p.projectId, name: p.name })
+                      }
                       title={`Clear data for ${displayName}`}
                       aria-label={`Clear data for ${displayName}`}
                       className="p-1 text-muted hover:text-danger rounded hover:bg-surface transition-colors"
@@ -316,7 +338,8 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
             <span className="text-[10px] text-muted">Optional</span>
           </div>
           <p className="text-[10px] text-muted leading-relaxed">
-            Protect your backup with a password to export credentials safely. Team members will need this password to restore. If empty, passwords are left out.
+            Protect your backup with a password to export credentials safely. Team members will need
+            this password to restore. If empty, passwords are left out.
           </p>
           <div className="relative flex items-center">
             <input
@@ -400,7 +423,8 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
               <span>Encrypted Backup Detected</span>
             </div>
             <p className="text-[11px] text-muted leading-relaxed">
-              This backup is protected with a passphrase. Enter the passphrase to decrypt credentials and preview.
+              This backup is protected with a passphrase. Enter the passphrase to decrypt
+              credentials and preview.
             </p>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -452,11 +476,11 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
               ) : null}
               {importPreview.isEncrypted ? (
                 <Badge kind="success">
-                <span className="inline-flex items-center gap-1">
-                  <LockIcon className="h-3 w-3" />
-                  Decrypted
-                </span>
-              </Badge>
+                  <span className="inline-flex items-center gap-1">
+                    <LockIcon className="h-3 w-3" />
+                    Decrypted
+                  </span>
+                </Badge>
               ) : null}
             </div>
             <div className="flex items-center gap-2">

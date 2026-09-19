@@ -157,7 +157,9 @@ function attachFallbackExportBar(cell: HTMLElement, doc: Document): boolean {
       const opblock = cell.closest('.opblock')
       const method = opblock?.querySelector('.opblock-summary-method')?.textContent || 'response'
       const path =
-        opblock?.querySelector('.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path')?.textContent || ''
+        opblock?.querySelector(
+          '.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path',
+        )?.textContent || ''
       const filename = sanitizeExportFilename(method, path, 'json')
       const jsonStr = JSON.stringify(parsed, null, 2)
       triggerDownload(filename, jsonStr, 'application/json', doc)
@@ -182,7 +184,9 @@ function attachFallbackExportBar(cell: HTMLElement, doc: Document): boolean {
       const opblock = cell.closest('.opblock')
       const method = opblock?.querySelector('.opblock-summary-method')?.textContent || 'response'
       const path =
-        opblock?.querySelector('.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path')?.textContent || ''
+        opblock?.querySelector(
+          '.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path',
+        )?.textContent || ''
       const filename = sanitizeExportFilename(method, path, 'csv')
       triggerDownload(filename, csv, 'text/csv;charset=utf-8;', doc)
 

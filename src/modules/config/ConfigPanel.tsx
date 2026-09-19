@@ -180,7 +180,10 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
     setBusy(true)
     await settings.setPreference('swaggerFeatures', DEFAULT_SWAGGER_FEATURES)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: DEFAULT_SWAGGER_FEATURES } : p))
-    bus?.publish('NOTIFY', { kind: 'success', message: 'Reset Swagger features to default settings.' })
+    bus?.publish('NOTIFY', {
+      kind: 'success',
+      message: 'Reset Swagger features to default settings.',
+    })
     setBusy(false)
   }
 
@@ -194,7 +197,9 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-text">Swagger In-Page Features</h2>
-            <Badge kind={activeCount === totalCount ? 'success' : activeCount > 0 ? 'info' : 'neutral'}>
+            <Badge
+              kind={activeCount === totalCount ? 'success' : activeCount > 0 ? 'info' : 'neutral'}
+            >
               {activeCount}/{totalCount} Active
             </Badge>
           </div>
@@ -220,14 +225,17 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
           </div>
         </div>
         <p className="text-[11px] text-muted leading-relaxed">
-          Configure which OpenAPI Companion tools and enhancements are injected into Swagger UI pages.
-          Features apply instantly with zero page reload required. All features are enabled by default.
+          Configure which OpenAPI Companion tools and enhancements are injected into Swagger UI
+          pages. Features apply instantly with zero page reload required. All features are enabled
+          by default.
         </p>
       </section>
 
       {/* Feature toggles list */}
       <section className="flex flex-col gap-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">Feature Controls</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+          Feature Controls
+        </h3>
         <div className="flex flex-col divide-y divide-border/40 rounded-lg border border-border bg-surface/20">
           {FEATURES.map((item) => {
             const isEnabled = features[item.id] ?? true
@@ -247,9 +255,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
                       </kbd>
                     )}
                   </div>
-                  <span className="text-[11px] text-muted leading-relaxed">
-                    {item.description}
-                  </span>
+                  <span className="text-[11px] text-muted leading-relaxed">{item.description}</span>
                 </div>
                 <input
                   type="checkbox"

@@ -409,4 +409,3 @@ export function createRemoteWorkflowsService(): WorkflowsPanelService {
     importAll: (bundle, opts) => rpcResult('workflows.import', bundle, opts),
   }
 }
-

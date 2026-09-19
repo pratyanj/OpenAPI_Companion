@@ -139,4 +139,3 @@ export interface WorkflowsPanelService {
     options?: { onConflict: 'rename' | 'skip' },
   ): Promise<Result<WorkflowImportResult>>
 }
-

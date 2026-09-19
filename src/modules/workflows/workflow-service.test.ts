@@ -486,7 +486,9 @@ describe('WorkflowService import / export', () => {
   it('returns WORKFLOW_INVALID_INPUT for invalid bundle structure (non-array workflows)', async () => {
     const { service } = setup()
     const badBundle = { version: '1.0', exportedAt: '', workflows: 'not-an-array' }
-    const res = await service.importAll(badBundle as unknown as import('./types').WorkflowExportBundle)
+    const res = await service.importAll(
+      badBundle as unknown as import('./types').WorkflowExportBundle,
+    )
     expect(res.ok).toBe(false)
     if (res.ok) return
     expect(res.error.code).toBe('WORKFLOW_INVALID_INPUT')
@@ -495,7 +497,9 @@ describe('WorkflowService import / export', () => {
   it('returns WORKFLOW_INVALID_INPUT for unsupported bundle version', async () => {
     const { service } = setup()
     const badBundle = { version: '2.0', exportedAt: '', workflows: [] }
-    const res = await service.importAll(badBundle as unknown as import('./types').WorkflowExportBundle)
+    const res = await service.importAll(
+      badBundle as unknown as import('./types').WorkflowExportBundle,
+    )
     expect(res.ok).toBe(false)
     if (res.ok) return
     expect(res.error.code).toBe('WORKFLOW_INVALID_INPUT')

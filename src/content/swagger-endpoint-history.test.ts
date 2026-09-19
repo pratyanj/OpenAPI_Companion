@@ -235,9 +235,7 @@ describe('swagger-endpoint-history', () => {
     textarea.focus()
 
     // Fire Alt+L
-    document.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'l', altKey: true, bubbles: true }),
-    )
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', altKey: true, bubbles: true }))
 
     expect(textarea.value).toBe('{"task":"Shortcut test"}')
 
@@ -265,11 +263,14 @@ describe('swagger-endpoint-history', () => {
     document.body.appendChild(block)
 
     const handle = mountSwaggerEndpointHistory(document)
-    handle.savePayload({
-      endpointId: 'put /api/item',
-      body: '{"refilled":true}',
-      timestamp: Date.now(),
-    }, true)
+    handle.savePayload(
+      {
+        endpointId: 'put /api/item',
+        body: '{"refilled":true}',
+        timestamp: Date.now(),
+      },
+      true,
+    )
 
     let tryOutClicked = false
     block.querySelector<HTMLButtonElement>('.try-out__btn')!.addEventListener('click', () => {
@@ -277,12 +278,10 @@ describe('swagger-endpoint-history', () => {
     })
 
     let expandClicked = false
-    block
-      .querySelector<HTMLElement>('.opblock-summary-control')!
-      .addEventListener('click', () => {
-        expandClicked = true
-        block.classList.add('is-open')
-      })
+    block.querySelector<HTMLElement>('.opblock-summary-control')!.addEventListener('click', () => {
+      expandClicked = true
+      block.classList.add('is-open')
+    })
 
     const success = handle.refillEndpoint('put /api/item')
     expect(success).toBe(true)

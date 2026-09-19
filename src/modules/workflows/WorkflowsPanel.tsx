@@ -390,7 +390,6 @@ export function WorkflowsPanel({
         )}
       </div>
 
-
       {/* Error Notice */}
       {error && (
         <div className="m-3 p-2.5 rounded border border-danger/30 bg-danger/10 text-danger text-xs flex items-center justify-between">
@@ -422,7 +421,6 @@ export function WorkflowsPanel({
           <span>{importExportStatus.message}</span>
         </div>
       )}
-
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {loading ? (
@@ -464,9 +462,7 @@ export function WorkflowsPanel({
                       {wf.name}
                     </h3>
                     {wf.description && (
-                      <p className="text-xs text-muted mt-0.5 line-clamp-1">
-                        {wf.description}
-                      </p>
+                      <p className="text-xs text-muted mt-0.5 line-clamp-1">{wf.description}</p>
                     )}
                   </div>
 
@@ -491,7 +487,9 @@ export function WorkflowsPanel({
                   {/* Execution Mode / Scheduled rule */}
                   <div className="flex items-center gap-1.5 text-warning font-medium">
                     <CalendarIcon className="h-3.5 w-3.5 text-warning" />
-                    <span>{wf.mode === 'stop-on-failure' ? 'Stop on fail' : 'Continue on fail'}</span>
+                    <span>
+                      {wf.mode === 'stop-on-failure' ? 'Stop on fail' : 'Continue on fail'}
+                    </span>
                   </div>
 
                   {/* Steps count */}

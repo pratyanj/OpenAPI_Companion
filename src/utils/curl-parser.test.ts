@@ -5,11 +5,15 @@ describe('curl-parser', () => {
   it('normalizes multi-line and backtick continuations', () => {
     const raw = `curl -X POST \\\n  'https://api.example.com/tasks/' \\\n  -H 'accept: application/json'`
     const normalized = normalizeCurlString(raw)
-    expect(normalized).toBe("curl -X POST 'https://api.example.com/tasks/' -H 'accept: application/json'")
+    expect(normalized).toBe(
+      "curl -X POST 'https://api.example.com/tasks/' -H 'accept: application/json'",
+    )
 
     const psRaw = `curl -X POST \`\r\n  'https://api.example.com/tasks/' \`\r\n  -H 'accept: application/json'`
     const psNormalized = normalizeCurlString(psRaw)
-    expect(psNormalized).toBe("curl -X POST 'https://api.example.com/tasks/' -H 'accept: application/json'")
+    expect(psNormalized).toBe(
+      "curl -X POST 'https://api.example.com/tasks/' -H 'accept: application/json'",
+    )
   })
 
   it('parses basic GET request with query parameters', () => {

@@ -28,7 +28,12 @@ import { EnvironmentService, type EnvironmentInput } from '@/modules/environment
 import { HistoryService, type HistoryPanelService } from '@/modules/history'
 import { ProductivityService } from '@/modules/productivity'
 import { CollectionsService } from '@/modules/collections'
-import { WorkflowService, executeWorkflowStep, type WorkflowInput, type WorkflowExportBundle } from '@/modules/workflows'
+import {
+  WorkflowService,
+  executeWorkflowStep,
+  type WorkflowInput,
+  type WorkflowExportBundle,
+} from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
 import { mountLauncher, openSidePanelFromPage } from './launcher'
 import { mountSwaggerVariables } from './swagger-variables'
@@ -215,7 +220,6 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
   doc.head?.appendChild(style)
 }
 
-
 function parseRgbColor(str: string): { r: number; g: number; b: number } | null {
   const match = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
   if (!match) return null
@@ -328,10 +332,16 @@ export function initSwaggerThemeSync(doc: Document = document): () => void {
     observer.observe(doc.head, { childList: true, subtree: true })
   }
   if (doc.documentElement) {
-    observer.observe(doc.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+    observer.observe(doc.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-theme'],
+    })
   }
   if (doc.body) {
-    observer.observe(doc.body, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+    observer.observe(doc.body, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-theme'],
+    })
   }
 
   // 3. Media query listener
@@ -350,7 +360,10 @@ export function initSwaggerThemeSync(doc: Document = document): () => void {
   }
 }
 
-function applySwaggerFeatureClasses(features: SwaggerFeaturePreferences, doc: Document = document): void {
+function applySwaggerFeatureClasses(
+  features: SwaggerFeaturePreferences,
+  doc: Document = document,
+): void {
   const b = doc.body
   if (!b) return
   b.classList.toggle('oac-disable-mock-data', !features.mockData)
@@ -500,15 +513,15 @@ async function boot(): Promise<void> {
       ) {
         void syncActiveVariables()
       }
-      if (
-        area === 'local' &&
-        Object.keys(changes).some((k) => k.includes('auth'))
-      ) {
+      if (area === 'local' && Object.keys(changes).some((k) => k.includes('auth'))) {
         void syncAuthBadge()
       }
       if (
         area === 'local' &&
-        Object.keys(changes).some((k) => k.includes('preferences') || k.includes('swaggerFeatures') || k.includes('settings'))
+        Object.keys(changes).some(
+          (k) =>
+            k.includes('preferences') || k.includes('swaggerFeatures') || k.includes('settings'),
+        )
       ) {
         void syncSwaggerFeatures()
       }
@@ -803,11 +816,7 @@ async function boot(): Promise<void> {
           }
         }
       }
-      swaggerAuthBadge.update(
-        record,
-        name,
-        savedRes.ok ? savedRes.value : [],
-      )
+      swaggerAuthBadge.update(record, name, savedRes.ok ? savedRes.value : [])
     } catch {
       // ignore
     }

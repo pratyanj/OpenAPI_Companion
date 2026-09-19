@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-  mountSwaggerResponseViewer,
-  extractRawJsonText,
-} from './swagger-response-viewer'
+import { mountSwaggerResponseViewer, extractRawJsonText } from './swagger-response-viewer'
 
 function createExecutedResponseBlock(bodyJson: string, isJson = true): HTMLElement {
   const container = document.createElement('div')
@@ -166,12 +163,12 @@ describe('swagger-response-viewer', () => {
     const handle = mountSwaggerResponseViewer(document)
     handle.scanAndMount()
 
-    const expandBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn')).find(
-      (b) => b.textContent?.includes('Expand All'),
-    )!
-    const collapseBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn')).find(
-      (b) => b.textContent?.includes('Collapse All'),
-    )!
+    const expandBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn'),
+    ).find((b) => b.textContent?.includes('Expand All'))!
+    const collapseBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn'),
+    ).find((b) => b.textContent?.includes('Collapse All'))!
 
     // Collapse All
     collapseBtn.click()
@@ -255,9 +252,9 @@ describe('swagger-response-viewer', () => {
     handle.scanAndMount()
 
     // Collapse all nodes first
-    const collapseBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn')).find(
-      (b) => b.textContent?.includes('Collapse All'),
-    )!
+    const collapseBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn'),
+    ).find((b) => b.textContent?.includes('Collapse All'))!
     collapseBtn.click()
 
     // Verify root is collapsed
@@ -286,18 +283,18 @@ describe('swagger-response-viewer', () => {
     const handle = mountSwaggerResponseViewer(document)
     handle.scanAndMount()
 
-    const rawBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-view-btn')).find(
-      (b) => b.textContent === 'Raw',
-    )!
-    const treeBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-view-btn')).find(
-      (b) => b.textContent === 'Tree',
-    )!
-    const expandAllBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn')).find(
-      (b) => b.textContent?.includes('Expand All'),
-    )!
-    const collapseAllBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn')).find(
-      (b) => b.textContent?.includes('Collapse All'),
-    )!
+    const rawBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-view-btn'),
+    ).find((b) => b.textContent === 'Raw')!
+    const treeBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-view-btn'),
+    ).find((b) => b.textContent === 'Tree')!
+    const expandAllBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn'),
+    ).find((b) => b.textContent?.includes('Expand All'))!
+    const collapseAllBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-tool-btn'),
+    ).find((b) => b.textContent?.includes('Collapse All'))!
     const treeView = document.querySelector<HTMLElement>('.oac-resp-tree-view')!
     const nativeCode = document.querySelector<HTMLElement>('.highlight-code')!
 
@@ -339,9 +336,9 @@ describe('swagger-response-viewer', () => {
     const handle = mountSwaggerResponseViewer(document)
     handle.scanAndMount()
 
-    const rawBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('.oac-resp-view-btn')).find(
-      (b) => b.textContent === 'Raw',
-    )!
+    const rawBtn = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.oac-resp-view-btn'),
+    ).find((b) => b.textContent === 'Raw')!
     rawBtn.click()
 
     const searchInput = document.querySelector<HTMLInputElement>('.oac-resp-search-input')!
@@ -386,9 +383,7 @@ describe('swagger-response-viewer', () => {
     copyBtn.click()
     await Promise.resolve()
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      JSON.stringify(sampleObj, null, 2),
-    )
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(JSON.stringify(sampleObj, null, 2))
     expect(copyBtn.classList.contains('copied')).toBe(true)
     expect(copyBtn.textContent).toContain('Copied!')
 
@@ -439,7 +434,6 @@ describe('swagger-response-viewer', () => {
     handle.dispose()
   })
 
-
   it('mounts export dropdown in toolbar and toggles open/close', () => {
     const block = createExecutedResponseBlock(JSON.stringify([{ id: 1, name: 'Item 1' }]))
     document.body.appendChild(block)
@@ -487,8 +481,12 @@ describe('swagger-response-viewer', () => {
     exportBtn.click()
 
     const items = document.querySelectorAll('.oac-resp-export-item')
-    const jsonItem = Array.from(items).find((el) => el.textContent?.includes('JSON')) as HTMLButtonElement
-    const csvItem = Array.from(items).find((el) => el.textContent?.includes('CSV')) as HTMLButtonElement
+    const jsonItem = Array.from(items).find((el) =>
+      el.textContent?.includes('JSON'),
+    ) as HTMLButtonElement
+    const csvItem = Array.from(items).find((el) =>
+      el.textContent?.includes('CSV'),
+    ) as HTMLButtonElement
 
     expect(jsonItem).toBeTruthy()
     expect(csvItem).toBeTruthy()

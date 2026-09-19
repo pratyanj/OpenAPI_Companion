@@ -148,7 +148,7 @@ const CSS_STYLES = `
   border-color: #22c55e !important;
   color: #15803d !important;
 }
-`;
+`
 
 function ensureStyles(doc: Document): void {
   if (doc.getElementById(STYLE_ID)) return
@@ -163,7 +163,9 @@ export function isSuccessResponse(cell: Element): boolean {
   const row = cell.closest('tr') ?? cell.parentElement
   const statusEl =
     row?.querySelector('.response-col_status:not(.col_header), .response-col_status') ??
-    cell.closest('.live-responses-table, .responses-table')?.querySelector('.response-col_status:not(.col_header)')
+    cell
+      .closest('.live-responses-table, .responses-table')
+      ?.querySelector('.response-col_status:not(.col_header)')
   const text = statusEl?.textContent?.trim()
   if (!text) return false
   const match = text.match(/\b([1-5]\d\d)\b/)
@@ -174,13 +176,15 @@ export function isSuccessResponse(cell: Element): boolean {
 
 /** Extracts clean response body text from a response cell, stripping buttons and svg controls. */
 export function extractResponseBodyText(cell: Element): string | null {
-  const pre = cell.querySelector(
-    'pre, .microlight, .highlight-code pre, .highlight-code',
-  )
+  const pre = cell.querySelector('pre, .microlight, .highlight-code pre, .highlight-code')
   if (!pre) return null
 
   const clone = pre.cloneNode(true) as Element
-  for (const control of Array.from(clone.querySelectorAll('button, .copy-to-clipboard, .download-contents, svg, .oac-save-var-btn, .oac-response-action-bar'))) {
+  for (const control of Array.from(
+    clone.querySelectorAll(
+      'button, .copy-to-clipboard, .download-contents, svg, .oac-save-var-btn, .oac-response-action-bar',
+    ),
+  )) {
     control.remove()
   }
   return clone.textContent?.trim() || null

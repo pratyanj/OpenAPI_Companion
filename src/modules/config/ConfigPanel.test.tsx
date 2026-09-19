@@ -32,17 +32,37 @@ describe('ConfigPanel', () => {
     expect(await screen.findByText(/Swagger In-Page Features/i)).toBeInTheDocument()
     expect(screen.getByText('13/13 Active')).toBeInTheDocument()
 
-    const mockDataCheckbox = screen.getByLabelText(/Toggle 1-Click Realistic Mock Data/i) as HTMLInputElement
-    const jsonFormatCheckbox = screen.getByLabelText(/Toggle JSON Formatter & Auto-Repair Validator/i) as HTMLInputElement
-    const historyCheckbox = screen.getByLabelText(/Toggle Re-fill Last Sent Payload/i) as HTMLInputElement
-    const respVarCheckbox = screen.getByLabelText(/Toggle Save Response Property to Variable/i) as HTMLInputElement
-    const authBadgeCheckbox = screen.getByLabelText(/Toggle Active Account & Token Expiry Badge/i) as HTMLInputElement
-    const varResCheckbox = screen.getByLabelText(/Toggle Direct Variable Resolution/i) as HTMLInputElement
-    const accountSwitcherCheckbox = screen.getByLabelText(/Toggle 1-Click Multi-Account & Role Switcher/i) as HTMLInputElement
-    const respSearchCheckbox = screen.getByLabelText(/Toggle Response JSON Search & Tree View/i) as HTMLInputElement
-    const copyCodeCheckbox = screen.getByLabelText(/Toggle Multi-Language Copy Code Dropdown/i) as HTMLInputElement
+    const mockDataCheckbox = screen.getByLabelText(
+      /Toggle 1-Click Realistic Mock Data/i,
+    ) as HTMLInputElement
+    const jsonFormatCheckbox = screen.getByLabelText(
+      /Toggle JSON Formatter & Auto-Repair Validator/i,
+    ) as HTMLInputElement
+    const historyCheckbox = screen.getByLabelText(
+      /Toggle Re-fill Last Sent Payload/i,
+    ) as HTMLInputElement
+    const respVarCheckbox = screen.getByLabelText(
+      /Toggle Save Response Property to Variable/i,
+    ) as HTMLInputElement
+    const authBadgeCheckbox = screen.getByLabelText(
+      /Toggle Active Account & Token Expiry Badge/i,
+    ) as HTMLInputElement
+    const varResCheckbox = screen.getByLabelText(
+      /Toggle Direct Variable Resolution/i,
+    ) as HTMLInputElement
+    const accountSwitcherCheckbox = screen.getByLabelText(
+      /Toggle 1-Click Multi-Account & Role Switcher/i,
+    ) as HTMLInputElement
+    const respSearchCheckbox = screen.getByLabelText(
+      /Toggle Response JSON Search & Tree View/i,
+    ) as HTMLInputElement
+    const copyCodeCheckbox = screen.getByLabelText(
+      /Toggle Multi-Language Copy Code Dropdown/i,
+    ) as HTMLInputElement
     const exportCheckbox = screen.getByLabelText(/Toggle Response Export/i) as HTMLInputElement
-    const pinnedCheckbox = screen.getByLabelText(/Toggle Endpoint Favorites & Top Pinning/i) as HTMLInputElement
+    const pinnedCheckbox = screen.getByLabelText(
+      /Toggle Endpoint Favorites & Top Pinning/i,
+    ) as HTMLInputElement
 
     expect(mockDataCheckbox.checked).toBe(true)
     expect(jsonFormatCheckbox.checked).toBe(true)
@@ -56,7 +76,9 @@ describe('ConfigPanel', () => {
     expect(exportCheckbox.checked).toBe(true)
     expect(pinnedCheckbox.checked).toBe(true)
 
-    const globalHeadersCheckbox = screen.getByLabelText(/Toggle Global Debug Headers/i) as HTMLInputElement
+    const globalHeadersCheckbox = screen.getByLabelText(
+      /Toggle Global Debug Headers/i,
+    ) as HTMLInputElement
     expect(globalHeadersCheckbox.checked).toBe(true)
 
     expect(screen.getByText('Ctrl+Shift+V')).toBeInTheDocument()
@@ -70,7 +92,9 @@ describe('ConfigPanel', () => {
     const bus = new EventBus()
     render(<ConfigPanel settings={settings} bus={bus} />)
 
-    const authBadgeCheckbox = await screen.findByLabelText(/Toggle Active Account & Token Expiry Badge/i)
+    const authBadgeCheckbox = await screen.findByLabelText(
+      /Toggle Active Account & Token Expiry Badge/i,
+    )
     fireEvent.click(authBadgeCheckbox)
 
     expect(settings.setSwaggerFeature).toHaveBeenCalledWith('authBadge', false)

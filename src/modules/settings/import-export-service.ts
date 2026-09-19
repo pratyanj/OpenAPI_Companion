@@ -123,16 +123,12 @@ export class ImportExportService implements ImportExportApi {
 
     if (hasPassphrase) {
       try {
-        const encrypted = await encryptBackup(
-          JSON.stringify(bundle, null, 2),
-          passphrase.trim(),
-          {
-            app: APP_NAME,
-            appVersion: APP_VERSION,
-            schemaVersion: SCHEMA_VERSION,
-            exportedAt: bundle.exportedAt,
-          },
-        )
+        const encrypted = await encryptBackup(JSON.stringify(bundle, null, 2), passphrase.trim(), {
+          app: APP_NAME,
+          appVersion: APP_VERSION,
+          schemaVersion: SCHEMA_VERSION,
+          exportedAt: bundle.exportedAt,
+        })
         this.bus?.publish('DATA_EXPORTED', { modules: rootsOf(Object.keys(entries)) })
         return ok(JSON.stringify(encrypted, null, 2))
       } catch (e) {
@@ -198,7 +194,8 @@ export class ImportExportService implements ImportExportApi {
     if (isEncryptedBackup(json)) {
       return err({
         code: 'IMPORT_ENCRYPTED',
-        message: 'This backup is encrypted with a passphrase. Please enter the passphrase to unlock and preview.',
+        message:
+          'This backup is encrypted with a passphrase. Please enter the passphrase to unlock and preview.',
         recoverable: true,
       })
     }
@@ -227,7 +224,11 @@ export class ImportExportService implements ImportExportApi {
     })
   }
 
-  async applyImport(json: string, mode: ImportMode, passphrase?: string): Promise<Result<ImportSummary>> {
+  async applyImport(
+    json: string,
+    mode: ImportMode,
+    passphrase?: string,
+  ): Promise<Result<ImportSummary>> {
     let payload = json
     if (isEncryptedBackup(json)) {
       if (!passphrase) {

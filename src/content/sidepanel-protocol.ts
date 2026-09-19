@@ -92,9 +92,7 @@ export const OPEN_PANEL_REQUEST = 'oac:open-panel'
  */
 export const PANEL_PORT = 'oac:panel'
 export type PanelPortMessage =
-  | { type: 'hello'; windowId: number }
-  | { type: 'close' }
-  | { type: 'navigate'; tab: string }
+  { type: 'hello'; windowId: number } | { type: 'close' } | { type: 'navigate'; tab: string }
 
 /** Agent → panel broadcast: a forwarded bus event (keeps the panel UI live). */
 export const EVENT_PUSH = 'oac:event'

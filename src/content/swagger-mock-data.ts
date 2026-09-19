@@ -6,11 +6,12 @@
  *
  * Uses crisp SVG icons exclusively (no emojis) to avoid system font crashes.
  */
-import { setNativeValue, readSwaggerExample, endpointIdOf } from '@/adapters/swagger/swagger-request-dom'
 import {
-  synthesizeFromJsonSample,
-  type GenerationMode,
-} from '@/modules/fake-data/schema-generator'
+  setNativeValue,
+  readSwaggerExample,
+  endpointIdOf,
+} from '@/adapters/swagger/swagger-request-dom'
+import { synthesizeFromJsonSample, type GenerationMode } from '@/modules/fake-data/schema-generator'
 import {
   SVG_ICONS,
   validateJsonSyntax,
@@ -266,7 +267,7 @@ const CSS_STYLES = `
   height: 14px;
   color: currentColor;
 }
-`;
+`
 
 function ensureStyles(doc: Document): void {
   if (doc.getElementById(STYLE_ID)) return
@@ -366,7 +367,10 @@ export function fillMockData(
   }
 }
 
-export function updateFormatButtonVisibility(textarea: HTMLTextAreaElement, formatGroup: HTMLElement): void {
+export function updateFormatButtonVisibility(
+  textarea: HTMLTextAreaElement,
+  formatGroup: HTMLElement,
+): void {
   if (isAlreadyFormatted(textarea.value)) {
     formatGroup.classList.add('hidden')
   } else {
@@ -388,9 +392,10 @@ export function updateSyntaxBadge(textarea: HTMLTextAreaElement, badge: HTMLElem
   badge.className = 'oac-json-syntax-badge invalid'
   const short = result.shortError || 'Syntax Error'
   const alreadyHasLine = /line\s+\d+/i.test(short)
-  const loc = (!alreadyHasLine && result.line !== undefined)
-    ? ` (Line ${result.line}${result.column ? `:${result.column}` : ''})`
-    : ''
+  const loc =
+    !alreadyHasLine && result.line !== undefined
+      ? ` (Line ${result.line}${result.column ? `:${result.column}` : ''})`
+      : ''
   badge.innerHTML = `<span class="oac-mock-icon">${SVG_ICONS.alert}</span><span class="oac-json-error-text">${short}${loc}</span>`
   badge.title = result.error || 'Invalid JSON syntax'
 }
@@ -455,10 +460,13 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
       <span class="oac-mock-label">${label}</span>
     `
 
-    setTimeout(() => {
-      group.classList.remove('success', 'error')
-      fillBtn.innerHTML = originalContent
-    }, success ? 1500 : 1800)
+    setTimeout(
+      () => {
+        group.classList.remove('success', 'error')
+        fillBtn.innerHTML = originalContent
+      },
+      success ? 1500 : 1800,
+    )
   }
 
   function attachToTextarea(textarea: HTMLTextAreaElement): void {
@@ -527,10 +535,20 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
     dropdown.style.display = 'none'
 
     const modes: Array<{ mode: GenerationMode; icon: string; title: string; desc: string }> = [
-      { mode: 'realistic', icon: SVG_ICONS.sparkle, title: 'Realistic', desc: 'Names, emails, UUIDs, dates' },
+      {
+        mode: 'realistic',
+        icon: SVG_ICONS.sparkle,
+        title: 'Realistic',
+        desc: 'Names, emails, UUIDs, dates',
+      },
       { mode: 'minimal', icon: SVG_ICONS.zap, title: 'Minimal', desc: '1 item, minimal values' },
       { mode: 'boundary', icon: SVG_ICONS.alert, title: 'Boundary', desc: 'Limits & edge cases' },
-      { mode: 'fuzzing', icon: SVG_ICONS.flask, title: 'Fuzzing', desc: 'Vectors & unicode symbols' },
+      {
+        mode: 'fuzzing',
+        icon: SVG_ICONS.flask,
+        title: 'Fuzzing',
+        desc: 'Vectors & unicode symbols',
+      },
     ]
 
     modes.forEach(({ mode, icon, title, desc }) => {
@@ -543,7 +561,9 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
         currentMode = mode
         const textEl = modeBtn.querySelector('.oac-mock-mode-text')
         if (textEl) textEl.textContent = title
-        dropdown.querySelectorAll('.oac-mock-dropdown-item').forEach((btn) => btn.classList.remove('active'))
+        dropdown
+          .querySelectorAll('.oac-mock-dropdown-item')
+          .forEach((btn) => btn.classList.remove('active'))
         item.classList.add('active')
         dropdown.style.display = 'none'
 
@@ -602,7 +622,9 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
   }
 
   function scanAndMount(root: ParentNode = doc): number {
-    const textareas = Array.from(root.querySelectorAll<HTMLTextAreaElement>('textarea.body-param__text'))
+    const textareas = Array.from(
+      root.querySelectorAll<HTMLTextAreaElement>('textarea.body-param__text'),
+    )
     let count = 0
     for (const ta of textareas) {
       if (!ta.hasAttribute(ATTACHED_ATTR)) {

@@ -176,11 +176,7 @@ export async function decryptBackup(
   const key = await deriveKey(passphrase, salt, iterations, ['decrypt'])
 
   try {
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      cipherBytes,
-    )
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBytes)
     const dec = new TextDecoder()
     return dec.decode(decrypted)
   } catch {

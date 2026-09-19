@@ -23,7 +23,7 @@ describe('escapeCsvField', () => {
   it('escapes fields with commas, quotes, and newlines', () => {
     expect(escapeCsvField('Smith, John')).toBe('"Smith, John"')
     expect(escapeCsvField('He said "Hello"')).toBe('"He said ""Hello"""')
-    expect(escapeCsvField("line1\nline2")).toBe('"line1\nline2"')
+    expect(escapeCsvField('line1\nline2')).toBe('"line1\nline2"')
   })
 
   it('serializes objects as JSON and escapes them if needed', () => {
@@ -59,9 +59,18 @@ describe('extractTabularData', () => {
 
   it('extracts nested array from items, data, or results property', () => {
     const items = [{ id: 1 }, { id: 2 }]
-    expect(extractTabularData({ total: 2, items })).toEqual({ rows: items, extractedFromKey: 'items' })
-    expect(extractTabularData({ count: 2, data: items })).toEqual({ rows: items, extractedFromKey: 'data' })
-    expect(extractTabularData({ results: items })).toEqual({ rows: items, extractedFromKey: 'results' })
+    expect(extractTabularData({ total: 2, items })).toEqual({
+      rows: items,
+      extractedFromKey: 'items',
+    })
+    expect(extractTabularData({ count: 2, data: items })).toEqual({
+      rows: items,
+      extractedFromKey: 'data',
+    })
+    expect(extractTabularData({ results: items })).toEqual({
+      rows: items,
+      extractedFromKey: 'results',
+    })
   })
 
   it('wraps flat object in an array', () => {
@@ -104,13 +113,22 @@ describe('sanitizeExportFilename', () => {
   const testDate = new Date('2026-09-17T12:00:00Z')
 
   it('sanitizes method and path into clean filename', () => {
-    expect(sanitizeExportFilename('GET', '/tasks', 'json', testDate)).toBe('get_tasks_2026-09-17.json')
-    expect(sanitizeExportFilename('POST', '/auth/token', 'csv', testDate)).toBe('post_auth_token_2026-09-17.csv')
+    expect(sanitizeExportFilename('GET', '/tasks', 'json', testDate)).toBe(
+      'get_tasks_2026-09-17.json',
+    )
+    expect(sanitizeExportFilename('POST', '/auth/token', 'csv', testDate)).toBe(
+      'post_auth_token_2026-09-17.csv',
+    )
   })
 
   it('removes origin, path variable brackets, and query parameters', () => {
     expect(
-      sanitizeExportFilename('GET', 'http://127.0.0.1:8008/api/tasks/{task_id}/items?limit=10', 'csv', testDate),
+      sanitizeExportFilename(
+        'GET',
+        'http://127.0.0.1:8008/api/tasks/{task_id}/items?limit=10',
+        'csv',
+        testDate,
+      ),
     ).toBe('get_api_tasks_task_id_items_2026-09-17.csv')
   })
 

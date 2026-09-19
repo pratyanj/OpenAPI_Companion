@@ -90,7 +90,10 @@ describe('mountSwaggerPinnedEndpoints', () => {
   })
 
   it('attaches star buttons directly to the left of .opblock-summary-method', () => {
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     expect(handle).toBeDefined()
 
     const stars = doc.querySelectorAll<HTMLButtonElement>('.oac-endpoint-star-btn')
@@ -118,8 +121,13 @@ describe('mountSwaggerPinnedEndpoints', () => {
       tags: [],
     })
 
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
-    const starBtn = doc.querySelector<HTMLButtonElement>('.oac-endpoint-star-btn[data-endpoint-id="get /tasks/"]')!
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
+    const starBtn = doc.querySelector<HTMLButtonElement>(
+      '.oac-endpoint-star-btn[data-endpoint-id="get /tasks/"]',
+    )!
     expect(starBtn.classList.contains('oac-starred')).toBe(true)
     expect(starBtn.title).toContain('Unpin from top')
 
@@ -127,8 +135,13 @@ describe('mountSwaggerPinnedEndpoints', () => {
   })
 
   it('toggles favorite on click with accordion event isolation', async () => {
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
-    const starBtn = doc.querySelector<HTMLButtonElement>('.oac-endpoint-star-btn[data-endpoint-id="get /tasks/"]')!
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
+    const starBtn = doc.querySelector<HTMLButtonElement>(
+      '.oac-endpoint-star-btn[data-endpoint-id="get /tasks/"]',
+    )!
 
     const accordionControl = doc.querySelector('.opblock-summary-control')!
     const accordionSpy = vi.fn()
@@ -163,14 +176,19 @@ describe('mountSwaggerPinnedEndpoints', () => {
   })
 
   it('renders pinned tray at top with empty state when empty and populates on favorite', async () => {
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     const tray = doc.getElementById('oac-pinned-endpoints-tray')!
     expect(tray).toBeDefined()
     // Initially empty: should render empty state guidance and badge 0
     expect(tray.classList.contains('oac-tray-hidden')).toBe(false)
     expect(tray.querySelector('.oac-pinned-count-badge')?.textContent).toBe('0')
     expect(tray.querySelector('.oac-pinned-empty-state')).not.toBeNull()
-    expect(tray.querySelector('.oac-pinned-empty-text')?.textContent).toContain('No pinned operations yet')
+    expect(tray.querySelector('.oac-pinned-empty-text')?.textContent).toContain(
+      'No pinned operations yet',
+    )
 
     // Add a favorite
     favoritesList.push({
@@ -213,7 +231,10 @@ describe('mountSwaggerPinnedEndpoints', () => {
       tags: [],
     })
 
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     const tray = doc.getElementById('oac-pinned-endpoints-tray')!
     const toggleBtn = tray.querySelector<HTMLButtonElement>('.oac-pinned-tray-toggle-btn')!
     const grid = tray.querySelector('.oac-pinned-cards-grid')!
@@ -244,8 +265,13 @@ describe('mountSwaggerPinnedEndpoints', () => {
   })
 
   it('syncs via bus FAVORITE_TOGGLED event', () => {
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
-    const starBtn = doc.querySelector<HTMLButtonElement>('.oac-endpoint-star-btn[data-endpoint-id="get /tasks/"]')!
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
+    const starBtn = doc.querySelector<HTMLButtonElement>(
+      '.oac-endpoint-star-btn[data-endpoint-id="get /tasks/"]',
+    )!
     expect(starBtn.classList.contains('oac-starred')).toBe(false)
 
     // Simulate backend favorite update and bus event
@@ -263,7 +289,10 @@ describe('mountSwaggerPinnedEndpoints', () => {
   })
 
   it('cleans up all injected elements on dispose', () => {
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     expect(doc.querySelectorAll('.oac-endpoint-star-btn').length).toBe(2)
     expect(doc.getElementById('oac-pinned-endpoints-tray')).not.toBeNull()
     expect(doc.getElementById('oac-pinned-endpoints-styles')).not.toBeNull()
@@ -285,7 +314,10 @@ describe('mountSwaggerPinnedEndpoints', () => {
       tags: [],
     })
 
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     const tray = doc.getElementById('oac-pinned-endpoints-tray')!
     expect(emojiRegex.test(tray.innerHTML)).toBe(false)
 
@@ -328,7 +360,10 @@ describe('mountSwaggerPinnedEndpoints', () => {
       tags: [],
     })
 
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     const tray = doc.getElementById('oac-pinned-endpoints-tray')!
     expect(tray).toBeDefined()
 
@@ -364,7 +399,10 @@ describe('mountSwaggerPinnedEndpoints', () => {
       tags: [],
     })
 
-    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const handle = mountSwaggerPinnedEndpoints(
+      mockProductivity as unknown as ProductivityService,
+      doc,
+    )
     const tray = doc.getElementById('oac-pinned-endpoints-tray')!
     expect(tray).toBeDefined()
     expect(tray.isConnected).toBe(true)

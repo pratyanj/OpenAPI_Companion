@@ -231,7 +231,7 @@ describe('SaveToVariableDialog', () => {
       <SaveToVariableDialog
         responseBody={rawJson}
         service={service}
-        initialValue='Cloud Infrastructure'
+        initialValue="Cloud Infrastructure"
         onClose={vi.fn()}
       />,
     )

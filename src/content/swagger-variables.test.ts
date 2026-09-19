@@ -104,7 +104,12 @@ describe('swagger-variables (in-page Swagger UI integration)', () => {
   })
 
   it('programmatically resolves placeholders in an operation block via resolveOperationInputs', () => {
-    document.body.innerHTML = opblockHtml('POST', '/tasks/{user_id}', '{"assignee": "{{USER_ID}}"}', '{{USER_ID}}')
+    document.body.innerHTML = opblockHtml(
+      'POST',
+      '/tasks/{user_id}',
+      '{"assignee": "{{USER_ID}}"}',
+      '{{USER_ID}}',
+    )
 
     handle = mountSwaggerVariables({ USER_ID: '42' }, [])
 

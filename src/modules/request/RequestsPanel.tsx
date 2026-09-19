@@ -416,7 +416,8 @@ export function RequestsPanel({
             </div>
           ) : (
             <p className="text-[11px] text-muted">
-              Click &quot;Try it out&quot; on any operation in Swagger to capture its path, query, or body parameters.
+              Click &quot;Try it out&quot; on any operation in Swagger to capture its path, query,
+              or body parameters.
             </p>
           )}
 

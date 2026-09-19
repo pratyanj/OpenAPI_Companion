@@ -212,13 +212,11 @@ export function HistoryDetail({
             {record.method}
           </span>
           <span className="min-w-0 flex-1 break-all font-mono text-xs text-text">
-            {record.requestUrl ? (
-              record.requestUrl.replace(/^https?:\/\/[^/]+/i, '') || record.endpoint
-            ) : record.queryParams && Object.keys(record.queryParams).length > 0 ? (
-              `${record.endpoint}${record.endpoint.includes('?') ? '&' : '?'}${new URLSearchParams(record.queryParams).toString()}`
-            ) : (
-              record.endpoint
-            )}
+            {record.requestUrl
+              ? record.requestUrl.replace(/^https?:\/\/[^/]+/i, '') || record.endpoint
+              : record.queryParams && Object.keys(record.queryParams).length > 0
+                ? `${record.endpoint}${record.endpoint.includes('?') ? '&' : '?'}${new URLSearchParams(record.queryParams).toString()}`
+                : record.endpoint}
           </span>
           {/* Copy menu — URL, code snippets, and the stored bodies. */}
           <Menu

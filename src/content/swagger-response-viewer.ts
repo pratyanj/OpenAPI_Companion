@@ -519,7 +519,9 @@ export function extractRawJsonText(cell: Element): string | null {
 
   const clone = pre.cloneNode(true) as Element
   for (const control of Array.from(
-    clone.querySelectorAll('button, .copy-to-clipboard, .download-contents, svg, .oac-save-var-btn, .oac-response-action-bar, .oac-response-viewer-container'),
+    clone.querySelectorAll(
+      'button, .copy-to-clipboard, .download-contents, svg, .oac-save-var-btn, .oac-response-action-bar, .oac-response-viewer-container',
+    ),
   )) {
     control.remove()
   }
@@ -575,7 +577,10 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     }
 
     // Identify native code container to hide/show
-    const nativeCodeContainer = cell.querySelector<HTMLElement>('.highlight-code') || cell.querySelector<HTMLElement>('pre.microlight') || cell.querySelector<HTMLElement>('pre')
+    const nativeCodeContainer =
+      cell.querySelector<HTMLElement>('.highlight-code') ||
+      cell.querySelector<HTMLElement>('pre.microlight') ||
+      cell.querySelector<HTMLElement>('pre')
     if (!nativeCodeContainer) return
 
     cell.setAttribute(ATTACHED_ATTR, 'true')
@@ -733,7 +738,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     ;(container as any).__oacUpdateResponse = (newParsed: unknown, newRawText: string) => {
       parsed = newParsed
       csvExportItem.disabled = !isCsvExportable(newParsed)
-      csvExportItem.title = isCsvExportable(newParsed) ? 'Export as RFC 4180 CSV' : 'Requires array or object payload'
+      csvExportItem.title = isCsvExportable(newParsed)
+        ? 'Export as RFC 4180 CSV'
+        : 'Requires array or object payload'
       treeView.innerHTML = ''
       const newRoot = renderJsonNode(newParsed, '', true, doc)
       treeView.appendChild(newRoot)
@@ -796,7 +803,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
           while (ancestor) {
             if (ancestor.classList.contains('collapsed')) {
               ancestor.classList.remove('collapsed')
-              const toggle = ancestor.querySelector<HTMLButtonElement>(':scope > .oac-tree-row > .oac-tree-toggle')
+              const toggle = ancestor.querySelector<HTMLButtonElement>(
+                ':scope > .oac-tree-row > .oac-tree-toggle',
+              )
               if (toggle) toggle.innerHTML = SVG_ICONS.chevronDown
             }
             ancestor = ancestor.parentElement?.closest('.oac-tree-node') || null
@@ -822,7 +831,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
         const rawTarget = nativeCodeContainer.querySelector('pre, code') || nativeCodeContainer
         const walker = doc.createTreeWalker(rawTarget, NodeFilter.SHOW_TEXT, {
           acceptNode(node) {
-            if (node.parentElement?.closest('button, .copy-to-clipboard, .download-contents, svg')) {
+            if (
+              node.parentElement?.closest('button, .copy-to-clipboard, .download-contents, svg')
+            ) {
               return NodeFilter.FILTER_REJECT
             }
             return NodeFilter.FILTER_ACCEPT
@@ -929,7 +940,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       const nodes = treeView.querySelectorAll<HTMLElement>('.oac-tree-node.collapsed')
       for (const node of Array.from(nodes)) {
         node.classList.remove('collapsed')
-        const toggle = node.querySelector<HTMLButtonElement>(':scope > .oac-tree-row > .oac-tree-toggle')
+        const toggle = node.querySelector<HTMLButtonElement>(
+          ':scope > .oac-tree-row > .oac-tree-toggle',
+        )
         if (toggle) toggle.innerHTML = SVG_ICONS.chevronDown
       }
     })
@@ -938,7 +951,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       const nodes = treeView.querySelectorAll<HTMLElement>('.oac-tree-node')
       for (const node of Array.from(nodes)) {
         node.classList.add('collapsed')
-        const toggle = node.querySelector<HTMLButtonElement>(':scope > .oac-tree-row > .oac-tree-toggle')
+        const toggle = node.querySelector<HTMLButtonElement>(
+          ':scope > .oac-tree-row > .oac-tree-toggle',
+        )
         if (toggle) toggle.innerHTML = SVG_ICONS.chevronRight
       }
     })
@@ -974,7 +989,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     exportBtn.addEventListener('click', (e) => {
       e.stopPropagation()
       const isHidden = exportDropdown.classList.contains('oac-hidden')
-      doc.querySelectorAll('.oac-resp-export-dropdown').forEach((d) => d.classList.add('oac-hidden'))
+      doc
+        .querySelectorAll('.oac-resp-export-dropdown')
+        .forEach((d) => d.classList.add('oac-hidden'))
       if (isHidden) {
         exportDropdown.classList.remove('oac-hidden')
       }
@@ -987,7 +1004,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
         const opblock = nativeCodeContainer.closest('.opblock')
         const method = opblock?.querySelector('.opblock-summary-method')?.textContent || 'response'
         const path =
-          opblock?.querySelector('.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path')?.textContent || ''
+          opblock?.querySelector(
+            '.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path',
+          )?.textContent || ''
         const filename = sanitizeExportFilename(method, path, 'json')
         const jsonStr = JSON.stringify(parsed, null, 2)
         triggerDownload(filename, jsonStr, 'application/json', doc)
@@ -1019,7 +1038,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
         const opblock = nativeCodeContainer.closest('.opblock')
         const method = opblock?.querySelector('.opblock-summary-method')?.textContent || 'response'
         const path =
-          opblock?.querySelector('.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path')?.textContent || ''
+          opblock?.querySelector(
+            '.opblock-summary-path a span, .opblock-summary-path span, .opblock-summary-path',
+          )?.textContent || ''
         const filename = sanitizeExportFilename(method, path, 'csv')
         triggerDownload(filename, csv, 'text/csv;charset=utf-8;', doc)
 
@@ -1093,7 +1114,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
   const onDocExportClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement | null
     if (!target?.closest('.oac-resp-export-container')) {
-      doc.querySelectorAll('.oac-resp-export-dropdown').forEach((d) => d.classList.add('oac-hidden'))
+      doc
+        .querySelectorAll('.oac-resp-export-dropdown')
+        .forEach((d) => d.classList.add('oac-hidden'))
     }
   }
   doc.addEventListener('click', onDocExportClick)
@@ -1106,7 +1129,7 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     dispose(): void {
       observer.disconnect()
       doc.removeEventListener('click', onExecuteClick, true)
-    doc.removeEventListener('click', onDocExportClick)
+      doc.removeEventListener('click', onDocExportClick)
       const containers = doc.querySelectorAll('.oac-response-viewer-container')
       containers.forEach((c) => c.remove())
       const hidden = doc.querySelectorAll('.oac-swagger-raw-hidden')
@@ -1141,7 +1164,9 @@ function renderJsonNode(
     const count = entries.length
     const openBrace = isArray ? '[' : '{'
     const closeBrace = isArray ? ']' : '}'
-    const summaryText = isArray ? `${count} item${count === 1 ? '' : 's'}` : `${count} key${count === 1 ? '' : 's'}`
+    const summaryText = isArray
+      ? `${count} item${count === 1 ? '' : 's'}`
+      : `${count} key${count === 1 ? '' : 's'}`
 
     // Toggle button
     const toggle = doc.createElement('button')

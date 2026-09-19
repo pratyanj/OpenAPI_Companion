@@ -121,7 +121,9 @@ describe('mountSwaggerCopyCode', () => {
     copyBtn.click()
 
     const items = document.querySelectorAll('.oac-copy-code-item')
-    const pythonItem = Array.from(items).find((el) => el.textContent?.includes('Python')) as HTMLButtonElement
+    const pythonItem = Array.from(items).find((el) =>
+      el.textContent?.includes('Python'),
+    ) as HTMLButtonElement
     expect(pythonItem).toBeTruthy()
 
     pythonItem.click()
@@ -147,7 +149,9 @@ describe('mountSwaggerCopyCode', () => {
     copyBtn.click()
 
     const items = document.querySelectorAll('.oac-copy-code-item')
-    const fetchItem = Array.from(items).find((el) => el.textContent?.includes('Fetch')) as HTMLButtonElement
+    const fetchItem = Array.from(items).find((el) =>
+      el.textContent?.includes('Fetch'),
+    ) as HTMLButtonElement
     expect(fetchItem).toBeTruthy()
 
     fetchItem.click()

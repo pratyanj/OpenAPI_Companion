@@ -126,9 +126,7 @@ export function jsonToCsv(data: unknown): { csv?: string; error?: string } {
       const rowLine = headers.map((h) => escapeCsvField(rec[h])).join(',')
       csvRows.push(rowLine)
     } else {
-      const rowLine = headers
-        .map((_, i) => (i === 0 ? escapeCsvField(row) : ''))
-        .join(',')
+      const rowLine = headers.map((_, i) => (i === 0 ? escapeCsvField(row) : '')).join(',')
       csvRows.push(rowLine)
     }
   }

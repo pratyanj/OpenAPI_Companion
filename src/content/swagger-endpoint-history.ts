@@ -169,7 +169,9 @@ function buildTooltip(snapshot: EndpointPayloadSnapshot): string {
   }
   if (snapshot.body) parts.push(`body: ${snapshot.body.length} chars`)
 
-  return parts.length > 0 ? `Restore last sent payload (${parts.join(' - ')})` : 'Restore last sent payload'
+  return parts.length > 0
+    ? `Restore last sent payload (${parts.join(' - ')})`
+    : 'Restore last sent payload'
 }
 
 export function mountSwaggerEndpointHistory(
@@ -380,7 +382,11 @@ export function mountSwaggerEndpointHistory(
     if (!endpointId) return
 
     const bodyText = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')?.value
-    const { path: pathParams, query: queryParams, headers: headerParams } = readParametersFromBlock(block)
+    const {
+      path: pathParams,
+      query: queryParams,
+      headers: headerParams,
+    } = readParametersFromBlock(block)
 
     const hasBody = Boolean(bodyText && bodyText.trim())
     const hasPath = Object.keys(pathParams).length > 0

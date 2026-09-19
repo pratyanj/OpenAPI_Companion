@@ -206,7 +206,8 @@ export function parseCurlCommand(raw: string): CodeGenRequest {
 
   // 3. Body
   let body: string | undefined
-  const bodyRegex = /(?:-d|--data|--data-raw|--data-binary)\s+(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|([^\s]+))/
+  const bodyRegex =
+    /(?:-d|--data|--data-raw|--data-binary)\s+(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|([^\s]+))/
   const bodyMatch = normalized.match(bodyRegex)
   if (bodyMatch) {
     body = bodyMatch[1] ?? bodyMatch[2] ?? bodyMatch[3]
@@ -261,7 +262,9 @@ function attachCopyCodeDropdown(curlBlock: HTMLElement, doc: Document): boolean 
 
   // Determine insertion anchor: <h4>Curl</h4> which is usually a sibling in responses-inner
   const h4 =
-    (curlBlock.previousElementSibling?.tagName === 'H4' ? (curlBlock.previousElementSibling as HTMLElement) : null) ||
+    (curlBlock.previousElementSibling?.tagName === 'H4'
+      ? (curlBlock.previousElementSibling as HTMLElement)
+      : null) ||
     parent?.querySelector('h4') ||
     curlBlock.querySelector('h4')
 

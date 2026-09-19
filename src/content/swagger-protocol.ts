@@ -33,8 +33,18 @@ export type BridgeOutbound =
   | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'readAuth' }
   | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'writeAuth'; snapshot: AuthSnapshot }
   | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'clearAuth' }
-  | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'syncVariables'; variables: Record<string, string> }
-  | { tag: typeof BRIDGE_TAG; dir: 'to-main'; cmd: 'syncGlobalHeaders'; headers: Record<string, string> }
+  | {
+      tag: typeof BRIDGE_TAG
+      dir: 'to-main'
+      cmd: 'syncVariables'
+      variables: Record<string, string>
+    }
+  | {
+      tag: typeof BRIDGE_TAG
+      dir: 'to-main'
+      cmd: 'syncGlobalHeaders'
+      headers: Record<string, string>
+    }
 
 export function isInbound(data: unknown): data is BridgeInbound {
   const d = data as Partial<BridgeInbound> | undefined
@@ -227,11 +237,7 @@ export function planAuthWrite(
   }
 }
 
-
 /** Pure variable resolver for strings containing {{VAR}} or %7B%7BVAR%7D%7D. */
-export function resolveWithVariables(
-  text: string,
-  variables: Record<string, string>,
-): string {
+export function resolveWithVariables(text: string, variables: Record<string, string>): string {
   return substitute(text, variables).text
 }

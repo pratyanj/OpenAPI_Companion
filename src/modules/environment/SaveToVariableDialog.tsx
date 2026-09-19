@@ -32,17 +32,13 @@ export function SaveToVariableDialog({
     if (initialProperty) {
       const propLower = initialProperty.toLowerCase()
       const match = candidates.find(
-        (c) =>
-          c.path.toLowerCase() === propLower ||
-          c.suggestedName.toLowerCase() === propLower,
+        (c) => c.path.toLowerCase() === propLower || c.suggestedName.toLowerCase() === propLower,
       )
       if (match) return match
     }
     if (initialValue) {
       const valTrimmed = initialValue.trim().toLowerCase()
-      const match = candidates.find(
-        (c) => c.value.trim().toLowerCase() === valTrimmed,
-      )
+      const match = candidates.find((c) => c.value.trim().toLowerCase() === valTrimmed)
       if (match) return match
     }
     return candidates[0] ?? null
@@ -60,10 +56,9 @@ export function SaveToVariableDialog({
       ? initialProperty.toUpperCase().replace(/[^A-Z0-9_]/g, '_')
       : (initialCand?.suggestedName ?? ''),
   )
-  const [value, setValue] = useState(initialValue ?? (initialCand?.value ?? ''))
+  const [value, setValue] = useState(initialValue ?? initialCand?.value ?? '')
   const [isSecret, setIsSecret] = useState(
-    initialCand?.isLikelySecret ??
-      Boolean(name && /(token|secret|password|key|auth)/i.test(name)),
+    initialCand?.isLikelySecret ?? Boolean(name && /(token|secret|password|key|auth)/i.test(name)),
   )
   const [autoExtract, setAutoExtract] = useState(false)
 

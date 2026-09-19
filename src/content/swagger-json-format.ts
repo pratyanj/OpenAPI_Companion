@@ -122,15 +122,15 @@ export function repairJsonString(input: string): string {
   str = str.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
 
   // 2. Strip comments
-  str = str.replace(/\/\/[^\n\r]*/g, "")
-  str = str.replace(/\/\*[\s\S]*?\*\//g, "")
+  str = str.replace(/\/\/[^\n\r]*/g, '')
+  str = str.replace(/\/\*[\s\S]*?\*\//g, '')
 
   // 3. Fix unclosed string literals before comma, brace, or bracket
   str = str.replace(/:\s*"([^"\n\r,}]*)\s*(,|}|])/g, ': "$1"$2')
 
   // Also fix unclosed string literal at end of line
   const rawLines = str.split('\n')
-  const repairedLines = rawLines.map(line => {
+  const repairedLines = rawLines.map((line) => {
     const quotes = (line.match(/(?<!\\)"/g) || []).length
     if (quotes % 2 !== 0) {
       if (/:\s*"[^"]*\s*$/.test(line)) {
@@ -167,10 +167,10 @@ export function repairJsonString(input: string): string {
   str = str.replace(/(["\dtruefalsenull\]}])\s*\n\s*(["{])/gi, '$1,\n$2')
 
   // 9. Fix double or multiple commas
-  str = str.replace(/,\s*,+/g, ",")
+  str = str.replace(/,\s*,+/g, ',')
 
   // 10. Remove trailing commas before } or ]
-  str = str.replace(/,(\s*[}\]])/g, "$1")
+  str = str.replace(/,(\s*[}\]])/g, '$1')
 
   return str
 }

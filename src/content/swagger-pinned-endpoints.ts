@@ -421,7 +421,10 @@ export function mountSwaggerPinnedEndpoints(
       '.swagger-ui .opblock-tag-section, .swagger-ui .opblock, .opblock-tag-section, .opblock',
     )
     if (firstOp && firstOp.parentNode) {
-      if (trayElement.nextElementSibling !== firstOp || trayElement.parentNode !== firstOp.parentNode) {
+      if (
+        trayElement.nextElementSibling !== firstOp ||
+        trayElement.parentNode !== firstOp.parentNode
+      ) {
         firstOp.parentNode.insertBefore(trayElement, firstOp)
       }
       return trayElement
@@ -643,8 +646,11 @@ export function mountSwaggerPinnedEndpoints(
         )
         const rawPath = pathEl?.textContent?.trim() || endpointId.split(' ')[1] || ''
         const pathText = rawPath.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
-        const methodText = methodEl.textContent?.trim().toLowerCase() || endpointId.split(' ')[0] || 'get'
-        const summaryDesc = summary.querySelector('.opblock-summary-description')?.textContent?.trim()
+        const methodText =
+          methodEl.textContent?.trim().toLowerCase() || endpointId.split(' ')[0] || 'get'
+        const summaryDesc = summary
+          .querySelector('.opblock-summary-description')
+          ?.textContent?.trim()
 
         const starBtn = doc.createElement('button')
         starBtn.type = 'button'
@@ -760,7 +766,9 @@ export function mountSwaggerPinnedEndpoints(
       if (typeof busUnsub === 'function') busUnsub()
       if (trayElement) trayElement.remove()
       doc.querySelectorAll('.oac-endpoint-star-btn').forEach((el) => el.remove())
-      doc.querySelectorAll(`[${STAR_ATTACHED_ATTR}]`).forEach((el) => el.removeAttribute(STAR_ATTACHED_ATTR))
+      doc
+        .querySelectorAll(`[${STAR_ATTACHED_ATTR}]`)
+        .forEach((el) => el.removeAttribute(STAR_ATTACHED_ATTR))
       const s = doc.getElementById(STYLE_ID)
       if (s) s.remove()
     },

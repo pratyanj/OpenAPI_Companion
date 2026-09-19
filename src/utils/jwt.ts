@@ -33,7 +33,9 @@ export function decodeJwtClaims(token: string): Record<string, unknown> | null {
   if (parts.length !== 3 || !parts[1]) return null
   try {
     const parsed = JSON.parse(base64UrlDecode(parts[1]))
-    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : null
+    return typeof parsed === 'object' && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null
   } catch {
     return null
   }
@@ -52,9 +54,15 @@ export function extractUserDisplayFromJwt(token: string): UserDisplayInfo | null
   let role: string | undefined
   if (typeof claims.role === 'string' && claims.role.trim()) {
     role = claims.role.trim()
-  } else if (Array.isArray(claims.roles) && typeof claims.roles[0] === 'string' && claims.roles[0].trim()) {
+  } else if (
+    Array.isArray(claims.roles) &&
+    typeof claims.roles[0] === 'string' &&
+    claims.roles[0].trim()
+  ) {
     role = claims.roles[0].trim()
-  } else if (typeof claims['https://schemas.microsoft.com/ws/2008/06/identity/claims/role'] === 'string') {
+  } else if (
+    typeof claims['https://schemas.microsoft.com/ws/2008/06/identity/claims/role'] === 'string'
+  ) {
     role = String(claims['https://schemas.microsoft.com/ws/2008/06/identity/claims/role']).trim()
   }
 

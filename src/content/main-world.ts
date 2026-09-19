@@ -209,7 +209,8 @@ export function hookFetch(): void {
           } else if (typeof modifiedHeaders === 'object') {
             const nextHeaders: Record<string, string> = {}
             for (const [k, v] of Object.entries(modifiedHeaders as Record<string, unknown>)) {
-              nextHeaders[k] = typeof v === 'string' ? resolveWithVariables(v, activeVariables) : String(v)
+              nextHeaders[k] =
+                typeof v === 'string' ? resolveWithVariables(v, activeVariables) : String(v)
             }
             modifiedHeaders = nextHeaders
           }
@@ -232,7 +233,10 @@ export function hookFetch(): void {
             }
           } else if (modifiedHeaders && typeof modifiedHeaders === 'object') {
             for (const [k, v] of Object.entries(activeGlobalHeaders)) {
-              (modifiedHeaders as Record<string, string>)[k] = resolveWithVariables(v, activeVariables)
+              ;(modifiedHeaders as Record<string, string>)[k] = resolveWithVariables(
+                v,
+                activeVariables,
+              )
             }
           } else {
             const nextHeaders: Record<string, string> = {}
@@ -280,7 +284,8 @@ export function hookXHR(): void {
 
   const origSetHeader = proto.setRequestHeader
   proto.setRequestHeader = function (header: string, value: string) {
-    const resolvedVal = typeof value === 'string' ? resolveWithVariables(value, activeVariables) : value
+    const resolvedVal =
+      typeof value === 'string' ? resolveWithVariables(value, activeVariables) : value
     return origSetHeader.apply(this, [header, resolvedVal])
   }
 
@@ -305,7 +310,6 @@ hookFetch()
 hookXHR()
 hookExecuteClick()
 
-
 // ---------------------------------------------------------------------------
 // Native Execute Click Interceptor & Swagger UI Parameter Synchronization
 // ---------------------------------------------------------------------------
@@ -318,7 +322,8 @@ export function hookExecuteClick(doc: Document = document): () => void {
     const path = e.composedPath?.() ?? []
     const target =
       path.find(
-        (node): node is Element => node instanceof Element && node.matches?.('.btn.execute, .execute'),
+        (node): node is Element =>
+          node instanceof Element && node.matches?.('.btn.execute, .execute'),
       ) ?? (e.target as Element | null)?.closest?.('.btn.execute, .execute')
     if (!target) return
 
@@ -423,7 +428,13 @@ export function hookExecuteClick(doc: Document = document): () => void {
 
         if (paramName) {
           try {
-            swagger.specActions.changeParam(pathMethod, paramName, paramIn || 'query', nextVal, false)
+            swagger.specActions.changeParam(
+              pathMethod,
+              paramName,
+              paramIn || 'query',
+              nextVal,
+              false,
+            )
           } catch (err) {
             console.warn('[OpenAPI Companion] changeParam failed:', err)
           }

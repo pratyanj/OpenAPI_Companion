@@ -15,7 +15,6 @@ import type {
   WorkflowImportResult,
 } from './types'
 
-
 export interface WorkflowEnvironmentService {
   getActiveId(): Promise<string>
   resolve(text: string, id: string): Promise<Result<{ text: string; missing: string[] }>>

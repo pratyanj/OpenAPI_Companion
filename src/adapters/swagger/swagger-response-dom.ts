@@ -106,7 +106,9 @@ export function readExecutedResponses(doc: Document = document): ExecutedRespons
     if (requestUrl) {
       try {
         const dummyBase = 'http://localhost'
-        const parsedUrl = new URL(requestUrl.startsWith('http') ? requestUrl : `${dummyBase}${requestUrl}`)
+        const parsedUrl = new URL(
+          requestUrl.startsWith('http') ? requestUrl : `${dummyBase}${requestUrl}`,
+        )
         parsedUrl.searchParams.forEach((val, key) => {
           if (val != null && val !== '') {
             queryParams[key] = val
@@ -129,7 +131,9 @@ export function readExecutedResponses(doc: Document = document): ExecutedRespons
     if (requestUrl && endpoint.includes('{')) {
       try {
         const dummyBase = 'http://localhost'
-        const parsedUrl = new URL(requestUrl.startsWith('http') ? requestUrl : `${dummyBase}${requestUrl}`)
+        const parsedUrl = new URL(
+          requestUrl.startsWith('http') ? requestUrl : `${dummyBase}${requestUrl}`,
+        )
         const epSegments = endpoint.split('/').filter(Boolean)
         const urlSegments = parsedUrl.pathname.split('/').filter(Boolean)
         const offset = urlSegments.length - epSegments.length

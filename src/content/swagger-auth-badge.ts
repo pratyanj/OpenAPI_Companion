@@ -564,7 +564,10 @@ export interface ExpiryCalculation {
   tooltip: string
 }
 
-export function computeExpiryStatus(expiresAt?: number, now: number = Date.now()): ExpiryCalculation {
+export function computeExpiryStatus(
+  expiresAt?: number,
+  now: number = Date.now(),
+): ExpiryCalculation {
   if (!expiresAt) {
     return {
       status: 'permanent',
@@ -700,7 +703,9 @@ export function mountSwaggerAuthBadge(
     isDropdownOpen = false
     const dropdowns = Array.from(doc.querySelectorAll('.oac-account-dropdown'))
     for (const d of dropdowns) d.remove()
-    const btns = Array.from(doc.querySelectorAll('.oac-auth-identity-btn, .oac-op-account-switcher'))
+    const btns = Array.from(
+      doc.querySelectorAll('.oac-auth-identity-btn, .oac-op-account-switcher'),
+    )
     for (const b of btns) b.classList.remove('open')
   }
 
@@ -817,7 +822,7 @@ export function mountSwaggerAuthBadge(
     }
     dropdown.appendChild(list)
 
-// Footer removed per user request
+    // Footer removed per user request
 
     anchor.appendChild(dropdown)
   }
@@ -838,7 +843,9 @@ export function mountSwaggerAuthBadge(
       icon = SVG_ICONS.users
     }
 
-    const expiry = record ? computeExpiryStatus(record.expiresAt) : { status: 'none', text: 'No Token', tooltip: '' }
+    const expiry = record
+      ? computeExpiryStatus(record.expiresAt)
+      : { status: 'none', text: 'No Token', tooltip: '' }
 
     const expiryHtml = isAuthorized
       ? `
@@ -872,7 +879,8 @@ export function mountSwaggerAuthBadge(
 
     if (isAuthorized) {
       const identity = resolveAccountIdentity(record, accountName, currentSavedCredentials)
-      displayName = (identity.name === 'Authorized' || identity.name === 'BearerAuth') ? 'Users' : identity.name
+      displayName =
+        identity.name === 'Authorized' || identity.name === 'BearerAuth' ? 'Users' : identity.name
       roleHtml = identity.role ? `<span class="oac-auth-role-tag">${identity.role}</span>` : ''
       icon = SVG_ICONS.user
     } else if (currentSavedCredentials.length > 0) {
@@ -971,7 +979,9 @@ export function mountSwaggerAuthBadge(
     }
 
     // 2. Update all operation-level account switcher buttons in .execute-wrapper
-    const opBtns = Array.from(doc.querySelectorAll<HTMLElement>('.oac-op-account-switcher, .oac-execute-account-btn'))
+    const opBtns = Array.from(
+      doc.querySelectorAll<HTMLElement>('.oac-op-account-switcher, .oac-execute-account-btn'),
+    )
     for (const opBtn of opBtns) {
       opBtn.innerHTML = renderOpSwitcherHtml(currentRecord, currentAccountName)
     }
@@ -1037,7 +1047,11 @@ export function mountSwaggerAuthBadge(
     let mounted = 0
 
     // 1. Header .auth-wrapper instances
-    const wrappers = Array.from(root.querySelectorAll('.auth-wrapper, .scheme-container .auth-wrapper, .swagger-ui .auth-wrapper'))
+    const wrappers = Array.from(
+      root.querySelectorAll(
+        '.auth-wrapper, .scheme-container .auth-wrapper, .swagger-ui .auth-wrapper',
+      ),
+    )
     for (const wrapper of wrappers) {
       if (!wrapper.hasAttribute(ATTACHED_ATTR)) {
         attachToAuthWrapper(wrapper)
@@ -1047,7 +1061,9 @@ export function mountSwaggerAuthBadge(
 
     // Fallback: if no .auth-wrapper exists on page, mount into .scheme-container or .information-container
     if (mounted === 0 && !doc.querySelector(`[${ATTACHED_ATTR}]`)) {
-      const headerContainer = root.querySelector('.swagger-ui .scheme-container .schemes, .swagger-ui .scheme-container, .swagger-ui .information-container')
+      const headerContainer = root.querySelector(
+        '.swagger-ui .scheme-container .schemes, .swagger-ui .scheme-container, .swagger-ui .information-container',
+      )
       if (headerContainer && !headerContainer.hasAttribute(ATTACHED_ATTR)) {
         attachToAuthWrapper(headerContainer)
         mounted++
@@ -1056,7 +1072,7 @@ export function mountSwaggerAuthBadge(
 
     // 2. Scan all execution bars across open operations (both before and after execute)
     const execWrappers = Array.from(
-      root.querySelectorAll('.execute-wrapper, .opblock-body > .btn-group')
+      root.querySelectorAll('.execute-wrapper, .opblock-body > .btn-group'),
     )
     for (const execWrapper of execWrappers) {
       if (!execWrapper.hasAttribute(ATTACHED_EXEC_ATTR)) {
@@ -1078,12 +1094,14 @@ export function mountSwaggerAuthBadge(
   const onDocClick = (e: MouseEvent) => {
     if (isDropdownOpen) {
       const target = e.target
-      const isInside = target instanceof Element && Boolean(
-        target.closest('.oac-auth-status-badge') ||
-        target.closest('.oac-op-account-container') ||
-        target.closest('.oac-execute-account-switcher') ||
-        target.closest('.oac-account-dropdown')
-      )
+      const isInside =
+        target instanceof Element &&
+        Boolean(
+          target.closest('.oac-auth-status-badge') ||
+          target.closest('.oac-op-account-container') ||
+          target.closest('.oac-execute-account-switcher') ||
+          target.closest('.oac-account-dropdown'),
+        )
       if (!isInside) {
         closeAllDropdowns()
       }
@@ -1144,7 +1162,9 @@ export function mountSwaggerAuthBadge(
       for (const b of badges) b.remove()
       const opContainers = Array.from(doc.querySelectorAll('.oac-op-account-container'))
       for (const c of opContainers) c.remove()
-      const wrappers = Array.from(doc.querySelectorAll(`[${ATTACHED_ATTR}], [${ATTACHED_EXEC_ATTR}]`))
+      const wrappers = Array.from(
+        doc.querySelectorAll(`[${ATTACHED_ATTR}], [${ATTACHED_EXEC_ATTR}]`),
+      )
       for (const w of wrappers) {
         w.removeAttribute(ATTACHED_ATTR)
         w.removeAttribute(ATTACHED_EXEC_ATTR)

@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-  mountSwaggerMockData,
-  extractJsonCandidate,
-  fillMockData,
-} from './swagger-mock-data'
+import { mountSwaggerMockData, extractJsonCandidate, fillMockData } from './swagger-mock-data'
 
 function createOpblock(method: string, path: string, body = '', example = ''): HTMLElement {
   const div = document.createElement('div')
@@ -42,12 +38,7 @@ describe('swagger-mock-data', () => {
   })
 
   it('extractJsonCandidate falls back to rendered example pre when textarea is empty', () => {
-    const block = createOpblock(
-      'POST',
-      '/api/users',
-      '',
-      '{"title":"Task Title","is_done":false}',
-    )
+    const block = createOpblock('POST', '/api/users', '', '{"title":"Task Title","is_done":false}')
     document.body.appendChild(block)
     const textarea = block.querySelector<HTMLTextAreaElement>('textarea.body-param__text')!
 

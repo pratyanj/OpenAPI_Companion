@@ -31,7 +31,7 @@ describe('computeExpiryStatus', () => {
 
   it('formats remaining hours and minutes compactly', () => {
     const now = 1_700_000_000_000
-    const expiresAt = now + (2 * 3600_000) + (15 * 60_000) // 2h 15m
+    const expiresAt = now + 2 * 3600_000 + 15 * 60_000 // 2h 15m
     const res = computeExpiryStatus(expiresAt, now)
     expect(res.status).toBe('active')
     expect(res.text).toBe('2h 15m')
@@ -39,12 +39,12 @@ describe('computeExpiryStatus', () => {
 
   it('formats remaining minutes compactly and marks expiring if <= 5m', () => {
     const now = 1_700_000_000_000
-    const expiresAt = now + (14 * 60_000) // 14m
+    const expiresAt = now + 14 * 60_000 // 14m
     const res1 = computeExpiryStatus(expiresAt, now)
     expect(res1.status).toBe('active')
     expect(res1.text).toBe('14m')
 
-    const expiresSoon = now + (3 * 60_000) // 3m
+    const expiresSoon = now + 3 * 60_000 // 3m
     const res2 = computeExpiryStatus(expiresSoon, now)
     expect(res2.status).toBe('expiring')
     expect(res2.text).toBe('3m')
@@ -60,7 +60,7 @@ describe('computeExpiryStatus', () => {
 
   it('formats expired timestamps with short label', () => {
     const now = 1_700_000_000_000
-    const expiresAt = now - (5 * 60_000) // expired 5m ago
+    const expiresAt = now - 5 * 60_000 // expired 5m ago
     const res = computeExpiryStatus(expiresAt, now)
     expect(res.status).toBe('expired')
     expect(res.text).toBe('Expired')
@@ -132,7 +132,7 @@ describe('swagger-auth-badge mounting & interactions', () => {
       token: makeJwt({ name: 'Admin User', role: 'Admin' }),
       environmentId: 'env-1',
       updatedAt: Date.now(),
-      expiresAt: Date.now() + (14 * 60_000), // 14m
+      expiresAt: Date.now() + 14 * 60_000, // 14m
     }
 
     const handle = mountSwaggerAuthBadge(document)
@@ -197,7 +197,7 @@ describe('swagger-auth-badge mounting & interactions', () => {
       token: makeJwt({ sub: 'u1' }),
       environmentId: 'env-1',
       updatedAt: now,
-      expiresAt: now + (2 * 60_000), // 2m
+      expiresAt: now + 2 * 60_000, // 2m
     }
 
     const handle = mountSwaggerAuthBadge(document)
@@ -406,7 +406,9 @@ describe('swagger-auth-badge mounting & interactions', () => {
     expect(dropdown?.textContent).toContain('Staff')
 
     // Click Staff to switch account directly from execute bar
-    const staffItem = dropdown?.querySelector<HTMLElement>('.oac-account-item[data-cred-id="cred-staff"]')!
+    const staffItem = dropdown?.querySelector<HTMLElement>(
+      '.oac-account-item[data-cred-id="cred-staff"]',
+    )!
     staffItem.click()
 
     expect(onSelectAccount).toHaveBeenCalledWith('cred-staff')
@@ -483,7 +485,9 @@ describe('swagger-auth-badge mounting & interactions', () => {
     expect(dropdown).not.toBeNull()
     expect(dropdown?.textContent).toContain('Staff')
 
-    const staffItem = container.querySelector<HTMLElement>('.oac-account-item[data-cred-id="cred-staff"]')!
+    const staffItem = container.querySelector<HTMLElement>(
+      '.oac-account-item[data-cred-id="cred-staff"]',
+    )!
     staffItem.click()
 
     expect(onSelectAccount).toHaveBeenCalledWith('cred-staff')

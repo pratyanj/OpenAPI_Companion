@@ -56,8 +56,11 @@ describe('swagger-json-format', () => {
 
   describe('cleanErrorMessage', () => {
     it('cleans Firefox JSON.parse prefix while preserving full description and line/column', () => {
-      const firefox = 'JSON.parse: expected double-quoted property name at line 4 column 1 of the JSON data'
-      expect(cleanErrorMessage(firefox)).toBe('expected double-quoted property name at line 4 column 1 of the JSON data')
+      const firefox =
+        'JSON.parse: expected double-quoted property name at line 4 column 1 of the JSON data'
+      expect(cleanErrorMessage(firefox)).toBe(
+        'expected double-quoted property name at line 4 column 1 of the JSON data',
+      )
     })
 
     it('extracts concise error message from verbose V8 parse error dumps', () => {

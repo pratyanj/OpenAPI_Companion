@@ -6,7 +6,10 @@ describe('swagger-paste-curl', () => {
   it('mounts asynchronously when Swagger UI renders after initial call (OAS3 dynamic loading)', async () => {
     const emptyDoc = document.implementation.createHTMLDocument('Empty')
     emptyDoc.body.innerHTML = '<div id="swagger-ui"></div>'
-    const handle = mountSwaggerPasteCurl(emptyDoc, mockProductivity as unknown as ProductivityService)
+    const handle = mountSwaggerPasteCurl(
+      emptyDoc,
+      mockProductivity as unknown as ProductivityService,
+    )
 
     // Button should not be present initially
     expect(emptyDoc.querySelector('.oac-paste-curl-btn')).toBeNull()
@@ -160,7 +163,9 @@ describe('swagger-paste-curl', () => {
   it('executes auto-fill into Swagger UI DOM fields on primary button click', () => {
     vi.useFakeTimers()
     const handle = mountSwaggerPasteCurl(doc, mockProductivity as unknown as ProductivityService)
-    handle.openModal(`curl -X POST "http://127.0.0.1:8008/tasks/?tag=urgent" -H "Content-Type: application/json" -d '{"title":"Important Meeting"}'`)
+    handle.openModal(
+      `curl -X POST "http://127.0.0.1:8008/tasks/?tag=urgent" -H "Content-Type: application/json" -d '{"title":"Important Meeting"}'`,
+    )
 
     const modal = doc.getElementById('oac-paste-curl-modal')!
     const autoFillBtn = modal.querySelector<HTMLButtonElement>('.oac-modal-btn-primary')!
@@ -216,7 +221,7 @@ describe('swagger-paste-curl', () => {
     vi.useFakeTimers()
     const handle = mountSwaggerPasteCurl(doc, mockProductivity as unknown as ProductivityService)
     handle.openModal(
-      `curl -X POST "http://127.0.0.1:8008/tasks/" -H "Content-Type: application/json" -H "X-Tenant-ID: corp-99" -d '{"title":"Important"}'`
+      `curl -X POST "http://127.0.0.1:8008/tasks/" -H "Content-Type: application/json" -H "X-Tenant-ID: corp-99" -d '{"title":"Important"}'`,
     )
 
     const modal = doc.getElementById('oac-paste-curl-modal')!
@@ -234,7 +239,9 @@ describe('swagger-paste-curl', () => {
 
     vi.advanceTimersByTime(300)
 
-    const tenantInput = doc.querySelector<HTMLInputElement>('tr[data-param-name="X-Tenant-ID"] input')!
+    const tenantInput = doc.querySelector<HTMLInputElement>(
+      'tr[data-param-name="X-Tenant-ID"] input',
+    )!
     expect(tenantInput.value).toBe('corp-99')
 
     handle.dispose()

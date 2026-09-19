@@ -9,7 +9,10 @@
  */
 import { setNativeValue } from '@/adapters/swagger/swagger-request-dom'
 import { substitute } from '@/modules/environment/env-service'
-import { DYNAMIC_VARIABLE_SUGGESTIONS, type VariableSuggestion } from '@/components/variable-constants'
+import {
+  DYNAMIC_VARIABLE_SUGGESTIONS,
+  type VariableSuggestion,
+} from '@/components/variable-constants'
 
 export interface SwaggerVariablesHandle {
   updateVariables(variables: Record<string, string>, secrets?: string[]): void
@@ -166,7 +169,11 @@ export function mountSwaggerVariables(
     const all = getSuggestions()
     if (!query) return all
     const q = query.toLowerCase()
-    return all.filter((s) => s.name.toLowerCase().includes(q) || (s.description && s.description.toLowerCase().includes(q)))
+    return all.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.description && s.description.toLowerCase().includes(q)),
+    )
   }
 
   function renderPopup(): void {
@@ -299,7 +306,7 @@ export function mountSwaggerVariables(
       el.closest('.modal-ux') ||
       el.closest('.swagger-ui') ||
       el.matches('.body-param__text') ||
-      el.matches('.parameter')
+      el.matches('.parameter'),
     )
   }
 
@@ -396,7 +403,8 @@ export function mountSwaggerVariables(
     if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
     const path = e.composedPath?.() ?? []
     const target = (path.length ? path : [e.target]).find(
-      (node): node is Element => node instanceof Element && node.matches?.('.btn.execute, .execute'),
+      (node): node is Element =>
+        node instanceof Element && node.matches?.('.btn.execute, .execute'),
     )
     if (!target) return
 

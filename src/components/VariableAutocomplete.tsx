@@ -325,7 +325,6 @@ export function VariableTextarea({
   )
 }
 
-
 export interface VariableInputProps extends Omit<ComponentProps<'input'>, 'size'> {
   projectVariables?: Record<string, string>
   projectSecrets?: string[]

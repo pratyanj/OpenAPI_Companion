@@ -455,7 +455,9 @@ describe('PresetEditorModal', () => {
     it('shows variable suggestions when typing {{ in query parameter value input', async () => {
       const service = mockService()
       const envService = {
-        list: vi.fn(async () => ok([{ id: 'default', name: 'Default', variables: { MY_QUERY_VAR: '123' }, secrets: [] }])),
+        list: vi.fn(async () =>
+          ok([{ id: 'default', name: 'Default', variables: { MY_QUERY_VAR: '123' }, secrets: [] }]),
+        ),
       } as any
       render(
         <PresetEditorModal
@@ -472,7 +474,9 @@ describe('PresetEditorModal', () => {
       const queryValInput = screen.getByLabelText('Query parameter 1 value')
       fireEvent.change(queryValInput, { target: { value: '{{' } })
 
-      expect(await screen.findByRole('listbox', { name: 'Variable suggestions' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('listbox', { name: 'Variable suggestions' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('{{MY_QUERY_VAR}}')).toBeInTheDocument()
     })
   })

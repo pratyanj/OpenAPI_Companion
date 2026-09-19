@@ -27,12 +27,14 @@ export interface ParsedCurl {
  */
 export function normalizeCurlString(raw: string): string {
   if (!raw) return ''
-  return raw
-    // Normalize Windows PowerShell backtick continuations (absorbing surrounding whitespace)
-    .replace(/\s*`\r?\n\s*/g, ' ')
-    // Normalize Unix backslash continuations (absorbing surrounding whitespace)
-    .replace(/\s*\\\r?\n\s*/g, ' ')
-    .trim()
+  return (
+    raw
+      // Normalize Windows PowerShell backtick continuations (absorbing surrounding whitespace)
+      .replace(/\s*`\r?\n\s*/g, ' ')
+      // Normalize Unix backslash continuations (absorbing surrounding whitespace)
+      .replace(/\s*\\\r?\n\s*/g, ' ')
+      .trim()
+  )
 }
 
 /**

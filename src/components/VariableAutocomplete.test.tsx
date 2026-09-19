@@ -101,12 +101,9 @@ describe('VariableTextarea', () => {
   })
 })
 
-
 describe('VariableInput', () => {
   it('renders input with standard attributes', () => {
-    render(
-      <VariableInput id="test-input" placeholder="Value or {{VARIABLE}}" defaultValue="123" />,
-    )
+    render(<VariableInput id="test-input" placeholder="Value or {{VARIABLE}}" defaultValue="123" />)
     const input = screen.getByPlaceholderText('Value or {{VARIABLE}}')
     expect(input).toBeInTheDocument()
     expect(input).toHaveValue('123')

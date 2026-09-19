@@ -728,7 +728,7 @@ export function mountSwaggerPasteCurl(
           <span class="oac-preview-header-key">${escapeHtml(k)}:</span>
           <span class="oac-preview-header-val">${escapeHtml(v)}</span>
         </div>
-      `
+      `,
         )
         .join('')
 

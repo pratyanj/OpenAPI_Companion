@@ -254,7 +254,9 @@ export function WorkflowRunnerModal({
             <div className="flex items-center gap-1">
               <span>Failure Strategy:</span>
               <span className="font-medium text-text">
-                {workflow.mode === 'continue-on-failure' ? 'Continue on failure' : 'Stop on failure'}
+                {workflow.mode === 'continue-on-failure'
+                  ? 'Continue on failure'
+                  : 'Stop on failure'}
               </span>
             </div>
             {summary && <span>Total Duration: {summary.durationMs}ms</span>}

@@ -71,7 +71,8 @@ function StepParametersEditor({
     return endpoints.find((e) => e.endpointId.toLowerCase() === step.endpointId.toLowerCase())
   }, [endpoints, step.endpointId])
 
-  const showAuthTip = isBodyMethod && isAuthEndpoint(step.endpointId, currentEndpoint?.summary, step.name)
+  const showAuthTip =
+    isBodyMethod && isAuthEndpoint(step.endpointId, currentEndpoint?.summary, step.name)
 
   const [activeTab, setActiveTab] = useState<StepTab>(isBodyMethod ? 'body' : 'query')
 
@@ -203,7 +204,9 @@ function StepParametersEditor({
           }`}
         >
           <span>Request Body</span>
-          {step.body?.trim() && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />}
+          {step.body?.trim() && (
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+          )}
         </button>
 
         <button
@@ -265,7 +268,8 @@ function StepParametersEditor({
             <label className="text-[11px] font-semibold text-text flex items-center gap-1.5">
               <span>JSON or Raw Text Payload</span>
               <span className="text-muted font-normal">
-                (Type <code className="text-primary font-mono">&#123;&#123;</code> for variable suggestions)
+                (Type <code className="text-primary font-mono">&#123;&#123;</code> for variable
+                suggestions)
               </span>
             </label>
             <div className="flex items-center gap-2">
@@ -308,9 +312,14 @@ function StepParametersEditor({
             <div className="rounded border border-primary/20 bg-primary/5 p-2 text-[11px] text-muted leading-relaxed">
               <strong className="text-text font-semibold">💡 Authentication Tip:</strong> For login
               endpoints, enter your credentials in JSON format (e.g.{' '}
-              <code className="text-primary font-mono">&#123;&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;secret&quot;&#125;</code>
+              <code className="text-primary font-mono">
+                &#123;&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;:
+                &quot;secret&quot;&#125;
+              </code>
               ) or inject variables (e.g.{' '}
-              <code className="text-primary font-mono">&#123;&quot;token&quot;: &quot;&#123;&#123;AUTH_TOKEN&#125;&#125;&quot;&#125;</code>
+              <code className="text-primary font-mono">
+                &#123;&quot;token&quot;: &quot;&#123;&#123;AUTH_TOKEN&#125;&#125;&quot;&#125;
+              </code>
               ).
             </div>
           )}
@@ -598,8 +607,7 @@ export function WorkflowEditorModal({
   const handleAddStep = async () => {
     const defaultEndpoint = endpoints[0]?.endpointId || 'get /'
     const defs =
-      (await getSwaggerDefaultsAsync?.(defaultEndpoint)) ??
-      getSwaggerDefaults?.(defaultEndpoint)
+      (await getSwaggerDefaultsAsync?.(defaultEndpoint)) ?? getSwaggerDefaults?.(defaultEndpoint)
 
     const detectedTokens = extractPathParams(defaultEndpoint)
     const initialPath: Record<string, string> = {}
@@ -627,9 +635,7 @@ export function WorkflowEditorModal({
 
     const patch: Partial<WorkflowStep> = { endpointId: newEp }
 
-    const defs =
-      (await getSwaggerDefaultsAsync?.(newEp)) ??
-      getSwaggerDefaults?.(newEp)
+    const defs = (await getSwaggerDefaultsAsync?.(newEp)) ?? getSwaggerDefaults?.(newEp)
 
     // Pre-fill body from Swagger if available and current body is empty
     if (defs?.exampleBody && (!targetStep.body || targetStep.body.trim() === '')) {
@@ -737,268 +743,268 @@ export function WorkflowEditorModal({
     <Dialog title={workflow ? 'Edit Workflow' : 'Create New Workflow'} onClose={onClose} size="xl">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm">
         {error && (
-            <div className="rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-              {error}
-            </div>
-          )}
+          <div className="rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+            {error}
+          </div>
+        )}
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1">
-                Workflow Name <span className="text-danger">*</span>
-              </label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Smoke Test User Flow"
-                className="w-full"
-                autoFocus
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1">
-                Description (optional)
-              </label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief summary of what this scenario tests..."
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1.5">Failure Mode</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMode('stop-on-failure')}
-                  className={`flex flex-col text-left p-2.5 rounded border transition-colors ${
-                    mode === 'stop-on-failure'
-                      ? 'border-primary bg-primary/10 text-text'
-                      : 'border-border bg-surface text-muted hover:border-border-strong hover:text-text'
-                  }`}
-                >
-                  <span className="font-semibold text-xs">Stop on failure</span>
-                  <span className="text-[11px] text-muted mt-0.5">
-                    Halt scenario immediately if any step returns an error (4xx/5xx).
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMode('continue-on-failure')}
-                  className={`flex flex-col text-left p-2.5 rounded border transition-colors ${
-                    mode === 'continue-on-failure'
-                      ? 'border-primary bg-primary/10 text-text'
-                      : 'border-border bg-surface text-muted hover:border-border-strong hover:text-text'
-                  }`}
-                >
-                  <span className="font-semibold text-xs">Continue on failure</span>
-                  <span className="text-[11px] text-muted mt-0.5">
-                    Execute all steps regardless of intermediate errors.
-                  </span>
-                </button>
-              </div>
-            </div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-text mb-1">
+              Workflow Name <span className="text-danger">*</span>
+            </label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Smoke Test User Flow"
+              className="w-full"
+              autoFocus
+            />
           </div>
 
-          <div className="border-t border-border pt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-text uppercase tracking-wider">
-                Steps ({steps.length})
-              </span>
-              <Button
+          <div>
+            <label className="block text-xs font-semibold text-text mb-1">
+              Description (optional)
+            </label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief summary of what this scenario tests..."
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-text mb-1.5">Failure Mode</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
                 type="button"
-                variant="secondary"
-                onClick={handleAddStep}
-                className="text-xs flex items-center gap-1 py-1"
+                onClick={() => setMode('stop-on-failure')}
+                className={`flex flex-col text-left p-2.5 rounded border transition-colors ${
+                  mode === 'stop-on-failure'
+                    ? 'border-primary bg-primary/10 text-text'
+                    : 'border-border bg-surface text-muted hover:border-border-strong hover:text-text'
+                }`}
               >
-                <PlusIcon className="h-3 w-3" />
-                Add Step
-              </Button>
+                <span className="font-semibold text-xs">Stop on failure</span>
+                <span className="text-[11px] text-muted mt-0.5">
+                  Halt scenario immediately if any step returns an error (4xx/5xx).
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMode('continue-on-failure')}
+                className={`flex flex-col text-left p-2.5 rounded border transition-colors ${
+                  mode === 'continue-on-failure'
+                    ? 'border-primary bg-primary/10 text-text'
+                    : 'border-border bg-surface text-muted hover:border-border-strong hover:text-text'
+                }`}
+              >
+                <span className="font-semibold text-xs">Continue on failure</span>
+                <span className="text-[11px] text-muted mt-0.5">
+                  Execute all steps regardless of intermediate errors.
+                </span>
+              </button>
             </div>
+          </div>
+        </div>
 
-            {steps.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-6 text-center text-muted text-xs">
-                No steps added yet. Click &quot;Add Step&quot; to build your sequence.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {steps.map((step, idx) => {
-                  const isExpanded = expandedSteps[step.id] ?? true
-                  const [method] = step.endpointId.split(' ')
-                  const isDragging = draggedIndex === idx
-                  const isDragOver = dragOverIndex === idx
+        <div className="border-t border-border pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-text uppercase tracking-wider">
+              Steps ({steps.length})
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddStep}
+              className="text-xs flex items-center gap-1 py-1"
+            >
+              <PlusIcon className="h-3 w-3" />
+              Add Step
+            </Button>
+          </div>
 
-                  return (
-                    <div
-                      key={step.id}
-                      draggable
-                      onDragStart={(e) => {
-                        setDraggedIndex(idx)
-                        e.dataTransfer.effectAllowed = 'move'
-                        e.dataTransfer.setData('text/plain', String(idx))
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        e.dataTransfer.dropEffect = 'move'
-                        if (dragOverIndex !== idx) {
-                          setDragOverIndex(idx)
-                        }
-                      }}
-                      onDragLeave={(e) => {
-                        if (e.currentTarget.contains(e.relatedTarget as Node)) return
-                        if (dragOverIndex === idx) setDragOverIndex(null)
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        if (draggedIndex !== null && draggedIndex !== idx) {
-                          handleReorderSteps(draggedIndex, idx)
-                        }
-                        setDraggedIndex(null)
-                        setDragOverIndex(null)
-                      }}
-                      onDragEnd={() => {
-                        setDraggedIndex(null)
-                        setDragOverIndex(null)
-                      }}
-                      className={`rounded-lg border transition-all p-3.5 ${
-                        isDragging
-                          ? 'opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]'
-                          : isDragOver
-                            ? 'border-primary border-2 bg-primary/10 shadow-md ring-2 ring-primary/20'
-                            : 'border-border bg-surface/70 hover:border-border-strong'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          {/* Drag Handle */}
-                          <div
-                            className="cursor-grab active:cursor-grabbing p-1 text-muted hover:text-text rounded shrink-0"
-                            title="Drag to reorder step"
-                          >
-                            <GripVerticalIcon className="h-3.5 w-3.5" />
-                          </div>
+          {steps.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-6 text-center text-muted text-xs">
+              No steps added yet. Click &quot;Add Step&quot; to build your sequence.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {steps.map((step, idx) => {
+                const isExpanded = expandedSteps[step.id] ?? true
+                const [method] = step.endpointId.split(' ')
+                const isDragging = draggedIndex === idx
+                const isDragOver = dragOverIndex === idx
 
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(step.id)}
-                            className="p-1 hover:bg-surface-hover rounded text-muted hover:text-text shrink-0"
-                            aria-label={isExpanded ? 'Collapse step' : 'Expand step'}
-                          >
-                            {isExpanded ? (
-                              <ChevronDownIcon className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronRightIcon className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-
-                          <span className="font-mono text-xs font-bold text-muted w-5 shrink-0">
-                            #{idx + 1}
-                          </span>
-
-                          <MethodTag method={method || 'GET'} />
-
-                          <span className="text-xs font-medium text-text truncate">
-                            {step.name || step.endpointId}
-                          </span>
+                return (
+                  <div
+                    key={step.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedIndex(idx)
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', String(idx))
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      if (dragOverIndex !== idx) {
+                        setDragOverIndex(idx)
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node)) return
+                      if (dragOverIndex === idx) setDragOverIndex(null)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (draggedIndex !== null && draggedIndex !== idx) {
+                        handleReorderSteps(draggedIndex, idx)
+                      }
+                      setDraggedIndex(null)
+                      setDragOverIndex(null)
+                    }}
+                    onDragEnd={() => {
+                      setDraggedIndex(null)
+                      setDragOverIndex(null)
+                    }}
+                    className={`rounded-lg border transition-all p-3.5 ${
+                      isDragging
+                        ? 'opacity-40 border-dashed border-primary bg-primary/5 scale-[0.99]'
+                        : isDragOver
+                          ? 'border-primary border-2 bg-primary/10 shadow-md ring-2 ring-primary/20'
+                          : 'border-border bg-surface/70 hover:border-border-strong'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        {/* Drag Handle */}
+                        <div
+                          className="cursor-grab active:cursor-grabbing p-1 text-muted hover:text-text rounded shrink-0"
+                          title="Drag to reorder step"
+                        >
+                          <GripVerticalIcon className="h-3.5 w-3.5" />
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            disabled={idx === 0}
-                            onClick={() => handleMoveUp(idx)}
-                            className="p-1 text-muted hover:text-text disabled:opacity-30 disabled:pointer-events-none rounded hover:bg-surface-hover"
-                            title="Move up"
-                          >
-                            <ArrowUpIcon className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={idx === steps.length - 1}
-                            onClick={() => handleMoveDown(idx)}
-                            className="p-1 text-muted hover:text-text disabled:opacity-30 disabled:pointer-events-none rounded hover:bg-surface-hover"
-                            title="Move down"
-                          >
-                            <ArrowDownIcon className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveStep(step.id)}
-                            className="p-1 text-danger/80 hover:text-danger rounded hover:bg-danger/10 ml-1"
-                            title="Remove step"
-                          >
-                            <DeleteIcon className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(step.id)}
+                          className="p-1 hover:bg-surface-hover rounded text-muted hover:text-text shrink-0"
+                          aria-label={isExpanded ? 'Collapse step' : 'Expand step'}
+                        >
+                          {isExpanded ? (
+                            <ChevronDownIcon className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronRightIcon className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+
+                        <span className="font-mono text-xs font-bold text-muted w-5 shrink-0">
+                          #{idx + 1}
+                        </span>
+
+                        <MethodTag method={method || 'GET'} />
+
+                        <span className="text-xs font-medium text-text truncate">
+                          {step.name || step.endpointId}
+                        </span>
                       </div>
 
-                      {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-border/60 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-medium text-muted mb-1">
-                                Step Label (optional)
-                              </label>
-                              <Input
-                                value={step.name ?? ''}
-                                onChange={(e) => handleStepChange(step.id, { name: e.target.value })}
-                                placeholder="e.g. Login with Admin Account"
-                                className="w-full text-xs"
-                              />
-                            </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveUp(idx)}
+                          className="p-1 text-muted hover:text-text disabled:opacity-30 disabled:pointer-events-none rounded hover:bg-surface-hover"
+                          title="Move up"
+                        >
+                          <ArrowUpIcon className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === steps.length - 1}
+                          onClick={() => handleMoveDown(idx)}
+                          className="p-1 text-muted hover:text-text disabled:opacity-30 disabled:pointer-events-none rounded hover:bg-surface-hover"
+                          title="Move down"
+                        >
+                          <ArrowDownIcon className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStep(step.id)}
+                          className="p-1 text-danger/80 hover:text-danger rounded hover:bg-danger/10 ml-1"
+                          title="Remove step"
+                        >
+                          <DeleteIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
 
-                            <div>
-                              <label className="block text-[11px] font-medium text-muted mb-1">
-                                Pre-Execution Delay (ms)
-                              </label>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="100"
-                                value={String(step.delayMs ?? 0)}
-                                onChange={(e) =>
-                                  handleStepChange(step.id, {
-                                    delayMs: Math.max(0, parseInt(e.target.value, 10) || 0),
-                                  })
-                                }
-                                className="w-full text-xs"
-                              />
-                            </div>
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-border/60 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-medium text-muted mb-1">
+                              Step Label (optional)
+                            </label>
+                            <Input
+                              value={step.name ?? ''}
+                              onChange={(e) => handleStepChange(step.id, { name: e.target.value })}
+                              placeholder="e.g. Login with Admin Account"
+                              className="w-full text-xs"
+                            />
                           </div>
 
                           <div>
                             <label className="block text-[11px] font-medium text-muted mb-1">
-                              Target Endpoint
+                              Pre-Execution Delay (ms)
                             </label>
-                            <EndpointPicker
-                              endpoints={endpoints}
-                              selectedEndpointId={step.endpointId}
-                              onSelect={(ep) => handleEndpointSelect(step.id, ep)}
+                            <Input
+                              type="number"
+                              min="0"
+                              step="100"
+                              value={String(step.delayMs ?? 0)}
+                              onChange={(e) =>
+                                handleStepChange(step.id, {
+                                  delayMs: Math.max(0, parseInt(e.target.value, 10) || 0),
+                                })
+                              }
+                              className="w-full text-xs"
                             />
                           </div>
+                        </div>
 
-                          {/* Full Parameter & Body Tabs Editor */}
-                          <StepParametersEditor
-                            step={step}
-                            onChange={(patch) => handleStepChange(step.id, patch)}
+                        <div>
+                          <label className="block text-[11px] font-medium text-muted mb-1">
+                            Target Endpoint
+                          </label>
+                          <EndpointPicker
                             endpoints={endpoints}
-                            variables={variables}
-                            templates={templates}
-                            getSwaggerDefaults={getSwaggerDefaults}
-                            getSwaggerDefaultsAsync={getSwaggerDefaultsAsync}
+                            selectedEndpointId={step.endpointId}
+                            onSelect={(ep) => handleEndpointSelect(step.id, ep)}
                           />
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+
+                        {/* Full Parameter & Body Tabs Editor */}
+                        <StepParametersEditor
+                          step={step}
+                          onChange={(patch) => handleStepChange(step.id, patch)}
+                          endpoints={endpoints}
+                          variables={variables}
+                          templates={templates}
+                          getSwaggerDefaults={getSwaggerDefaults}
+                          getSwaggerDefaultsAsync={getSwaggerDefaultsAsync}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="sticky -bottom-4 -mx-4 px-4 py-3 bg-bg border-t border-border flex items-center justify-end gap-2 z-10 mt-2">
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>

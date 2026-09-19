@@ -53,7 +53,11 @@ describe('SettingsService preferences', () => {
   it('preserves defaults when existing stored preferences lack swaggerFeatures', async () => {
     const { service, storage } = setup()
     // Stored old record without swaggerFeatures
-    await storage.set(settingsKey('preferences'), { autoBackup: true, historyLimit: 500 }, { immediate: true })
+    await storage.set(
+      settingsKey('preferences'),
+      { autoBackup: true, historyLimit: 500 },
+      { immediate: true },
+    )
 
     const prefs = await service.getPreferences()
     expect(prefs.autoBackup).toBe(true)

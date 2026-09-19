@@ -69,8 +69,9 @@ describe('swagger-global-headers', () => {
     expect(modal.classList.contains('oac-hidden')).toBe(false)
 
     // Click preset "+ X-Tenant-ID"
-    const presetBtn = Array.from(modal.querySelectorAll<HTMLButtonElement>('.oac-gh-preset-btn'))
-      .find((b) => b.textContent?.includes('X-Tenant-ID'))
+    const presetBtn = Array.from(
+      modal.querySelectorAll<HTMLButtonElement>('.oac-gh-preset-btn'),
+    ).find((b) => b.textContent?.includes('X-Tenant-ID'))
 
     expect(presetBtn).toBeDefined()
     presetBtn?.click()

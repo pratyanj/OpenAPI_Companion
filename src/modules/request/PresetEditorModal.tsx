@@ -568,9 +568,10 @@ export function PresetEditorModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-text">Query Parameters</span>
-                <span className="text-[10px] text-muted">
-                  (Type <code className="font-mono text-primary font-semibold">{`{{`}</code> for variables)
-                </span>
+              <span className="text-[10px] text-muted">
+                (Type <code className="font-mono text-primary font-semibold">{`{{`}</code> for
+                variables)
+              </span>
               {queryParams.filter((q) => q.key.trim()).length > 0 && (
                 <Badge kind="info">{queryParams.filter((q) => q.key.trim()).length} set</Badge>
               )}
@@ -747,8 +748,6 @@ export function PresetEditorModal({
             )}
           </div>
         )}
-
-        
       </div>
     </Dialog>
   )
