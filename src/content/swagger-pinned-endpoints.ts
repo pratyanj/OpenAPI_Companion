@@ -79,6 +79,7 @@ body.oac-disable-pinned-endpoints #oac-pinned-endpoints-tray {
 /* Pinned Operations Top Tray */
 #oac-pinned-endpoints-tray {
   box-sizing: border-box !important;
+  width: 100% !important;
   margin: 14px 0 20px 0 !important;
   padding: 12px 16px !important;
   background: var(--oac-bg, #ffffff) !important;
@@ -395,47 +396,70 @@ export function mountSwaggerPinnedEndpoints(
   }
 
   /**
+   * Ensures the tray element exists and is anchored at the ideal location in the DOM.
+   *
+   * Crucial design principle:
+   * To ensure Pinned Operations has the EXACT same width, margins, and centered alignment
+   * as the API list across all Swagger UI variants (FastAPI, drf-yasg, Swagger 2.0, OpenAPI 3.x),
+   * the tray MUST be inserted immediately before the first operation or tag section
+   * (`.opblock-tag-section, .opblock`). This guarantees it sits inside Swagger UI's
+   * operations wrapper (.wrapper / section.block.col-12) below any filter box and
+   * above the endpoints.
+   *
+   * Furthermore, when Swagger UI loads operations asynchronously (such as in Firefox),
+   * this function dynamically repositions the tray from any temporary fallback location
+   * down to the top of the operations list as soon as operations appear.
+   */
+  function ensureTrayAnchored(): HTMLElement {
+    if (!trayElement) {
+      trayElement = doc.createElement('div')
+      trayElement.id = TRAY_ID
+    }
+
+    // 1. Primary & ideal anchor: directly before the first opblock-tag-section or opblock
+    const firstOp = doc.querySelector(
+      '.swagger-ui .opblock-tag-section, .swagger-ui .opblock, .opblock-tag-section, .opblock',
+    )
+    if (firstOp && firstOp.parentNode) {
+      if (trayElement.nextElementSibling !== firstOp || trayElement.parentNode !== firstOp.parentNode) {
+        firstOp.parentNode.insertBefore(trayElement, firstOp)
+      }
+      return trayElement
+    }
+
+    // 2. If operations haven't rendered yet (e.g. while spec is loading asynchronously),
+    // anchor inside the operations wrapper if available, or main wrapper
+    if (!trayElement.isConnected) {
+      const allWrappers = Array.from(doc.querySelectorAll('.swagger-ui .wrapper'))
+      if (allWrappers.length > 1) {
+        const opWrapper = allWrappers[allWrappers.length - 1]
+        const block = opWrapper.querySelector('section.block, section') ?? opWrapper
+        block.insertBefore(trayElement, block.firstChild)
+        return trayElement
+      }
+
+      const mainWrapper = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
+      if (mainWrapper) {
+        mainWrapper.appendChild(trayElement)
+      } else {
+        doc.body?.appendChild(trayElement)
+      }
+    }
+
+    return trayElement
+  }
+
+  /**
    * Renders or updates the top Pinned Operations tray safely.
    */
   function renderTray(): void {
     const favorites = getFavoritesList()
     const fingerprint = `${favorites.length}:${favorites.map((f) => f.endpointId).join(',')}:${isTrayCollapsed}`
 
-    // Ensure tray container exists and is anchored at the top of Swagger
-    if (!trayElement || !trayElement.isConnected) {
-      if (!trayElement) {
-        trayElement = doc.createElement('div')
-        trayElement.id = TRAY_ID
-      }
+    // Always ensure tray is anchored at the ideal location above the operations
+    ensureTrayAnchored()
 
-      // 1. Try after filter container (e.g. drf-yasg Filter by tag or Swagger filter box)
-      const filterContainer = doc.querySelector('.swagger-ui .filter-container, .swagger-ui .filter-box')
-      if (filterContainer && filterContainer.parentNode) {
-        filterContainer.parentNode.insertBefore(trayElement, filterContainer.nextSibling)
-      } else {
-        // 2. Try before tag section or first opblock
-        const opSection = doc.querySelector('.opblock-tag-section, .opblock')
-        if (opSection && opSection.parentNode) {
-          opSection.parentNode.insertBefore(trayElement, opSection)
-        } else {
-          // 3. Try scheme container
-          const schemeContainer = doc.querySelector('.swagger-ui .scheme-container')
-          if (schemeContainer && schemeContainer.parentNode) {
-            schemeContainer.parentNode.insertBefore(trayElement, schemeContainer.nextSibling)
-          } else {
-            // 4. Try wrapper or main container (safe standard DOM traversal without :has)
-            const wrapper = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
-            if (wrapper) {
-              wrapper.insertBefore(trayElement, wrapper.firstChild)
-            } else {
-              doc.body?.appendChild(trayElement)
-            }
-          }
-        }
-      }
-    }
-
-    // If already rendered with exact same favorites and state, skip to avoid touching DOM
+    // If already rendered with exact same favorites and state, skip rebuilding DOM
     if (fingerprint === lastRenderedFingerprint) {
       return
     }
@@ -691,7 +715,11 @@ export function mountSwaggerPinnedEndpoints(
           if (node.classList?.contains('oac-endpoint-star-btn') || node.id === TRAY_ID) {
             return false
           }
-          if (node.classList?.contains('opblock') || node.querySelector?.('.opblock')) {
+          if (
+            node.classList?.contains('opblock') ||
+            node.classList?.contains('opblock-tag-section') ||
+            node.querySelector?.('.opblock, .opblock-tag-section')
+          ) {
             return true
           }
         }
@@ -706,8 +734,8 @@ export function mountSwaggerPinnedEndpoints(
       const addedCount = scanAndMount()
       if (addedCount > 0) {
         lastRenderedFingerprint = ''
-        renderTray()
       }
+      renderTray()
     }, 150)
   })
 

@@ -294,4 +294,104 @@ describe('mountSwaggerPinnedEndpoints', () => {
 
     handle.dispose()
   })
+
+  it('anchors inside wrapper before first operation in drf-yasg layout instead of outside near filter-container', () => {
+    // drf-yasg DOM markup: filter-container sits in .swagger-ui outside .wrapper,
+    // while operations sit inside .wrapper
+    doc.body.innerHTML = `
+      <div class="swagger-ui">
+        <div class="filter-container">
+          <input class="operation-filter-input" placeholder="Filter by tag" />
+        </div>
+        <div class="wrapper">
+          <section class="block col-12 block-desktop col-12-desktop">
+            <div class="opblock-tag-section">
+              <div class="opblock opblock-get" id="operations-audit-get_audit">
+                <div class="opblock-summary opblock-summary-get">
+                  <button class="opblock-summary-control">
+                    <span class="opblock-summary-method">GET</span>
+                    <span class="opblock-summary-path">/api/v1/audit-logs/</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    `
+
+    favoritesList.push({
+      endpointId: 'get /api/v1/audit-logs/',
+      method: 'get',
+      path: '/api/v1/audit-logs/',
+      summary: 'Audit logs',
+      tags: [],
+    })
+
+    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const tray = doc.getElementById('oac-pinned-endpoints-tray')!
+    expect(tray).toBeDefined()
+
+    const opSection = doc.querySelector('.opblock-tag-section')!
+    const wrapper = doc.querySelector('.wrapper')!
+    const filterContainer = doc.querySelector('.filter-container')!
+
+    // Crucial: tray MUST be inside the .wrapper containing operations,
+    // immediately before the first tag section, and NOT as a sibling of .filter-container
+    expect(wrapper.contains(tray)).toBe(true)
+    expect(tray.nextElementSibling).toBe(opSection)
+    expect(tray.parentNode).toBe(opSection.parentNode)
+    expect(filterContainer.nextElementSibling).not.toBe(tray)
+
+    handle.dispose()
+  })
+
+  it('dynamically repositions tray from fallback to before operations when loaded asynchronously (Firefox)', async () => {
+    // Initial state: spec is still loading, no operations exist yet
+    doc.body.innerHTML = `
+      <div class="swagger-ui">
+        <div class="wrapper">
+          <div class="topbar">Swagger Banner</div>
+        </div>
+      </div>
+    `
+
+    favoritesList.push({
+      endpointId: 'get /tasks/',
+      method: 'get',
+      path: '/tasks/',
+      summary: 'Tasks list',
+      tags: [],
+    })
+
+    const handle = mountSwaggerPinnedEndpoints(mockProductivity as unknown as ProductivityService, doc)
+    const tray = doc.getElementById('oac-pinned-endpoints-tray')!
+    expect(tray).toBeDefined()
+    expect(tray.isConnected).toBe(true)
+
+    // Now simulate Swagger UI finishing async spec load and rendering endpoints
+    const opsWrapper = doc.createElement('div')
+    opsWrapper.className = 'wrapper'
+    opsWrapper.innerHTML = `
+      <div class="opblock-tag-section">
+        <div class="opblock opblock-get">
+          <div class="opblock-summary">
+            <span class="opblock-summary-method">GET</span>
+            <span class="opblock-summary-path">/tasks/</span>
+          </div>
+        </div>
+      </div>
+    `
+    doc.querySelector('.swagger-ui')!.appendChild(opsWrapper)
+
+    // Trigger re-render / re-anchor
+    handle.renderTray()
+
+    const opSection = doc.querySelector('.opblock-tag-section')!
+    // Tray must have dynamically moved from the top banner to right before the first operation
+    expect(tray.nextElementSibling).toBe(opSection)
+    expect(tray.parentNode).toBe(opSection.parentNode)
+
+    handle.dispose()
+  })
 })
