@@ -34,9 +34,8 @@ export function setNativeValue(
   }
 
   // Reset React internal _valueTracker if present
-  const tracker = (
-    el as unknown as { _valueTracker?: { setValue: (v: string) => void } }
-  )._valueTracker
+  const tracker = (el as unknown as { _valueTracker?: { setValue: (v: string) => void } })
+    ._valueTracker
   if (tracker) {
     try {
       tracker.setValue('')

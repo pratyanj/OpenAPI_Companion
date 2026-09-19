@@ -147,7 +147,9 @@ describe('swagger-global-headers', () => {
     expect(doc.getElementById('oac-global-headers-styles')).toBeNull()
   })
   it('mounts into shared .oac-header-actions-bar with Paste cURL button', () => {
-    const mockProductivity = { getOperations: () => [] } as unknown as Parameters<typeof mountSwaggerPasteCurl>[1]
+    const mockProductivity = { getOperations: () => [] } as unknown as Parameters<
+      typeof mountSwaggerPasteCurl
+    >[1]
     const pasteHandle = mountSwaggerPasteCurl(doc, mockProductivity)
     const headersHandle = mountSwaggerGlobalHeaders(doc, headersService)
 

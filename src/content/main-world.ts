@@ -375,7 +375,9 @@ export function hookExecuteClick(doc: Document = document): () => void {
 
       // Update DOM & React tracker if value was resolved or different
       if (nextVal !== val) {
-        const tracker = (input as HTMLInputElement & { _valueTracker?: { setValue: (v: string) => void } })._valueTracker
+        const tracker = (
+          input as HTMLInputElement & { _valueTracker?: { setValue: (v: string) => void } }
+        )._valueTracker
         if (tracker) {
           try {
             tracker.setValue('')
