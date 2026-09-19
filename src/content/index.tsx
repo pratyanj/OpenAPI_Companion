@@ -155,6 +155,7 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-auth-badge .oac-auth-status-badge {
       display: none !important;
     }
+    body.oac-disable-var-resolution #oac-swagger-var-autocomplete-host,
     body.oac-disable-var-resolution #oac-var-autocomplete-host {
       display: none !important;
     }
@@ -477,7 +478,9 @@ async function boot(): Promise<void> {
   })
 
   const syncActiveVariables = async (): Promise<void> => {
-    const env = await environments.get(currentEnv)
+    const activeId = await environments.getActiveId()
+    currentEnv = activeId
+    const env = await environments.get(activeId)
     if (env.ok && env.value) {
       activeVariables = env.value.variables ?? {}
       activeSecrets = env.value.secrets ?? []
@@ -491,7 +494,9 @@ async function boot(): Promise<void> {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (
         area === 'local' &&
-        Object.keys(changes).some((k) => k.includes('environments') || k.includes('environment'))
+        Object.keys(changes).some(
+          (k) => k.includes('environments') || k.includes('environment') || k.includes('metadata'),
+        )
       ) {
         void syncActiveVariables()
       }

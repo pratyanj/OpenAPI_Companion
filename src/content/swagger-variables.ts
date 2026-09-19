@@ -290,19 +290,21 @@ export function mountSwaggerVariables(
 
   function isSwaggerInputField(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement {
     if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return false
+    if (el.matches('.operation-filter-input, input[placeholder*="filter" i]')) return false
     return Boolean(
       el.closest('.opblock') ||
       el.closest('.parameters-container') ||
       el.closest('table.parameters') ||
+      el.closest('.auth-container') ||
+      el.closest('.modal-ux') ||
+      el.closest('.swagger-ui') ||
       el.matches('.body-param__text') ||
       el.matches('.parameter')
     )
   }
 
-  function onInput(e: Event): void {
+  function checkAndTriggerAutocomplete(target: Element | null): void {
     if (doc.body?.classList.contains('oac-disable-var-resolution')) return
-    if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
-    const target = e.target as Element | null
     if (!isSwaggerInputField(target)) {
       if (activeInput) closeAutocomplete()
       return
@@ -319,6 +321,16 @@ export function mountSwaggerVariables(
     } else {
       closeAutocomplete()
     }
+  }
+
+  function onInput(e: Event): void {
+    checkAndTriggerAutocomplete(e.target as Element | null)
+  }
+
+  function onFocusOrClick(e: Event): void {
+    const target = e.target as Element | null
+    if (!isSwaggerInputField(target)) return
+    checkAndTriggerAutocomplete(target)
   }
 
   function onKeyDown(e: KeyboardEvent): void {
@@ -341,10 +353,12 @@ export function mountSwaggerVariables(
     }
   }
 
-  function onBlur(): void {
-    setTimeout(() => {
-      closeAutocomplete()
-    }, 150)
+  function onBlur(e: FocusEvent): void {
+    if (e.target && e.target === activeInput) {
+      setTimeout(() => {
+        closeAutocomplete()
+      }, 150)
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -378,6 +392,8 @@ export function mountSwaggerVariables(
 
   function onExecuteClick(e: Event): void {
     if (doc.body?.classList.contains('oac-disable-var-resolution')) return
+    // If MAIN world is active, let MAIN world handle Execute click & Redux parameter synchronization
+    if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
     const path = e.composedPath?.() ?? []
     const target = (path.length ? path : [e.target]).find(
       (node): node is Element => node instanceof Element && node.matches?.('.btn.execute, .execute'),
@@ -421,8 +437,10 @@ export function mountSwaggerVariables(
 
   // Bind document listeners
   doc.addEventListener('input', onInput, true)
+  doc.addEventListener('focusin', onFocusOrClick, true)
+  doc.addEventListener('click', onFocusOrClick, true)
   doc.addEventListener('keydown', onKeyDown as unknown as EventListener, true)
-  doc.addEventListener('blur', onBlur, true)
+  doc.addEventListener('blur', onBlur as unknown as EventListener, true)
   doc.addEventListener('click', onExecuteClick, true)
   window.addEventListener('scroll', updatePopupPosition, true)
   window.addEventListener('resize', updatePopupPosition)
@@ -435,8 +453,10 @@ export function mountSwaggerVariables(
     resolveOperationInputs,
     dispose(): void {
       doc.removeEventListener('input', onInput, true)
+      doc.removeEventListener('focusin', onFocusOrClick, true)
+      doc.removeEventListener('click', onFocusOrClick, true)
       doc.removeEventListener('keydown', onKeyDown as unknown as EventListener, true)
-      doc.removeEventListener('blur', onBlur, true)
+      doc.removeEventListener('blur', onBlur as unknown as EventListener, true)
       doc.removeEventListener('click', onExecuteClick, true)
       window.removeEventListener('scroll', updatePopupPosition, true)
       window.removeEventListener('resize', updatePopupPosition)

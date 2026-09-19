@@ -199,4 +199,84 @@ describe('swagger-variables (in-page Swagger UI integration)', () => {
     await new Promise((r) => setTimeout(r, 80))
     expect(executedWith).toEqual({ team: '10', user: '20' })
   })
+
+  it('triggers autocomplete even when documentElement.dataset.oacMainWorld is true', () => {
+    document.documentElement.dataset.oacMainWorld = 'true'
+    document.body.innerHTML = `
+      <div class="swagger-ui">
+        <div class="opblock is-open">
+          <input class="parameter" value="" />
+        </div>
+      </div>
+    `
+
+    handle = mountSwaggerVariables({ AUTH_TOKEN: 'secret_jwt' }, ['AUTH_TOKEN'])
+
+    const input = document.querySelector<HTMLInputElement>('input.parameter')!
+    input.value = 'Bearer {{'
+    input.setSelectionRange(9, 9)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const host = document.getElementById('oac-swagger-var-autocomplete-host')!
+    expect(host).toBeInTheDocument()
+    const shadow = host.shadowRoot!
+    const popup = shadow.querySelector<HTMLDivElement>('.oac-popup')!
+    expect(popup.style.display).toBe('flex')
+    expect(shadow.textContent).toContain('AUTH_TOKEN')
+
+    delete document.documentElement.dataset.oacMainWorld
+  })
+
+  it('re-opens autocomplete on focusin / click if cursor is at {{ placeholder', () => {
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <input class="parameter" value="Bearer {{TO" />
+      </div>
+    `
+
+    handle = mountSwaggerVariables({ TOKEN: 'secret_val' }, [])
+
+    const input = document.querySelector<HTMLInputElement>('input.parameter')!
+    input.setSelectionRange(11, 11)
+    input.dispatchEvent(new Event('focusin', { bubbles: true }))
+
+    const host = document.getElementById('oac-swagger-var-autocomplete-host')!
+    const shadow = host.shadowRoot!
+    const popup = shadow.querySelector<HTMLDivElement>('.oac-popup')!
+    expect(popup.style.display).toBe('flex')
+    expect(shadow.textContent).toContain('TOKEN')
+  })
+
+  it('does not close autocomplete when an unrelated element emits blur', async () => {
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <input id="main-param" class="parameter" value="" />
+        <button id="other-btn">Other</button>
+      </div>
+    `
+
+    handle = mountSwaggerVariables({ USER: 'alice' }, [])
+
+    const input = document.getElementById('main-param') as HTMLInputElement
+    const otherBtn = document.getElementById('other-btn') as HTMLButtonElement
+
+    input.value = '{{'
+    input.setSelectionRange(2, 2)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const host = document.getElementById('oac-swagger-var-autocomplete-host')!
+    const shadow = host.shadowRoot!
+    const popup = shadow.querySelector<HTMLDivElement>('.oac-popup')!
+    expect(popup.style.display).toBe('flex')
+
+    // Blur from unrelated button should NOT close the active input's autocomplete
+    otherBtn.dispatchEvent(new FocusEvent('blur', { bubbles: false }))
+    await new Promise((r) => setTimeout(r, 200))
+    expect(popup.style.display).toBe('flex')
+
+    // Blur from the active input itself DOES close it
+    input.dispatchEvent(new FocusEvent('blur', { bubbles: false }))
+    await new Promise((r) => setTimeout(r, 200))
+    expect(popup.style.display).toBe('none')
+  })
 })
