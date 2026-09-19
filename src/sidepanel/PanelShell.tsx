@@ -108,8 +108,8 @@ export function PanelShell({
   const { preference } = useTheme(theme)
 
   useEventBus(bus, 'ENVIRONMENT_CHANGED', (payload) => setActiveEnv(payload.environmentId))
-  useEventBus(bus, 'TAB_NAVIGATE', (payload: unknown) => {
-    const tab = (payload as { tab?: string } | null)?.tab
+  useEventBus(bus, 'TAB_NAVIGATE', (payload) => {
+    const tab = payload?.tab
     if (tab && TABS.some((t) => t.id === tab)) {
       setActiveTab(tab)
     }

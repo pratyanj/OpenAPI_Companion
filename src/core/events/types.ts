@@ -102,6 +102,9 @@ export interface EventPayload {
 
   // Generic toast request
   NOTIFY: { kind: 'success' | 'warning' | 'error'; message: string }
+
+  // Navigation / Shell
+  TAB_NAVIGATE: { tab: string }
 }
 
 export type EventName = keyof EventPayload

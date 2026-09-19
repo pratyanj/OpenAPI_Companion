@@ -127,6 +127,7 @@ export function EnvironmentsPanel({
   const [copiedVarIndex, setCopiedVarIndex] = useState<number | null>(null)
 
   const isLoadedRef = useRef(false)
+  const isLocalSavingRef = useRef(false)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeEnvRef = useRef(activeEnv)
   activeEnvRef.current = activeEnv
@@ -136,6 +137,7 @@ export function EnvironmentsPanel({
   const performSave = useCallback(
     async (currentVars: VarRow[], mode: 'table' | 'raw', currentRaw: string) => {
       if (!isLoadedRef.current) return
+      isLocalSavingRef.current = true
       setSaving(true)
       setError(null)
 
@@ -163,15 +165,19 @@ export function EnvironmentsPanel({
         ...(env?.baseUrl ? { baseUrl: env.baseUrl } : {}),
       }
 
-      const result = await service.update(id, patch)
-      setSaving(false)
-      if (!result.ok) {
-        setError(result.error.message)
-        return
-      }
+      try {
+        const result = await service.update(id, patch)
+        setSaving(false)
+        if (!result.ok) {
+          setError(result.error.message)
+          return
+        }
 
-      setSavedSuccess(true)
-      setTimeout(() => setSavedSuccess(false), 2000)
+        setSavedSuccess(true)
+        setTimeout(() => setSavedSuccess(false), 2000)
+      } finally {
+        isLocalSavingRef.current = false
+      }
     },
     [service],
   )

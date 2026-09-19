@@ -297,7 +297,7 @@ export function extractJsonCandidate(
 
   if (block) {
     const endpointId = endpointIdOf(block)
-    const exampleFromDom = readSwaggerExample(doc, endpointId)
+    const exampleFromDom = endpointId ? readSwaggerExample(doc, endpointId) : null
     if (exampleFromDom) {
       try {
         return JSON.parse(exampleFromDom)

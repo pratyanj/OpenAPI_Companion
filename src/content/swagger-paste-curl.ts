@@ -535,6 +535,7 @@ export function mountSwaggerPasteCurl(
           method,
           path,
           tags: [],
+          favorite: false,
         })
       }
     })

@@ -62,7 +62,7 @@ export function validateJsonSyntax(text: string): JsonValidationResult {
     const short = cleanErrorMessage(rawError)
 
     const lineColMatch = rawError.match(/line (\d+) column (\d+)/i)
-    if (lineColMatch) {
+    if (lineColMatch && lineColMatch[1] && lineColMatch[2]) {
       return {
         valid: false,
         isEmpty: false,
@@ -74,12 +74,13 @@ export function validateJsonSyntax(text: string): JsonValidationResult {
     }
 
     const posMatch = rawError.match(/position (\d+)/i)
-    if (posMatch) {
+    if (posMatch && posMatch[1]) {
       const pos = parseInt(posMatch[1], 10)
       const prefix = trimmed.slice(0, Math.max(0, pos))
       const lines = prefix.split('\n')
       const line = lines.length
-      const column = lines[lines.length - 1].length + 1
+      const lastLine = lines[lines.length - 1] ?? ''
+      const column = lastLine.length + 1
       return {
         valid: false,
         isEmpty: false,

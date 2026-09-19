@@ -140,7 +140,7 @@ export function readExecutedResponses(doc: Document = document): ExecutedRespons
         if (offset >= 0) {
           for (let i = 0; i < epSegments.length; i++) {
             const epSeg = epSegments[i]
-            if (epSeg.startsWith('{') && epSeg.endsWith('}')) {
+            if (epSeg && epSeg.startsWith('{') && epSeg.endsWith('}')) {
               const paramName = epSeg.slice(1, -1).trim()
               const segVal = urlSegments[offset + i]
               if (segVal && !pathParams[paramName]) {

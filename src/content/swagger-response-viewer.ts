@@ -774,12 +774,12 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       }
       treeView.normalize()
 
-      const rawMarks = nativeCodeContainer.querySelectorAll('mark.oac-json-match')
+      const rawMarks = nativeCodeContainer!.querySelectorAll('mark.oac-json-match')
       for (const m of Array.from(rawMarks)) {
         const textNode = doc.createTextNode(m.textContent || '')
         m.replaceWith(textNode)
       }
-      nativeCodeContainer.normalize()
+      nativeCodeContainer!.normalize()
     }
 
     function updateMatchHighlighting(query: string): void {
@@ -836,8 +836,8 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
         }
       } else {
         // Raw view search
-        const rawTarget = nativeCodeContainer.querySelector('pre, code') || nativeCodeContainer
-        const walker = doc.createTreeWalker(rawTarget, NodeFilter.SHOW_TEXT, {
+        const rawTarget = nativeCodeContainer!.querySelector('pre, code') || nativeCodeContainer!
+        const walker = doc.createTreeWalker(rawTarget as Node, NodeFilter.SHOW_TEXT, {
           acceptNode(node) {
             if (
               node.parentElement?.closest('button, .copy-to-clipboard, .download-contents, svg')

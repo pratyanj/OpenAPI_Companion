@@ -35,6 +35,8 @@ function mockIo(over: Partial<ImportExportApi> = {}): ImportExportApi {
   return {
     exportAll: vi.fn(async (): Promise<Result<string>> => ok('{}')),
     backup: vi.fn(async (): Promise<Result<string>> => ok('backup.json')),
+    decryptBackup: vi.fn(async (): Promise<Result<string>> => ok('{}')),
+    isEncrypted: vi.fn(() => false),
     previewImport: vi.fn(() =>
       ok({
         appVersion: '0.1.0',

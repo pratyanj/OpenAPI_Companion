@@ -51,9 +51,9 @@ describe('swagger-response-export', () => {
 
     const btns = bar.querySelectorAll('button')
     expect(btns.length).toBe(2)
-    expect(btns[0].textContent).toContain('JSON')
-    expect(btns[1].textContent).toContain('CSV')
-    expect(btns[1].disabled).toBe(false)
+    expect(btns[0]!.textContent).toContain('JSON')
+    expect(btns[1]!.textContent).toContain('CSV')
+    expect(btns[1]!.disabled).toBe(false)
 
     handle.dispose()
   })

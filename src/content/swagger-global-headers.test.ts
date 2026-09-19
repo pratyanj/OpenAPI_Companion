@@ -79,7 +79,7 @@ describe('swagger-global-headers', () => {
     const rows = modal.querySelectorAll('.oac-gh-row')
     expect(rows.length).toBe(1)
 
-    const nameInput = rows[0].querySelector<HTMLInputElement>('.oac-gh-input-name')!
+    const nameInput = rows[0]!.querySelector<HTMLInputElement>('.oac-gh-input-name')!
     expect(nameInput.value).toBe('X-Tenant-ID')
 
     handle.dispose()
@@ -156,8 +156,8 @@ describe('swagger-global-headers', () => {
     const bar = doc.querySelector<HTMLElement>('.oac-header-actions-bar')
     expect(bar).not.toBeNull()
     expect(bar?.children.length).toBe(2)
-    expect(bar?.children[0].classList.contains('oac-paste-curl-btn')).toBe(true)
-    expect(bar?.children[1].classList.contains('oac-global-headers-btn')).toBe(true)
+    expect(bar?.children[0]!.classList.contains('oac-paste-curl-btn')).toBe(true)
+    expect(bar?.children[1]!.classList.contains('oac-global-headers-btn')).toBe(true)
 
     pasteHandle.dispose()
     headersHandle.dispose()

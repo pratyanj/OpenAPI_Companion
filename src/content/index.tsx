@@ -222,7 +222,7 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
 
 function parseRgbColor(str: string): { r: number; g: number; b: number } | null {
   const match = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
-  if (!match) return null
+  if (!match || !match[1] || !match[2] || !match[3]) return null
   const a = match[4] !== undefined ? parseFloat(match[4]) : 1
   if (a === 0) return null // fully transparent
   return {

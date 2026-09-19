@@ -436,9 +436,11 @@ export function mountSwaggerPinnedEndpoints(
       const allWrappers = Array.from(doc.querySelectorAll('.swagger-ui .wrapper'))
       if (allWrappers.length > 1) {
         const opWrapper = allWrappers[allWrappers.length - 1]
-        const block = opWrapper.querySelector('section.block, section') ?? opWrapper
-        block.insertBefore(trayElement, block.firstChild)
-        return trayElement
+        if (opWrapper) {
+          const block = opWrapper.querySelector('section.block, section') ?? opWrapper
+          block.insertBefore(trayElement, block.firstChild)
+          return trayElement
+        }
       }
 
       const mainWrapper = doc.querySelector('.swagger-ui .wrapper, .swagger-ui')
@@ -456,11 +458,9 @@ export function mountSwaggerPinnedEndpoints(
    * Renders or updates the top Pinned Operations tray safely.
    */
   function renderTray(): void {
+    const tray = ensureTrayAnchored()
     const favorites = getFavoritesList()
     const fingerprint = `${favorites.length}:${favorites.map((f) => f.endpointId).join(',')}:${isTrayCollapsed}`
-
-    // Always ensure tray is anchored at the ideal location above the operations
-    ensureTrayAnchored()
 
     // If already rendered with exact same favorites and state, skip rebuilding DOM
     if (fingerprint === lastRenderedFingerprint) {
@@ -468,8 +468,8 @@ export function mountSwaggerPinnedEndpoints(
     }
     lastRenderedFingerprint = fingerprint
 
-    trayElement.classList.remove('oac-tray-hidden')
-    trayElement.innerHTML = ''
+    tray.classList.remove('oac-tray-hidden')
+    tray.innerHTML = ''
 
     // Header
     const header = doc.createElement('div')
@@ -497,7 +497,7 @@ export function mountSwaggerPinnedEndpoints(
 
     header.appendChild(titleGroup)
     header.appendChild(toggleBtn)
-    trayElement.appendChild(header)
+    tray.appendChild(header)
 
     // Empty state: render clean helpful guidance when 0 endpoints are starred
     if (favorites.length === 0) {
@@ -508,7 +508,7 @@ export function mountSwaggerPinnedEndpoints(
           <span class="oac-pinned-empty-icon">${SVG_ICONS.starOutline}</span>
           <span class="oac-pinned-empty-text">No pinned operations yet. Click the star icon next to any endpoint below to pin it here for quick 1-click access.</span>
         `
-        trayElement.appendChild(emptyState)
+        tray.appendChild(emptyState)
       }
       return
     }
@@ -594,7 +594,7 @@ export function mountSwaggerPinnedEndpoints(
       grid.appendChild(card)
     })
 
-    trayElement.appendChild(grid)
+    tray.appendChild(grid)
   }
 
   /**

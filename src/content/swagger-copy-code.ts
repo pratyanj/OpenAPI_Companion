@@ -186,7 +186,7 @@ export function parseCurlCommand(raw: string): CodeGenRequest {
   // 1. Method
   let method = 'GET'
   const methodMatch = normalized.match(/(?:-X|--request)\s+['"]?([A-Za-z]+)['"]?/i)
-  if (methodMatch) {
+  if (methodMatch && methodMatch[1]) {
     method = methodMatch[1].toUpperCase()
   }
 
@@ -223,11 +223,11 @@ export function parseCurlCommand(raw: string): CodeGenRequest {
   // 4. URL
   let url = ''
   const urlMatch = normalized.match(/['"]?(https?:\/\/[^\s'"\\]+)['"]?/)
-  if (urlMatch) {
+  if (urlMatch && urlMatch[1]) {
     url = urlMatch[1]
   } else {
     const generalUrlMatch = normalized.match(/\s+['"]([^'"]+)['"]/)
-    if (generalUrlMatch) {
+    if (generalUrlMatch && generalUrlMatch[1]) {
       url = generalUrlMatch[1]
     }
   }

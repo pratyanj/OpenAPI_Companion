@@ -169,7 +169,7 @@ export function isSuccessResponse(cell: Element): boolean {
   const text = statusEl?.textContent?.trim()
   if (!text) return false
   const match = text.match(/\b([1-5]\d\d)\b/)
-  if (!match) return false
+  if (!match || !match[1]) return false
   const code = parseInt(match[1], 10)
   return code >= 200 && code < 300
 }
@@ -249,7 +249,7 @@ export function mountSwaggerResponseVariable(
 
       modal.open({
         responseBody: rawBody,
-        endpointId,
+        endpointId: endpointId ?? undefined,
         initialValue: selectedText,
         onSaved: () => {
           btn.classList.add('success')

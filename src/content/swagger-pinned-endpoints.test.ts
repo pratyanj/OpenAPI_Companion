@@ -3,9 +3,19 @@ import { mountSwaggerPinnedEndpoints, jumpToOperation } from './swagger-pinned-e
 import type { ProductivityService } from '@/modules/productivity/productivity-service'
 import type { EndpointListItem } from '@/modules/productivity/types'
 
+interface MockProductivity {
+  getFavorites: ReturnType<typeof vi.fn>
+  isFavorite: ReturnType<typeof vi.fn>
+  toggleFavorite: ReturnType<typeof vi.fn>
+  bus: {
+    subscribe: ReturnType<typeof vi.fn>
+    emit: (event: string, payload: unknown) => void
+  }
+}
+
 describe('mountSwaggerPinnedEndpoints', () => {
   let doc: Document
-  let mockProductivity: unknown
+  let mockProductivity: MockProductivity
   let favoritesList: EndpointListItem[]
   let busSubscribers: Record<string, ((payload?: unknown) => void)[]>
 
@@ -65,15 +75,18 @@ describe('mountSwaggerPinnedEndpoints', () => {
             path: info.path,
             summary: info.summary,
             tags: [],
+            favorite: true,
           })
         }
       }),
       bus: {
         subscribe: vi.fn((event: string, cb: (payload?: unknown) => void) => {
           if (!busSubscribers[event]) busSubscribers[event] = []
-          busSubscribers[event].push(cb)
+          busSubscribers[event]!.push(cb)
           return () => {
-            busSubscribers[event] = busSubscribers[event].filter((fn) => fn !== cb)
+            if (busSubscribers[event]) {
+              busSubscribers[event] = busSubscribers[event]!.filter((fn) => fn !== cb)
+            }
           }
         }),
         emit: (event: string, payload: unknown) => {
@@ -101,7 +114,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
 
     const firstSummary = doc.querySelector('.opblock-summary-get')!
     const methodBadge = firstSummary.querySelector('.opblock-summary-method')!
-    const starBtn = firstSummary.querySelector('.oac-endpoint-star-btn')!
+    const starBtn = firstSummary.querySelector<HTMLButtonElement>('.oac-endpoint-star-btn')!
 
     // Must be a sibling placed immediately BEFORE the method badge
     expect(starBtn.nextElementSibling).toBe(methodBadge)
@@ -119,6 +132,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       path: '/tasks/',
       summary: 'Get list of all tasks',
       tags: [],
+      favorite: true,
     })
 
     const handle = mountSwaggerPinnedEndpoints(
@@ -197,6 +211,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       path: '/tasks/',
       summary: 'Get tasks',
       tags: [],
+      favorite: true,
     })
 
     handle.renderTray()
@@ -229,6 +244,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       path: '/tasks/',
       summary: 'Get tasks',
       tags: [],
+      favorite: true,
     })
 
     const handle = mountSwaggerPinnedEndpoints(
@@ -280,6 +296,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       method: 'get',
       path: '/tasks/',
       tags: [],
+      favorite: true,
     })
     mockProductivity.bus.emit('FAVORITE_TOGGLED', { endpointId: 'get /tasks/' })
 
@@ -312,6 +329,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       path: '/tasks/',
       summary: 'Tasks list',
       tags: [],
+      favorite: true,
     })
 
     const handle = mountSwaggerPinnedEndpoints(
@@ -358,6 +376,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       path: '/api/v1/audit-logs/',
       summary: 'Audit logs',
       tags: [],
+      favorite: true,
     })
 
     const handle = mountSwaggerPinnedEndpoints(
@@ -397,6 +416,7 @@ describe('mountSwaggerPinnedEndpoints', () => {
       path: '/tasks/',
       summary: 'Tasks list',
       tags: [],
+      favorite: true,
     })
 
     const handle = mountSwaggerPinnedEndpoints(

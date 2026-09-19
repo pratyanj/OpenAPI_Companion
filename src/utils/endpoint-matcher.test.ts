@@ -11,6 +11,7 @@ describe('endpoint-matcher', () => {
       path: '/tasks/',
       summary: 'List tasks',
       tags: ['tasks'],
+      favorite: false,
     },
     {
       endpointId: 'post /tasks/',
@@ -18,6 +19,7 @@ describe('endpoint-matcher', () => {
       path: '/tasks/',
       summary: 'Create task',
       tags: ['tasks'],
+      favorite: false,
     },
     {
       endpointId: 'get /tasks/{task_id}',
@@ -25,6 +27,7 @@ describe('endpoint-matcher', () => {
       path: '/tasks/{task_id}',
       summary: 'Get task by ID',
       tags: ['tasks'],
+      favorite: false,
     },
     {
       endpointId: 'put /tasks/{task_id}',
@@ -32,6 +35,7 @@ describe('endpoint-matcher', () => {
       path: '/tasks/{task_id}',
       summary: 'Update task',
       tags: ['tasks'],
+      favorite: false,
     },
     {
       endpointId: 'delete /tasks/{task_id}',
@@ -39,6 +43,7 @@ describe('endpoint-matcher', () => {
       path: '/tasks/{task_id}',
       summary: 'Delete task',
       tags: ['tasks'],
+      favorite: false,
     },
     {
       endpointId: 'post /tasks/{task_id}/labels/{label_id}',
@@ -46,6 +51,7 @@ describe('endpoint-matcher', () => {
       path: '/tasks/{task_id}/labels/{label_id}',
       summary: 'Attach label to task',
       tags: ['tasks'],
+      favorite: false,
     },
   ]
 

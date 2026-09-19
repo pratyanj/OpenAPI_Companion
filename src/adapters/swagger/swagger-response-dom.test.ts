@@ -140,11 +140,11 @@ describe('swagger-response-dom', () => {
 
     const [res] = readExecutedResponses(document)
     expect(res).toBeDefined()
-    expect(res.endpointId).toBe('get /tasks/{task_id}')
-    expect(res.status).toBe(200)
-    expect(res.queryParams).toEqual({ tag: 'work', status: 'active' })
-    expect(res.pathParams).toEqual({ task_id: '99' })
-    expect(res.requestUrl).toBe('http://127.0.0.1:8000/api/tasks/99?tag=work&status=active')
+    expect(res!.endpointId).toBe('get /tasks/{task_id}')
+    expect(res!.status).toBe(200)
+    expect(res!.queryParams).toEqual({ tag: 'work', status: 'active' })
+    expect(res!.pathParams).toEqual({ task_id: '99' })
+    expect(res!.requestUrl).toBe('http://127.0.0.1:8000/api/tasks/99?tag=work&status=active')
   })
 
   it('extracts query and headers from rendered cURL fallback when request-url is absent', () => {
@@ -173,8 +173,8 @@ describe('swagger-response-dom', () => {
 
     const [res] = readExecutedResponses(document)
     expect(res).toBeDefined()
-    expect(res.queryParams).toEqual({ category: 'books' })
-    expect(res.headers).toEqual({ 'X-Tenant': 'acme' })
-    expect(res.requestUrl).toBe('http://localhost:8000/items?category=books')
+    expect(res!.queryParams).toEqual({ category: 'books' })
+    expect(res!.headers).toEqual({ 'X-Tenant': 'acme' })
+    expect(res!.requestUrl).toBe('http://localhost:8000/items?category=books')
   })
 })

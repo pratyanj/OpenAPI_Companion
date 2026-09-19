@@ -182,6 +182,7 @@ export function hookFetch(): void {
 
   const originalFetch = window.fetch
   const wrappedFetch = async function (
+    this: unknown,
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
@@ -202,10 +203,9 @@ export function hookFetch(): void {
             })
             modifiedHeaders = nextHeaders
           } else if (Array.isArray(modifiedHeaders)) {
-            modifiedHeaders = modifiedHeaders.map(([k, v]) => [
-              k,
-              resolveWithVariables(String(v), activeVariables),
-            ])
+            modifiedHeaders = modifiedHeaders.map(
+              ([k, v]) => [k, resolveWithVariables(String(v), activeVariables)] as [string, string],
+            )
           } else if (typeof modifiedHeaders === 'object') {
             const nextHeaders: Record<string, string> = {}
             for (const [k, v] of Object.entries(modifiedHeaders as Record<string, unknown>)) {

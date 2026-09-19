@@ -58,7 +58,7 @@ export function parseCurl(rawInput: string): ParsedCurl {
   // 1. Extract Method
   let method = 'GET'
   const methodMatch = normalized.match(/(?:-X|--request)\s+['"]?([A-Za-z]+)['"]?/i)
-  if (methodMatch) {
+  if (methodMatch && methodMatch[1]) {
     method = methodMatch[1].toUpperCase()
   }
 
@@ -98,12 +98,12 @@ export function parseCurl(rawInput: string): ParsedCurl {
   let url = ''
   // Try finding explicit --url flag first
   const explicitUrlMatch = normalized.match(/(?:--url)\s+['"]?([^\s'"]+)['"]?/)
-  if (explicitUrlMatch) {
+  if (explicitUrlMatch && explicitUrlMatch[1]) {
     url = explicitUrlMatch[1]
   } else {
     // Look for HTTP(S) URL or root-relative path
     const urlMatch = normalized.match(/['"]?(https?:\/\/[^\s'"\\]+)['"]?/)
-    if (urlMatch) {
+    if (urlMatch && urlMatch[1]) {
       url = urlMatch[1]
     } else {
       // Fallback: search for tokens starting with / that aren't flags

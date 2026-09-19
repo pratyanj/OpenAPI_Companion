@@ -153,7 +153,6 @@ describe('swagger-endpoint-history', () => {
     const saved: EndpointPayloadSnapshot = {
       endpointId: 'post /api/todos',
       body: '{"task":"Build feature"}',
-      params: undefined,
       timestamp: Date.now() - 60000,
     }
     localStorage.setItem('oac_last_payload_post /api/todos', JSON.stringify(saved))

@@ -65,7 +65,7 @@ async function deriveKey(
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt,
+      salt: salt as unknown as BufferSource,
       iterations,
       hash: 'SHA-256',
     },
@@ -176,7 +176,11 @@ export async function decryptBackup(
   const key = await deriveKey(passphrase, salt, iterations, ['decrypt'])
 
   try {
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBytes)
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv as unknown as BufferSource },
+      key,
+      cipherBytes as unknown as BufferSource,
+    )
     const dec = new TextDecoder()
     return dec.decode(decrypted)
   } catch {

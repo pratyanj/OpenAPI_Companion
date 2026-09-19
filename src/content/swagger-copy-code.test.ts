@@ -130,7 +130,7 @@ describe('mountSwaggerCopyCode', () => {
     await new Promise((r) => setTimeout(r, 20))
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1)
-    const copiedText = vi.mocked(navigator.clipboard.writeText).mock.calls[0][0]
+    const copiedText = vi.mocked(navigator.clipboard.writeText).mock.calls[0]![0]
     expect(copiedText).toContain('import requests')
     expect(copiedText).toContain("url = 'http://127.0.0.1:8008/items'")
     expect(copiedText).toContain('json_data =')
@@ -158,7 +158,7 @@ describe('mountSwaggerCopyCode', () => {
     await new Promise((r) => setTimeout(r, 20))
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1)
-    const copiedText = vi.mocked(navigator.clipboard.writeText).mock.calls[0][0]
+    const copiedText = vi.mocked(navigator.clipboard.writeText).mock.calls[0]![0]
     expect(copiedText).toContain("await fetch('http://127.0.0.1:8008/items'")
     expect(copiedText).toContain("method: 'POST'")
     expect(copiedText).toContain('body: JSON.stringify(')

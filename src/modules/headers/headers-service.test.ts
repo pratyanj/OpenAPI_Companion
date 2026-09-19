@@ -42,8 +42,8 @@ describe('HeadersService', () => {
     const service2 = new HeadersService({ storage, projectId })
     const loaded = await service2.load()
     expect(loaded.length).toBe(1)
-    expect(loaded[0].name).toBe('X-Tenant-ID')
-    expect(loaded[0].value).toBe('corp_42')
+    expect(loaded[0]!.name).toBe('X-Tenant-ID')
+    expect(loaded[0]!.value).toBe('corp_42')
   })
 
   it('toggles header state and filters active headers record', async () => {

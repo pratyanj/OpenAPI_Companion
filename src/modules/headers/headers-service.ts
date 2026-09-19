@@ -75,7 +75,13 @@ export class HeadersService {
   async toggleHeader(id: string, enabled: boolean): Promise<Result<void>> {
     if (!this.loaded) await this.load()
     const target = this.headers.find((h) => h.id === id)
-    if (!target) return err(new Error(`Header with id ${id} not found`))
+    if (!target) {
+      return err({
+        code: 'NOT_FOUND',
+        message: `Header with id ${id} not found`,
+        recoverable: false,
+      })
+    }
     target.enabled = enabled
     const res = await this.saveHeaders(this.headers)
     if (!res.ok) return err(res.error)

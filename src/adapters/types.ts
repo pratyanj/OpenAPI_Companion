@@ -40,6 +40,8 @@ export interface EndpointInfo {
   summary?: string
   /** Tag/section the operation is grouped under, when present. */
   tag?: string
+  /** Tags array for multi-tag operations and OpenAPI compatibility. */
+  tags?: string[]
 }
 
 /** A request that has been executed in Swagger and rendered a live response. */

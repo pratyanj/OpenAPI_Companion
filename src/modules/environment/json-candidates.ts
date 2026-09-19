@@ -13,7 +13,7 @@ export function extractJsonCandidates(raw: string): JsonCandidate[] {
 
     function toVarName(path: string): string {
       const rootArrayMatch = path.match(/^\[(\d+)\](?:\.(.+))?$/)
-      if (rootArrayMatch) {
+      if (rootArrayMatch && rootArrayMatch[1]) {
         const index = parseInt(rootArrayMatch[1], 10)
         const subPath = rootArrayMatch[2] || ''
         const base = subPath ? toVarName(subPath) : 'VALUE'

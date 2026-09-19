@@ -574,7 +574,7 @@ export function WorkflowsPanel({
           templates={templates}
           requestService={requestService}
           getSwaggerDefaults={(epId) => requestService?.getSwaggerDefaults?.(epId)}
-          getSwaggerDefaultsAsync={(epId) => requestService?.getSwaggerDefaultsAsync?.(epId)}
+          getSwaggerDefaultsAsync={async (epId) => requestService?.getSwaggerDefaultsAsync?.(epId)}
         />
       )}
 

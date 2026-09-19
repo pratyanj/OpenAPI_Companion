@@ -44,6 +44,9 @@ function matchSegments(
   for (let i = 0; i < templateSegments.length; i++) {
     const tSeg = templateSegments[i]
     const cSeg = concreteSegments[i]
+    if (!tSeg || !cSeg) {
+      return { matched: false, pathParams: {} }
+    }
 
     if (tSeg.startsWith('{') && tSeg.endsWith('}')) {
       const paramName = tSeg.slice(1, -1).trim()
