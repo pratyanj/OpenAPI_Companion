@@ -1,6 +1,49 @@
+## 🚀 Next Version Sprint (v1.2.0 Action Items & Feature Roadmap)
 
-## 🎯 Today's Action Items & Bugs (V1.1.5 Sprint)
+- [ ] **1. 🔌 Localhost & Port Resilience / Project Switcher & Host Aliasing (HIGH PRIORITY)**
+  - **Problem**: When a backend restarts on a different port (e.g. `8008` -> `8009` because 8008 was in use), or when switching between `localhost:8008`, `127.0.0.1:8008`, and local network IP `192.168.x.x:8008`, all project data (saved presets, request templates, project variables, workflow suites, headers, and history) appears lost because project IDs are derived strictly from `origin + openApiUrl`.
+  - **Proposed Solution**:
+    - **Smart Localhost & Loopback Grouping**: Normalize `localhost`, `127.0.0.1`, `0.0.0.0`, and private IPv4 ranges (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`) for local development so they can share or link project workspaces.
+    - **Port Change Migration Prompt**: When Swagger loads on a local port with no existing data, detect existing projects matching the OpenAPI title or spec path on other ports (e.g. `8008`), and display a subtle, non-intrusive banner: *"Found project data from port 8008 ('My API'). Link or copy data to this port?"* with 1-click actions (`[ Link / Share ]`, `[ Copy Data ]`, `[ Dismiss ]`).
+    - **Header Project Switcher Dropdown**: Add a sleek project selector/switcher in the Side Panel header that lists all projects with search, allowing the developer to switch the active project view, link the current tab to an existing project, or clone data on demand.
+    - **Project Aliasing & Linked Origins**: Allow projects to declare `aliases: string[]` or `linkedOrigins: string[]` in project metadata so multiple origins/ports map to the same storage space seamlessly.
 
+- [ ] **2. ⚖️ Side-by-Side Response Diff / Comparator**
+  - **Problem**: Developers frequently test API behavior between two calls (e.g. comparing a baseline response with a modified payload, before/after migration, or comparing staging vs local) and currently have to manually eye-ball JSON differences.
+  - **Proposed Solution**:
+    - Add "Compare" action in API History list items and in-page execution viewer.
+    - Dual selection mode: Select any two history executions (`A` vs `B`) to launch the side-by-side Response Diff modal.
+    - Visual JSON Diff: Highlight additions (green `+`), deletions (red `-`), and value modifications (amber `~`) with line numbers and collapsible keys.
+    - Header & Status Diff: Compare HTTP status codes (e.g. `200 OK` vs `400 Bad Request`), response time latency (`45ms` vs `120ms`), and header changes.
+
+- [ ] **3. ⏰ Automated Backup Scheduler & Smart Merge Import**
+  - **Problem**: Manual backups are easy to forget. If browser storage is cleared, data could be lost. Furthermore, importing a backup currently only offers "Replace All" or "Keep Existing", which can overwrite or drop newer presets.
+  - **Proposed Solution**:
+    - **Automated Periodic Backup**: Add a background backup scheduler in Settings with configurable frequencies: `Off`, `Every 30 minutes`, `Every 2 hours`, `Every 6 hours`, `Every 12 hours`, `Daily (24h)`, or `Custom interval`.
+    - **Timestamped File Naming**: Download files using descriptive naming convention: `openapi-companion-backup-YYYY-MM-DD-HHmm.json`.
+    - **Smart "Merge & Rename" Mode**: Enhance import engine with a third mode: `Merge & Rename`. If an imported preset or environment has a conflicting name, automatically append `(Imported)` or `(Copy)` and merge without overwriting existing data.
+
+- [ ] **4. 🛡️ Asynchronous Swagger UI Mounting Observer**
+  - **Problem**: On single-page applications (SPAs) or frameworks like FastAPI where Swagger UI renders dynamically after initial script execution or API spec download, OpenAPI Companion can occasionally initialize too early, showing a dormant state or missing button injections.
+  - **Proposed Solution**:
+    - Add a 3-second non-blocking `MutationObserver` in `src/content/index.tsx` that watches for `#swagger-ui` or `.swagger-ui` container creation.
+    - Seamlessly initialize the headless content agent and button bars the moment Swagger UI mounts to the DOM without requiring a manual page refresh.
+
+- [ ] **5. ⌨️ Customizable Keyboard Shortcut Manager**
+  - **Problem**: In-page shortcuts (<kbd>Alt+M</kbd> for Mock Data, <kbd>Alt+L</kbd> for Last Sent Payload, <kbd>Alt+Shift+F</kbd> for Format JSON, <kbd>Ctrl+Shift+V</kbd> for Paste cURL, <kbd>⌘K</kbd> for Palette) are powerful but not discoverable enough or remappable for developers with conflicting IDE/OS shortcuts.
+  - **Proposed Solution**:
+    - Create a dedicated Keyboard Shortcuts modal accessible from the Side Panel footer, Command Palette, and Settings tab.
+    - Clean table displaying each shortcut, action description, and customizable key combination with conflict detection.
+
+- [ ] **6. 📋 Pre-Public Repository Hygiene (Quick Check-offs)**
+  - Fill placeholder tokens before public open-sourcing:
+    - `LICENSE`: Set copyright holder.
+    - `SECURITY.md`: Replace `security@TODO-set-project-domain`.
+    - `CODE_OF_CONDUCT.md`: Replace `conduct@TODO-set-project-domain`.
+    - `.github/CODEOWNERS`: Replace `@OWNER`.
+    - `.github/ISSUE_TEMPLATE/config.yml`: Replace `OWNER/REPO` security URL.
+
+## 🎯 Prior Sprints & Completed Features
 - [x] **1. 🐛 Fix Request Capture for No-Body Endpoints (Path/Query Only) & Rename to "Capture Live"**
   - **Issue**: In Requests tab, "Capture Open" button fails to capture endpoints that have only path parameters and query parameters with no JSON request body (e.g. `POST /tasks/{task_id}/labels/{label_id}`).
   - **Fix**: Update capture parser to extract path parameters from Swagger inputs (`input[data-param-name]`) and query parameters even when no body schema exists.
