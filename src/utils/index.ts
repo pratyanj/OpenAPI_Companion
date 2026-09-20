@@ -18,3 +18,20 @@ export {
   base64ToUint8Array,
 } from './crypto-backup'
 export type { EncryptedCryptoMetadata, EncryptedExportBundle } from './crypto-backup'
+export {
+  computeLineDiff,
+  computeJsonDiff,
+  compareHeaders,
+  compareMetrics,
+  formatPayload,
+} from './diff'
+export type {
+  DiffLine,
+  DiffLineType,
+  SideBySideRow,
+  LineDiffResult,
+  JsonDiffEntry,
+  JsonDiffSummary,
+  HeaderDiffItem,
+  MetricsDiff,
+} from './diff'

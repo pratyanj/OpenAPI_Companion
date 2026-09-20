@@ -10,13 +10,20 @@
     - **Header Project Switcher Modal**: Added a searchable project switcher dialog accessible via header badge button (`[ 📁 Project Name ▾ ]`) and Dashboard, allowing developers to switch views, link origins, unlink origins, copy data, or dismiss links.
     - **Custom Project Naming & Inline Renaming**: Added custom project naming from OpenAPI spec `info.title`, plus inline ✏️ rename on Dashboard and in the Project Switcher Modal with `PROJECT_UPDATED` event reactivity across the panel (**831 tests passed**).
 
-- [ ] **2. ⚖️ Side-by-Side Response Diff / Comparator**
+- [x] **2. ⚖️ Side-by-Side Response Diff / Comparator**
   - **Problem**: Developers frequently test API behavior between two calls (e.g. comparing a baseline response with a modified payload, before/after migration, or comparing staging vs local) and currently have to manually eye-ball JSON differences.
-  - **Proposed Solution**:
-    - Add "Compare" action in API History list items and in-page execution viewer.
-    - Dual selection mode: Select any two history executions (`A` vs `B`) to launch the side-by-side Response Diff modal.
-    - Visual JSON Diff: Highlight additions (green `+`), deletions (red `-`), and value modifications (amber `~`) with line numbers and collapsible keys.
-    - Header & Status Diff: Compare HTTP status codes (e.g. `200 OK` vs `400 Bad Request`), response time latency (`45ms` vs `120ms`), and header changes.
+  - **Delivered Solution**:
+    - **Algorithmic Diff Engine (`src/utils/diff.ts`)**: Pure TypeScript Myers/LCS line diff (`computeLineDiff`) producing aligned side-by-side rows and unified diff lines; recursive JSON key-path comparator (`computeJsonDiff`); case-insensitive HTTP header delta comparator (`compareHeaders`); and metrics comparator (`compareMetrics`) for latency ms/% delta and payload byte size.
+    - **Interactive Diff Modal (`src/modules/history/ResponseDiffModal.tsx`)**: Dual split-pane view with synchronized side-by-side scrolling (`leftScrollRef` + `rightScrollRef`) and single-column unified diff view with toggle button and "Only changes" filter.
+    - **Header & Metrics Summary**: Visual status code comparison pill badges (`200 OK` vs `500 Server Error`), latency comparison with delta (`+45 ms (+32.1%)`), and response byte size delta (`+1.2 KB`).
+    - **Four Comparison Tabs**: Response Body, Request Body, Header Delta (Added/Removed/Changed), and Query/Path Parameters.
+    - **Seamless Entry Points**:
+      - "Compare" toggle in `HistoryPanel` search bar enabling checkbox multi-select mode to compare any 2 executions.
+      - "Compare latest 2 calls" in endpoint item dropdown menu.
+      - Top-level "Compare" action in `HistoryDetail` and `HistoryDetailModal` headers to compare baseline against previous call.
+      - Inline 1-click `Compare` icon buttons on every sibling call in the timeline.
+      - Quick Baseline (A) / Comparison (B) dropdown selectors and Swap (`⇄`) button inside the modal.
+    - **Validated**: 90 test files, **848 tests passing (100%)**, zero lint or formatting issues, production build passing cleanly.
 
 - [ ] **3. ⏰ Automated Backup Scheduler & Smart Merge Import**
   - **Problem**: Manual backups are easy to forget. If browser storage is cleared, data could be lost. Furthermore, importing a backup currently only offers "Replace All" or "Keep Existing", which can overwrite or drop newer presets.

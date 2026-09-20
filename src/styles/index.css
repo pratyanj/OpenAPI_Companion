@@ -58,10 +58,11 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* ── Custom Sleek Theme Scrollbars ── */
+/* ── Custom Sleek Theme Scrollbars & Border Default ── */
 *,
 *::before,
 *::after {
+  border-color: var(--oac-border);
   scrollbar-width: thin;
   scrollbar-color: var(--oac-border) transparent;
 }

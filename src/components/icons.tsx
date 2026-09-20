@@ -53,6 +53,10 @@ import {
   Pin,
   SlidersHorizontal,
   Link as LucideLink,
+  GitCompare,
+  ArrowLeftRight,
+  Columns2,
+  Rows2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -133,6 +137,10 @@ export const GripVerticalIcon = make(GripVertical)
 export const CalendarIcon = make(Calendar)
 export const PinIcon = make(Pin)
 export const LinkIcon = make(LucideLink)
+export const CompareIcon = make(GitCompare)
+export const SwapIcon = make(ArrowLeftRight)
+export const SplitViewIcon = make(Columns2)
+export const UnifiedViewIcon = make(Rows2)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)
