@@ -23,3 +23,6 @@ export const projectKey = (projectId: string, moduleName: string, itemId?: strin
 
 /** Well-known meta marker: the persisted storage schema version. */
 export const SCHEMA_VERSION_KEY = metaKey('schema-version')
+
+/** Registry mapping origin/url to canonical projectId: { [origin: string]: string } */
+export const PROJECT_BINDINGS_KEY = metaKey('project-bindings')

@@ -7,10 +7,14 @@ import {
   ThemeLightIcon,
   ThemeDarkIcon,
   ThemeSystemIcon,
+  ChevronDownIcon,
+  FolderIcon,
+  PortChangeBanner,
+  ProjectSwitcherModal,
 } from '@/components'
 import { useEventBus, useTheme } from '@/hooks'
 import type { EventBus } from '@/core/events'
-import type { ProjectMeta } from '@/core/project'
+import type { ProjectMeta, CandidateProject } from '@/core/project'
 import type { ThemeManager, ThemePreference } from '@/services'
 import type { AuthPanelService } from '@/modules/authentication'
 import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/request'
@@ -28,6 +32,7 @@ import type {
   ExtractionRuleModalOpenOptions,
   WorkflowEditorBridgeOpenOptions,
   WorkflowRunnerBridgeOpenOptions,
+  RemoteProjectApi,
 } from './bridge'
 
 const NEXT_PREFERENCE: Record<ThemePreference, ThemePreference> = {
@@ -73,6 +78,8 @@ export interface PanelShellProps {
   workflowsService?: WorkflowsPanelService
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
   swagger?: DocStats
+  candidateProjects?: CandidateProject[]
+  projectService?: RemoteProjectApi
 }
 
 /**
@@ -102,10 +109,31 @@ export function PanelShell({
   collectionsService,
   workflowsService,
   swagger,
+  candidateProjects,
+  projectService,
 }: PanelShellProps) {
   const [activeTab, setActiveTab] = useState(DEFAULT_TAB)
   const [activeEnv, setActiveEnv] = useState(environmentId)
+  const [currentProjectName, setCurrentProjectName] = useState(project.name)
+  const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false)
+  const [candidates, setCandidates] = useState<CandidateProject[]>(candidateProjects ?? [])
   const { preference } = useTheme(theme)
+
+  useEffect(() => {
+    setCurrentProjectName(project.name)
+  }, [project.name])
+
+  useEffect(() => {
+    if (candidateProjects && candidateProjects.length > 0) {
+      setCandidates(candidateProjects)
+    }
+  }, [candidateProjects])
+
+  useEventBus(bus, 'PROJECT_UPDATED', (payload) => {
+    if (payload?.name && (!payload.projectId || payload.projectId === project.id)) {
+      setCurrentProjectName(payload.name)
+    }
+  })
 
   useEventBus(bus, 'ENVIRONMENT_CHANGED', (payload) => setActiveEnv(payload.environmentId))
   useEventBus(bus, 'TAB_NAVIGATE', (payload) => {
@@ -148,7 +176,20 @@ export function PanelShell({
   return (
     <div className="flex h-screen max-h-screen flex-col bg-bg text-text overscroll-none overflow-hidden">
       <header className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg px-3 py-2">
-        <strong className="text-sm">OpenAPI Companion</strong>
+        <div className="flex items-center gap-2 min-w-0">
+          <strong className="text-sm whitespace-nowrap">OpenAPI Companion</strong>
+          <button
+            type="button"
+            onClick={() => setIsProjectSwitcherOpen(true)}
+            className="flex items-center gap-1 rounded bg-surface/60 px-1.5 py-0.5 text-xs font-medium text-text hover:bg-surface border border-border transition-colors truncate max-w-[140px] text-left"
+            title={`Switch or link project (Active: ${currentProjectName})`}
+          >
+            <FolderIcon className="h-3 w-3 text-primary flex-shrink-0" />
+            <span className="truncate">{currentProjectName}</span>
+            <ChevronDownIcon className="h-2.5 w-2.5 text-muted flex-shrink-0" />
+          </button>
+        </div>
+
         <div className="flex items-center gap-1.5">
           <IconButton label="Search endpoints (⌘K)" onClick={onOpenPalette}>
             <SearchIcon />
@@ -169,6 +210,42 @@ export function PanelShell({
         </p>
       ) : null}
 
+      {candidates.length > 0 && projectService ? (
+        <div className="flex-shrink-0 px-2 pt-2">
+          <PortChangeBanner
+            candidates={candidates}
+            onLink={async (id) => {
+              const res = await projectService.linkOrigin(id)
+              if (!res.ok) {
+                bus.publish('NOTIFY', {
+                  message: res.error.message || 'Failed to link',
+                  kind: 'error',
+                })
+              }
+            }}
+            onCopy={async (id) => {
+              const res = await projectService.copyData(id)
+              if (res.ok) {
+                bus.publish('NOTIFY', {
+                  message: `Copied ${res.value} items from project!`,
+                  kind: 'success',
+                })
+                setCandidates([])
+              } else {
+                bus.publish('NOTIFY', {
+                  message: res.error.message || 'Failed to copy',
+                  kind: 'error',
+                })
+              }
+            }}
+            onDismiss={async () => {
+              setCandidates([])
+              await projectService.dismissCandidates()
+            }}
+          />
+        </div>
+      ) : null}
+
       <nav className="flex-shrink-0 border-b border-border bg-bg px-2 py-2">
         <Tabs tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
       </nav>
@@ -181,7 +258,7 @@ export function PanelShell({
       >
         <PanelOutlet
           activeTab={activeTab}
-          project={project}
+          project={{ ...project, name: currentProjectName }}
           bus={bus}
           authService={authService}
           requestService={requestService}
@@ -202,8 +279,21 @@ export function PanelShell({
           onOpenWorkflowRunner={onOpenWorkflowRunner}
           onNavigate={setActiveTab}
           swagger={swagger}
+          projectService={projectService}
+          onOpenProjectSwitcher={() => setIsProjectSwitcherOpen(true)}
         />
       </div>
+
+      {isProjectSwitcherOpen && projectService ? (
+        <ProjectSwitcherModal
+          isOpen={isProjectSwitcherOpen}
+          onClose={() => setIsProjectSwitcherOpen(false)}
+          currentProject={{ ...project, name: currentProjectName }}
+          projectService={projectService}
+          onProjectRenamed={(name) => setCurrentProjectName(name)}
+          onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
+        />
+      ) : null}
 
       <ToastLayer bus={bus} />
     </div>

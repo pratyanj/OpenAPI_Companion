@@ -8,6 +8,7 @@ export interface ProjectInput {
   origin: string
   openApiUrl: string
   docType: string
+  title?: string
 }
 
 export interface ProjectMeta {
@@ -18,6 +19,10 @@ export interface ProjectMeta {
   docType: string
   createdAt: number
   lastActiveEnvId: string
+  // New fields for resilience and aliasing
+  linkedOrigins?: string[]
+  specTitle?: string
+  specPath?: string
 }
 
 export interface Environment {
@@ -32,3 +37,17 @@ export interface Environment {
 }
 
 export const DEFAULT_ENVIRONMENT_ID = 'default'
+
+/**
+ * Candidate project for linking or copying data.
+ * Used when detecting existing projects for a new origin.
+ */
+export interface CandidateProject {
+  id: string
+  name: string
+  originUrl: string
+  openApiUrl: string
+  presetCount?: number
+  variableCount?: number
+  linkedOrigins?: string[]
+}

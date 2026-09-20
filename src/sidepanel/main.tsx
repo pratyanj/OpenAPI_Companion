@@ -30,7 +30,9 @@ import {
   createRemoteHistoryService,
   createRemoteCollectionsService,
   createRemoteWorkflowsService,
+  createRemoteProjectService,
 } from './bridge'
+
 import { STATE_PUSH, PANEL_PORT, type PanelPortMessage } from '@/content/sidepanel-protocol'
 import { closeSelf } from '@/core/sidebar'
 import { PanelShell } from './PanelShell'
@@ -150,6 +152,8 @@ async function render(root: Root): Promise<void> {
         swagger={adapter}
         settingsService={new SettingsService({ storage, bus })}
         importExportService={new ImportExportService({ storage, bus })}
+        candidateProjects={ctx.candidateProjects}
+        projectService={createRemoteProjectService()}
       />
     </StrictMode>,
   )

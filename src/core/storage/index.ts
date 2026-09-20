@@ -11,6 +11,7 @@ export {
   projectKey,
   projectPrefix,
   SCHEMA_VERSION_KEY,
+  PROJECT_BINDINGS_KEY,
 } from './keys'
 export type {
   AsyncStorageArea,

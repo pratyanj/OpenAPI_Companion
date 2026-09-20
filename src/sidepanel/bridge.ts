@@ -8,6 +8,7 @@ import type {
   SwaggerAdapter,
   SwaggerChange,
 } from '@/adapters'
+import type { CandidateProject, ProjectMeta } from '@/core/project/types'
 import type { AuthPanelService } from '@/modules/authentication'
 import type { RequestPanelService, PresetEditorOpenOptions } from '@/modules/request'
 import { BUILTIN_ENVIRONMENTS, type EnvironmentPanelService } from '@/modules/environment'
@@ -407,5 +408,25 @@ export function createRemoteWorkflowsService(): WorkflowsPanelService {
     },
     exportAll: (ids) => rpcResult('workflows.export', ids),
     importAll: (bundle, opts) => rpcResult('workflows.import', bundle, opts),
+  }
+}
+
+export interface RemoteProjectApi {
+  rename: (name: string, projectId?: string) => Promise<Result<ProjectMeta>>
+  linkOrigin: (targetProjectId: string) => Promise<Result<void>>
+  unlinkOrigin: () => Promise<Result<void>>
+  copyData: (sourceProjectId: string) => Promise<Result<number>>
+  listAll: () => Promise<Result<CandidateProject[]>>
+  dismissCandidates: () => Promise<Result<void>>
+}
+
+export function createRemoteProjectService(): RemoteProjectApi {
+  return {
+    rename: (name, projectId) => rpcResult('project.rename', name, projectId),
+    linkOrigin: (targetProjectId) => rpcResult('project.linkOrigin', targetProjectId),
+    unlinkOrigin: () => rpcResult('project.unlinkOrigin'),
+    copyData: (sourceProjectId) => rpcResult('project.copyData', sourceProjectId),
+    listAll: () => rpcResult('project.listAll'),
+    dismissCandidates: () => rpcResult('project.dismissCandidates'),
   }
 }

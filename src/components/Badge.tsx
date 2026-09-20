@@ -11,12 +11,21 @@ const kinds: Record<BadgeKind, string> = {
   neutral: 'bg-surface text-muted',
 }
 
-export function Badge({ kind = 'neutral', children }: { kind?: BadgeKind; children: ReactNode }) {
+export function Badge({
+  kind = 'neutral',
+  className,
+  children,
+}: {
+  kind?: BadgeKind
+  className?: string
+  children: ReactNode
+}) {
   return (
     <span
       className={cn(
         'inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium',
         kinds[kind],
+        className,
       )}
     >
       {children}

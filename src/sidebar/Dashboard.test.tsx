@@ -197,4 +197,42 @@ describe('Dashboard (Home tab)', () => {
     render(<Dashboard {...props({ project: null })} />)
     expect(screen.getByText('No project detected')).toBeInTheDocument()
   })
+
+  it('allows renaming the project inline', async () => {
+    const p = props()
+    const mockProjectService = {
+      rename: vi.fn(async (name: string) => ok({ ...p.project!, name })),
+      linkOrigin: vi.fn(async () => ok(undefined)),
+      unlinkOrigin: vi.fn(async () => ok(undefined)),
+      copyData: vi.fn(async () => ok(1)),
+      listAll: vi.fn(async () => ok([])),
+      dismissCandidates: vi.fn(async () => ok(undefined)),
+    }
+
+    render(<Dashboard {...p} projectService={mockProjectService} />)
+    expect(await screen.findByText('DWERP API')).toBeInTheDocument()
+
+    // Click rename button
+    fireEvent.click(screen.getByLabelText('Rename project'))
+
+    // Type new name
+    const input = screen.getByDisplayValue('DWERP API')
+    fireEvent.change(input, { target: { value: 'My Renamed API' } })
+
+    // Save
+    fireEvent.click(screen.getByLabelText('Save name'))
+
+    expect(mockProjectService.rename).toHaveBeenCalledWith('My Renamed API', 'project_abc')
+    expect(await screen.findByText('My Renamed API')).toBeInTheDocument()
+  })
+
+  it('triggers onOpenProjectSwitcher when Switch / Link is clicked', async () => {
+    const onOpenProjectSwitcher = vi.fn()
+    const p = props()
+    render(<Dashboard {...p} onOpenProjectSwitcher={onOpenProjectSwitcher} />)
+
+    const switchBtn = await screen.findByRole('button', { name: /Switch \/ Link/ })
+    fireEvent.click(switchBtn)
+    expect(onOpenProjectSwitcher).toHaveBeenCalledTimes(1)
+  })
 })

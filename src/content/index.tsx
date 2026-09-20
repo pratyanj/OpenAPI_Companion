@@ -12,8 +12,13 @@
 import { ok, err } from '@/types'
 import { bus } from '@/core/events'
 import { StorageService, chromeLocalArea } from '@/core/storage'
-import { ProjectService, type ProjectMeta } from '@/core/project'
-import { docIdentityUrl } from '@/utils'
+import {
+  ProjectService,
+  type ProjectMeta,
+  type ProjectInput,
+  type CandidateProject,
+} from '@/core/project'
+import { docIdentityUrl, isLocalHost } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
@@ -70,6 +75,46 @@ import {
 } from './sidepanel-protocol'
 
 const AGENT_FLAG = 'oacAgent'
+
+/**
+ * Attempts to extract the OpenAPI/Swagger specification title from the page.
+ * Tries multiple selectors commonly used in Swagger UI implementations.
+ */
+function extractOpenApiTitle(doc: Document = document): string | undefined {
+  // Try common selectors for Swagger UI title
+  const selectors = [
+    '.title', // Common in older Swagger UI
+    '.info .title', // Info section title
+    '[data-test="api-title"]', // Test attribute
+    '.swagger-ui .topbar .title', // Topbar title
+    '.swagger-ui .info__title', // Info title in newer versions
+    '.block-title', // Block title
+    'h1', // Fallback to first h1
+  ]
+
+  for (const selector of selectors) {
+    const el = doc.querySelector(selector)
+    if (el && el.textContent?.trim()) {
+      const title = el.textContent.trim()
+      if (title && title.length > 0) {
+        return title
+      }
+    }
+  }
+
+  // Try to get from SwaggerUI window object if available
+  try {
+    const win = window as unknown as Record<string, unknown>
+    const bundle = win.SwaggerUIBundle as { spec?: { info?: { title?: string } } } | undefined
+    if (bundle?.spec?.info?.title && typeof bundle.spec.info.title === 'string') {
+      return bundle.spec.info.title
+    }
+  } catch {
+    // ignore
+  }
+
+  return undefined
+}
 const LOG = '[OpenAPI Companion]'
 
 const SWAGGER_FEATURE_STYLES_ID = 'oac-swagger-feature-styles'
@@ -398,10 +443,14 @@ async function boot(): Promise<void> {
 
   const storage = new StorageService({ area: chromeLocalArea(), bus })
   const project = new ProjectService({ storage, bus })
+  // Extract OpenAPI title for project naming and candidate detection
+  const specTitle = extractOpenApiTitle(document)
+
   const identified = await project.identify({
     origin: location.origin,
     openApiUrl: docIdentityUrl(location.href), // stable across Swagger's hash routing
     docType: 'swagger-ui',
+    title: specTitle,
   })
   const meta: ProjectMeta | null = identified.ok ? identified.value : null
   if (!meta) {
@@ -414,6 +463,31 @@ async function boot(): Promise<void> {
   console.info(
     `${LOG} agent ready — project "${meta.name}" (${meta.id}), build ${__BUILD_ID__}. Open the side panel.`,
   )
+
+  // If this is a local project, check for candidate projects from other ports that could be linked.
+  // Suppress candidate check entirely if this origin is already linked to a project.
+  let candidateProjects: CandidateProject[] | undefined
+  const isAlreadyLinked =
+    Boolean(meta.linkedOrigins?.includes(location.origin)) ||
+    Boolean(await project.getBindingForOrigin(location.origin))
+
+  if (!isAlreadyLinked && isLocalHost(location.origin)) {
+    try {
+      const openApiUrl = adapter.specUrl() || docIdentityUrl(location.href)
+      const input: ProjectInput = {
+        origin: location.origin,
+        openApiUrl,
+        docType: 'swagger-ui',
+        title: specTitle,
+      }
+      const candidatesResult = await project.findCandidateProjects(input, specTitle)
+      if (candidatesResult.ok && candidatesResult.value.length > 0) {
+        candidateProjects = candidatesResult.value
+      }
+    } catch (error) {
+      console.warn(`${LOG} failed to find candidate projects:`, error)
+    }
+  }
 
   mountLauncher() // floating button to open the panel from the page
 
@@ -883,7 +957,9 @@ async function boot(): Promise<void> {
       environmentId: currentEnv,
       pageOrigin: location.origin,
       buildId: __BUILD_ID__,
+      ...(candidateProjects !== undefined ? { candidateProjects } : {}),
     }
+
     const adapterState: AdapterReadState = {
       detect: adapter.detect(),
       version: adapter.version(),
@@ -1133,6 +1209,38 @@ async function boot(): Promise<void> {
         message: 'Could not open workflow runner overlay',
         recoverable: true,
       })
+    },
+    'project.rename': async ([name, targetId]) => {
+      const target = typeof targetId === 'string' && targetId ? targetId : meta.id
+      const res = await project.renameProject(target, name as string)
+      if (res.ok && target === meta.id) {
+        meta.name = (name as string).trim()
+        pushState()
+      }
+      return res
+    },
+    'project.linkOrigin': async ([targetProjectId]) => {
+      const res = await project.linkOriginToProject(location.origin, targetProjectId as string)
+      if (res.ok) {
+        candidateProjects = undefined
+        location.reload()
+      }
+      return res
+    },
+    'project.unlinkOrigin': async () => {
+      const res = await project.unlinkOrigin(location.origin)
+      if (res.ok) {
+        location.reload()
+      }
+      return res
+    },
+    'project.copyData': ([sourceProjectId]) =>
+      project.copyProjectData(sourceProjectId as string, meta.id),
+    'project.listAll': () => project.listAllProjects(),
+    'project.dismissCandidates': () => {
+      candidateProjects = undefined
+      pushState()
+      return ok(undefined)
     },
   }
 

@@ -52,6 +52,7 @@ import {
   Calendar,
   Pin,
   SlidersHorizontal,
+  Link as LucideLink,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -83,6 +84,7 @@ export const DataIcon = make(Dices)
 export const SettingsIcon = make(Settings)
 export const ConfigIcon = make(SlidersHorizontal)
 export const CollectionsIcon = make(Folder)
+export const FolderIcon = make(Folder)
 
 // Theme cycle
 export const ThemeLightIcon = make(Sun)
@@ -130,6 +132,7 @@ export const ArrowDownIcon = make(ArrowDown)
 export const GripVerticalIcon = make(GripVertical)
 export const CalendarIcon = make(Calendar)
 export const PinIcon = make(Pin)
+export const LinkIcon = make(LucideLink)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)

@@ -12,6 +12,8 @@
  *    `useEventBus` refreshes and toasts keep working across the boundary.
  */
 import type { AuthSnapshot, EndpointInfo, ExecutedResponse, RequestSnapshot } from '@/adapters'
+import type { CandidateProject } from '@/core/project/types'
+export type { CandidateProject }
 
 // --- Context (who/what the active tab is) ----------------------------------
 
@@ -28,6 +30,8 @@ export interface PanelContext {
    * otherwise newer RPC methods simply fail and the UI looks broken.
    */
   buildId: string
+  /** Candidate projects for linking (when a new origin is detected). */
+  candidateProjects?: CandidateProject[]
 }
 
 // --- Adapter read-snapshot (mirrors the SwaggerAdapter's sync reads) --------
@@ -105,6 +109,9 @@ export interface EventPush {
 /** Bus events the agent mirrors to the panel. */
 export const FORWARDED_EVENTS = [
   'TAB_NAVIGATE',
+  'PROJECT_UPDATED',
+  'PROJECT_LINKED',
+  'PROJECT_CHANGED',
   'HISTORY_RECORDED',
   'HISTORY_CLEARED',
   'REQUEST_REPLAYED',

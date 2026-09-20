@@ -5,5 +5,6 @@ export {
   DEFAULT_ENVIRONMENT_ID,
   type ProjectInput,
   type ProjectMeta,
+  type CandidateProject,
   type Environment,
 } from './types'

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Badge,
   Button,
+  IconButton,
+  Input,
   EmptyState,
   AuthIcon,
   ClockIcon,
@@ -9,6 +11,10 @@ import {
   DownloadIcon,
   RequestsIcon,
   SearchIcon,
+  EditIcon,
+  CopiedIcon,
+  CloseIcon,
+  LinkIcon,
 } from '@/components'
 import { useEventBus } from '@/hooks'
 import type { EventBus } from '@/core/events'
@@ -19,6 +25,8 @@ import type { HistoryEntry, HistoryPanelService } from '@/modules/history'
 import { methodKind, statusKind } from '@/modules/history/status'
 import type { RequestPanelService } from '@/modules/request'
 import type { ImportExportApi } from '@/modules/settings'
+import type { RemoteProjectApi } from '@/sidepanel/bridge'
+import { extractPort } from '@/utils/doc-url'
 
 /** The adapter reads the dashboard needs — a subset, so tests can stub it cheaply. */
 export interface DocStats {
@@ -41,6 +49,8 @@ export interface DashboardProps {
   /** Jump to another tab (used by "view all" / quick actions that need a panel). */
   onNavigate: (tabId: string) => void
   swagger?: DocStats
+  projectService?: RemoteProjectApi
+  onOpenProjectSwitcher?: () => void
 }
 
 const RECENT_COUNT = 5
@@ -113,6 +123,8 @@ export function Dashboard({
   onOpenPalette,
   onNavigate,
   swagger,
+  projectService,
+  onOpenProjectSwitcher,
 }: DashboardProps) {
   const [auth, setAuth] = useState<AuthRecord | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(false)
@@ -137,6 +149,21 @@ export function Dashboard({
   useEffect(() => {
     void load()
   }, [load])
+
+  const [currentName, setCurrentName] = useState(project?.name ?? '')
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editingNameVal, setEditingNameVal] = useState('')
+  const [renameBusy, setRenameBusy] = useState(false)
+
+  useEffect(() => {
+    if (project?.name) setCurrentName(project.name)
+  }, [project?.name])
+
+  useEventBus(bus, 'PROJECT_UPDATED', (payload) => {
+    if (payload?.name && (!payload.projectId || payload.projectId === project?.id)) {
+      setCurrentName(payload.name)
+    }
+  })
 
   // Keep the summary honest as things happen elsewhere (page or other tabs).
   useEventBus(bus, 'HISTORY_RECORDED', () => void load())
@@ -166,20 +193,112 @@ export function Dashboard({
     void importExportService.backup().finally(() => setBusy(false))
   }
 
+  const handleSaveRename = async () => {
+    const trimmed = editingNameVal.trim()
+    if (!trimmed || !project) return
+    try {
+      setRenameBusy(true)
+      if (projectService) {
+        const res = await projectService.rename(trimmed, project.id)
+        if (res.ok) {
+          setCurrentName(trimmed)
+          setIsEditingName(false)
+          bus.publish('NOTIFY', { message: `Project renamed to "${trimmed}"`, kind: 'success' })
+        } else {
+          bus.publish('NOTIFY', { message: res.error.message || 'Failed to rename', kind: 'error' })
+        }
+      } else {
+        setCurrentName(trimmed)
+        setIsEditingName(false)
+        bus.publish('PROJECT_UPDATED', { projectId: project.id, name: trimmed })
+      }
+    } finally {
+      setRenameBusy(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 p-3">
       {/* Project + spec */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface/30 p-2.5">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-semibold text-text">{project.name}</span>
+          {isEditingName ? (
+            <div className="flex items-center gap-1.5 flex-1">
+              <Input
+                value={editingNameVal}
+                onChange={(e) => setEditingNameVal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSaveRename()
+                  if (e.key === 'Escape') setIsEditingName(false)
+                }}
+                className="h-6 text-xs flex-1"
+                autoFocus
+              />
+              <IconButton
+                label="Save name"
+                onClick={() => void handleSaveRename()}
+                disabled={renameBusy}
+                className="h-6 w-6 text-primary hover:bg-primary/10"
+              >
+                <CopiedIcon className="h-3.5 w-3.5" />
+              </IconButton>
+              <IconButton
+                label="Cancel"
+                onClick={() => setIsEditingName(false)}
+                className="h-6 w-6 text-muted hover:bg-surface"
+              >
+                <CloseIcon className="h-3.5 w-3.5" />
+              </IconButton>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-sm font-semibold text-text truncate">{currentName}</span>
+              <IconButton
+                label="Rename project"
+                onClick={() => {
+                  setEditingNameVal(currentName)
+                  setIsEditingName(true)
+                }}
+                className="h-5 w-5 text-muted hover:text-text"
+              >
+                <EditIcon className="h-3 w-3" />
+              </IconButton>
+            </div>
+          )}
           {version ? <Badge kind="neutral">v{version}</Badge> : null}
         </div>
+
         <div className="truncate font-mono text-[11px] text-muted">
           {project.originUrl}
           {endpointCount > 0 ? ` · ${endpointCount} endpoints` : ''}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        {project.linkedOrigins && project.linkedOrigins.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted">
+            <span>Linked:</span>
+            {project.linkedOrigins.map((orig) => (
+              <span
+                key={orig}
+                className="rounded bg-surface px-1 py-0.5 border border-border font-mono text-[10px]"
+              >
+                {extractPort(orig) ? `:${extractPort(orig)}` : orig}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40">
           <Badge kind="info">{project.docType}</Badge>
+          {onOpenProjectSwitcher ? (
+            <Button
+              variant="secondary"
+              onClick={onOpenProjectSwitcher}
+              className="h-6 px-2 text-[11px] flex items-center gap-1 hover:text-primary"
+            >
+              <LinkIcon className="h-3 w-3" />
+              <span>Switch / Link</span>
+            </Button>
+          ) : null}
         </div>
       </div>
 
