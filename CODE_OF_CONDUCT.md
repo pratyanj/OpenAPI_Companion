@@ -60,8 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-**conduct@TODO-set-project-domain** *(maintainer: replace with a monitored
-contact before publishing the repository)*.
+**pratyanjmodh1205@gmail.com**.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

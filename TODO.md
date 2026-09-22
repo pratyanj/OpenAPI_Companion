@@ -62,13 +62,13 @@
     - **Granular Reset Controls**: 1-click per-shortcut reset to default bindings and a global "Reset All to Defaults" action.
   - **Validated**: 96 test files, **917 tests passing (100% green)**, 0 TypeScript compiler errors, clean ESLint, 100% Prettier formatting, clean production Vite build and Firefox bundle.
 
-- [ ] **6. 📋 Pre-Public Repository Hygiene (Quick Check-offs)**
+- [x] **6. 📋 Pre-Public Repository Hygiene (Quick Check-offs)**
   - Fill placeholder tokens before public open-sourcing:
-    - `LICENSE`: Set copyright holder.
-    - `SECURITY.md`: Replace `security@TODO-set-project-domain`.
-    - `CODE_OF_CONDUCT.md`: Replace `conduct@TODO-set-project-domain`.
-    - `.github/CODEOWNERS`: Replace `@OWNER`.
-    - `.github/ISSUE_TEMPLATE/config.yml`: Replace `OWNER/REPO` security URL.
+    - `LICENSE`: Set copyright holder to `Pratyanj (OpenAPI Companion contributors)`.
+    - `SECURITY.md`: Replaced `security@TODO-set-project-domain` with `pratyanjmodh1205@gmail.com` and linked GitHub Security Advisories.
+    - `CODE_OF_CONDUCT.md`: Replaced `conduct@TODO-set-project-domain` with `pratyanjmodh1205@gmail.com`.
+    - `.github/CODEOWNERS`: Replaced `@OWNER` with `@pratyanj`.
+    - `.github/ISSUE_TEMPLATE/config.yml`: Replaced `OWNER/REPO` with `pratyanj/OpenAPI_Companion`.
 
 ## 🎯 Prior Sprints & Completed Features
 - [x] **1. 🐛 Fix Request Capture for No-Body Endpoints (Path/Query Only) & Rename to "Capture Live"**
@@ -199,12 +199,11 @@
 > Running tracker for OpenAPI Companion. Checked items are done; unchecked need action. Last updated: 2026-07-01.
 
 ## 🔴 Before the repository goes public — fill placeholders
-
-- [ ] **`LICENSE`** — replace copyright holder `2026 OpenAPI Companion contributors` with your name/org if wanted (MIT — DD-036).
-- [ ] **`SECURITY.md`** — set a monitored security contact (`security@TODO-set-project-domain`) or rely on GitHub Private Vulnerability Reporting.
-- [ ] **`CODE_OF_CONDUCT.md`** — set enforcement contact (`conduct@TODO-set-project-domain`).
-- [ ] **`.github/CODEOWNERS`** — replace `@OWNER` with real GitHub usernames/teams.
-- [ ] **`.github/ISSUE_TEMPLATE/config.yml`** — replace `OWNER/REPO` in the security-advisory URL.
+- [x] **`LICENSE`** — copyright holder set to `Pratyanj (OpenAPI Companion contributors)` (MIT — DD-036).
+- [x] **`SECURITY.md`** — security contact set to `pratyanjmodh1205@gmail.com` and linked GitHub Private Vulnerability Reporting.
+- [x] **`CODE_OF_CONDUCT.md`** — enforcement contact set to `pratyanjmodh1205@gmail.com`.
+- [x] **`.github/CODEOWNERS`** — set `@pratyanj` as code owner.
+- [x] **`.github/ISSUE_TEMPLATE/config.yml`** — set `pratyanj/OpenAPI_Companion` in the security-advisory URL.
 
 ## 🟠 Decisions needing security-reviewer sign-off (before their phase ships)
 
