@@ -9,13 +9,12 @@ import { SettingsPanel } from './SettingsPanel'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type { ImportSummary } from '@/core/events'
-import { DEFAULT_SWAGGER_FEATURES } from './types'
+import { DEFAULT_PREFERENCES, DEFAULT_SWAGGER_FEATURES } from './types'
 
 function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
   return {
     getPreferences: vi.fn(async () => ({
-      autoBackup: false,
-      historyLimit: 1000,
+      ...DEFAULT_PREFERENCES,
       swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES },
     })),
     setPreference: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
@@ -34,7 +33,9 @@ function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
 function mockIo(over: Partial<ImportExportApi> = {}): ImportExportApi {
   return {
     exportAll: vi.fn(async (): Promise<Result<string>> => ok('{}')),
+    exportProject: vi.fn(async (): Promise<Result<string>> => ok('{}')),
     backup: vi.fn(async (): Promise<Result<string>> => ok('backup.json')),
+    hasChangesSince: vi.fn(async () => true),
     decryptBackup: vi.fn(async (): Promise<Result<string>> => ok('{}')),
     isEncrypted: vi.fn(() => false),
     previewImport: vi.fn(() =>
@@ -49,6 +50,11 @@ function mockIo(over: Partial<ImportExportApi> = {}): ImportExportApi {
       }),
     ),
     applyImport: vi.fn(async (): Promise<Result<ImportSummary>> =>
+      ok({ imported: 2, skipped: 0, renamed: 0 }),
+    ),
+    createPreImportSnapshot: vi.fn(async (): Promise<Result<void>> => ok(undefined)),
+    getPreImportSnapshot: vi.fn(async () => null),
+    rollbackLastImport: vi.fn(async (): Promise<Result<ImportSummary>> =>
       ok({ imported: 2, skipped: 0, renamed: 0 }),
     ),
     ...over,
@@ -236,5 +242,26 @@ describe('SettingsPanel', () => {
     // Import button is enabled and applies decrypted payload
     fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     await waitFor(() => expect(io.applyImport).toHaveBeenCalledWith('{"decrypted":true}', 'skip'))
+  })
+
+  it('allows customizing the backup subfolder and displays path preview', async () => {
+    const settings = mockSettings({
+      getPreferences: vi.fn(async () => ({
+        ...DEFAULT_PREFERENCES,
+        autoBackup: true,
+        backupFolder: 'MyBackups',
+        swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES },
+      })),
+    })
+    renderPanel(settings)
+
+    const subfolderInput = await screen.findByLabelText('Backup subfolder')
+    expect(subfolderInput).toHaveValue('MyBackups')
+    expect(screen.getByText(/Saved to: Downloads\/MyBackups\//)).toBeInTheDocument()
+
+    fireEvent.change(subfolderInput, { target: { value: 'CustomFolder' } })
+    await waitFor(() =>
+      expect(settings.setPreference).toHaveBeenCalledWith('backupFolder', 'CustomFolder'),
+    )
   })
 })

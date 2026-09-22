@@ -15,7 +15,17 @@ import {
 } from '@/components'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
-import type { ImportMode, ImportPreview, Preferences, StorageMetrics } from './types'
+import type {
+  BackupFrequency,
+  BackupScope,
+  ImportCategory,
+  ImportMode,
+  ImportPreview,
+  Preferences,
+  PreImportSnapshot,
+  StorageMetrics,
+} from './types'
+import { DEFAULT_BACKUP_FOLDER } from './types'
 
 interface SettingsPanelProps {
   settings: SettingsApi
@@ -62,6 +72,17 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
   const [importText, setImportText] = useState('')
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
   const [importMode, setImportMode] = useState<ImportMode>('skip')
+  const [selectedCategories, setSelectedCategories] = useState<Record<ImportCategory, boolean>>({
+    presets: true,
+    environments: true,
+    workflows: true,
+    headers: true,
+    rules: true,
+    auth: true,
+    settings: false,
+    history: false,
+  })
+  const [hasRestorePoint, setHasRestorePoint] = useState<PreImportSnapshot | null>(null)
 
   // Passphrase protection for backup & restore
   const [backupPassphrase, setBackupPassphrase] = useState('')
@@ -87,7 +108,8 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
   useEffect(() => {
     void settings.getPreferences().then(setPrefs)
     void loadMetrics()
-  }, [settings, loadMetrics])
+    void io.getPreImportSnapshot?.().then((snap) => setHasRestorePoint(snap ?? null))
+  }, [settings, loadMetrics, io])
 
   const setPref = async <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     await settings.setPreference(key, value)
@@ -132,16 +154,33 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
     }
   }
 
-  const backup = async () => {
+  const backup = async (scope: BackupScope = 'all') => {
     setBusy(true)
     const pass = backupPassphrase.trim() || undefined
-    const r = await io.backup(false, pass)
+    const projId = scope === 'current' ? projectId : undefined
+    const currentMetric = metrics?.projects.find((p) => p.projectId === projectId)
+    const projName = currentMetric?.name || projectId
+    const folder = prefs?.backupFolder
+    const isCustomFolder = Boolean(folder && folder !== DEFAULT_BACKUP_FOLDER)
+    const r = projId
+      ? await io.backup(false, pass, projId, projName, isCustomFolder ? folder : undefined)
+      : pass !== undefined
+        ? isCustomFolder
+          ? await io.backup(false, pass, undefined, undefined, folder)
+          : await io.backup(false, pass)
+        : isCustomFolder
+          ? await io.backup(false, undefined, undefined, undefined, folder)
+          : await io.backup(false)
     notify(
       r.ok ? 'success' : 'error',
       r.ok
         ? `Backup saved: ${r.value}${pass ? ' (encrypted with passphrase)' : ''}`
         : r.error.message,
     )
+    if (r.ok) {
+      await setPref('lastBackupAt', Date.now())
+      await setPref('lastBackupStatus', `Saved ${r.value}`)
+    }
     setBusy(false)
   }
 
@@ -158,8 +197,16 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
 
     setIsEncryptedPayload(false)
     const r = io.previewImport(raw)
-    if (r.ok) setImportPreview(r.value)
-    else {
+    if (r.ok) {
+      setImportPreview(r.value)
+      if (r.value.categories) {
+        const next: Record<string, boolean> = {}
+        for (const cat of r.value.categories) {
+          next[cat.id] = cat.defaultSelected
+        }
+        setSelectedCategories((prev) => ({ ...prev, ...next }))
+      }
+    } else {
       setImportPreview(null)
       notify('error', r.error.message)
     }
@@ -176,6 +223,13 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
       const prev = io.previewImport(r.value)
       if (prev.ok) {
         setImportPreview({ ...prev.value, isEncrypted: true })
+        if (prev.value.categories) {
+          const next: Record<string, boolean> = {}
+          for (const cat of prev.value.categories) {
+            next[cat.id] = cat.defaultSelected
+          }
+          setSelectedCategories((p) => ({ ...p, ...next }))
+        }
         notify('success', 'Backup decrypted successfully!')
       } else {
         setDecryptError(prev.error.message)
@@ -205,16 +259,51 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
     setBusy(true)
     const payloadToImport = decryptedPayload || importText
     const pass = decryptedPayload ? undefined : decryptPassphrase.trim() || undefined
-    const r: Result<ImportSummary> = pass
-      ? await io.applyImport(payloadToImport, importMode, pass)
-      : await io.applyImport(payloadToImport, importMode)
+    const chosenCategories = (Object.keys(selectedCategories) as ImportCategory[]).filter(
+      (k) => selectedCategories[k],
+    )
+    const isCustomCategories =
+      importPreview?.categories && chosenCategories.length < importPreview.categories.length
+    const r: Result<ImportSummary> =
+      pass !== undefined
+        ? await io.applyImport(
+            payloadToImport,
+            importMode,
+            pass,
+            isCustomCategories ? chosenCategories : undefined,
+          )
+        : isCustomCategories
+          ? await io.applyImport(payloadToImport, importMode, undefined, chosenCategories)
+          : await io.applyImport(payloadToImport, importMode)
     if (r.ok) {
-      notify('success', `Imported ${r.value.imported}, skipped ${r.value.skipped}.`)
+      const { imported, skipped, renamed } = r.value
+      const details = [
+        `Imported: ${imported}`,
+        renamed > 0 ? `Renamed: ${renamed}` : null,
+        skipped > 0 ? `Skipped: ${skipped}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ')
+      notify('success', `Import complete (${details}).`)
       setImportText('')
       setImportPreview(null)
       setDecryptedPayload(null)
       setDecryptPassphrase('')
       setIsEncryptedPayload(false)
+      await loadMetrics()
+      void io.getPreImportSnapshot?.().then((snap) => setHasRestorePoint(snap ?? null))
+    } else {
+      notify('error', r.error.message)
+    }
+    setBusy(false)
+  }
+
+  const handleRollback = async () => {
+    setBusy(true)
+    const r = await io.rollbackLastImport()
+    if (r.ok) {
+      notify('success', `Rolled back ${r.value.imported} items to pre-import restore point.`)
+      setHasRestorePoint(null)
       await loadMetrics()
     } else {
       notify('error', r.error.message)
@@ -248,66 +337,74 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
       <Section title="Storage">
         <div className="rounded-md border border-border">
           <div className="flex items-center justify-between border-b border-border px-2 py-1.5 bg-surface/50">
-            <span className="text-muted font-medium">Total used</span>
-            <span className="font-mono text-text font-semibold">
-              {metrics ? formatBytes(metrics.totalBytes) : '…'}
-            </span>
+            <span className="font-semibold text-text">Total used</span>
+            <span className="font-mono text-muted">{formatBytes(metrics?.totalBytes ?? 0)}</span>
           </div>
-          <div className="max-h-36 overflow-y-auto divide-y divide-border/50">
-            {metrics?.projects.map((p) => {
-              const displayName = p.name || p.originUrl || p.projectId
-              const targetUrl = p.originUrl || p.openApiUrl
+          <div className="flex flex-col divide-y divide-border">
+            {(metrics?.projects ?? []).map((p) => {
+              const displayName = p.name || p.originUrl || p.openApiUrl || p.projectId
+              const originHost = p.originUrl
+                ? (() => {
+                    try {
+                      return new URL(p.originUrl).host
+                    } catch {
+                      return p.originUrl
+                    }
+                  })()
+                : null
+              const isCurrent = p.projectId === projectId
               return (
                 <div
                   key={p.projectId}
-                  className="flex items-center justify-between gap-2 px-2 py-1.5 hover:bg-surface/30 transition-colors"
+                  className="flex items-center justify-between p-2 hover:bg-surface/30 transition-colors"
                 >
-                  <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex flex-col min-w-0 flex-1 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className="truncate font-medium text-text text-[11px]"
-                        title={displayName}
-                      >
+                      <span className="truncate font-medium text-text" title={displayName}>
                         {displayName}
                       </span>
-                      {targetUrl ? (
+                      {isCurrent && (
+                        <span className="rounded bg-primary/10 px-1 py-0.2 text-[9px] font-semibold text-primary">
+                          current
+                        </span>
+                      )}
+                      {p.originUrl ? (
                         <button
                           type="button"
-                          onClick={() => openUrl(targetUrl)}
-                          title={`Open ${targetUrl} in a new tab`}
+                          onClick={() => openUrl(p.originUrl!)}
+                          title={`Open ${p.originUrl} in new tab`}
                           aria-label={`Open ${displayName} in new tab`}
-                          className="inline-flex items-center text-muted hover:text-primary transition-colors p-0.5 rounded"
+                          className="p-0.5 text-muted hover:text-primary transition-colors"
                         >
                           <ExternalLinkIcon className="h-3.5 w-3.5" />
                         </button>
                       ) : null}
                     </div>
-                    {p.originUrl ? (
+                    {p.originUrl && (
                       <span
-                        className="truncate font-mono text-[10px] text-muted"
+                        className="truncate text-[10px] text-muted font-mono"
                         title={p.originUrl}
                       >
                         {p.originUrl}
                       </span>
-                    ) : (
-                      <span className="truncate font-mono text-[10px] text-muted/70">
-                        {p.projectId}
-                      </span>
                     )}
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-[11px] text-text">{formatBytes(p.bytes)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-muted text-[11px]">{formatBytes(p.bytes)}</span>
                     <button
                       type="button"
                       onClick={() =>
-                        setConfirm({ type: 'single', projectId: p.projectId, name: p.name })
+                        setConfirm({
+                          type: 'single',
+                          projectId: p.projectId,
+                          name: p.name || originHost || p.projectId,
+                        })
                       }
                       title={`Clear data for ${displayName}`}
                       aria-label={`Clear data for ${displayName}`}
-                      className="p-1 text-muted hover:text-danger rounded hover:bg-surface transition-colors"
+                      className="p-1 rounded text-muted hover:text-danger hover:bg-danger/10 transition-colors"
                     >
-                      <DeleteIcon className="h-3.5 w-3.5" />
+                      <DeleteIcon className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -315,15 +412,130 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
             })}
           </div>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          {projectId ? (
-            <Button variant="secondary" onClick={() => setConfirm('project')}>
-              Clear this project
+          {projectId && (
+            <Button
+              variant="secondary"
+              onClick={() => setConfirm('project')}
+              disabled={busy}
+              className="text-danger"
+            >
+              Clear current project
             </Button>
-          ) : null}
-          <Button variant="danger" onClick={() => setConfirm('all')}>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => setConfirm('all')}
+            disabled={busy}
+            className="text-danger"
+          >
             Clear all data
           </Button>
+        </div>
+      </Section>
+
+      <Section title="Automated Backups">
+        <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface/40 p-3">
+          <label className="flex items-center justify-between text-text cursor-pointer">
+            <span className="font-medium text-xs">Enable Scheduled Backup</span>
+            <input
+              type="checkbox"
+              aria-label="Enable scheduled backup"
+              checked={prefs?.autoBackup ?? false}
+              onChange={(e) => void setPref('autoBackup', e.target.checked)}
+              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+            />
+          </label>
+
+          {prefs?.autoBackup && (
+            <div className="flex flex-col gap-2.5 border-t border-border/60 pt-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-muted">Frequency:</span>
+                <select
+                  value={prefs.autoBackupFrequency ?? '24h'}
+                  aria-label="Backup frequency"
+                  onChange={(e) =>
+                    void setPref('autoBackupFrequency', e.target.value as BackupFrequency)
+                  }
+                  className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <option value="30m">Every 30 minutes</option>
+                  <option value="2h">Every 2 hours</option>
+                  <option value="6h">Every 6 hours</option>
+                  <option value="12h">Every 12 hours</option>
+                  <option value="24h">Daily (24 hours)</option>
+                  <option value="custom">Custom interval</option>
+                </select>
+              </div>
+
+              {prefs.autoBackupFrequency === 'custom' && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted">Interval (minutes):</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10080"
+                    value={prefs.autoBackupCustomMinutes ?? 60}
+                    aria-label="Custom backup interval in minutes"
+                    onChange={(e) =>
+                      void setPref('autoBackupCustomMinutes', Math.max(1, Number(e.target.value)))
+                    }
+                    className="w-24 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary text-right"
+                  />
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 text-[11px] text-text cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={prefs.autoBackupSkipUnchanged ?? true}
+                  onChange={(e) => void setPref('autoBackupSkipUnchanged', e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                />
+                <span>Skip backup if no data changed since last backup</span>
+              </label>
+
+              {projectId && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted">Backup Scope:</span>
+                  <select
+                    value={prefs.autoBackupScope ?? 'all'}
+                    aria-label="Backup scope"
+                    onChange={(e) => void setPref('autoBackupScope', e.target.value as BackupScope)}
+                    className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    <option value="all">Full Workspace (All Projects)</option>
+                    <option value="current">Current Project Only</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted">Backup Subfolder:</span>
+                  <input
+                    type="text"
+                    value={prefs.backupFolder ?? DEFAULT_BACKUP_FOLDER}
+                    aria-label="Backup subfolder"
+                    placeholder={DEFAULT_BACKUP_FOLDER}
+                    onChange={(e) => void setPref('backupFolder', e.target.value)}
+                    className="w-48 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono text-right"
+                  />
+                </div>
+                <span className="text-[10px] text-muted truncate">
+                  📁 Saved to: Downloads/
+                  {(prefs.backupFolder || DEFAULT_BACKUP_FOLDER).replace(/^\/+|\/+$/g, '')}/
+                </span>
+              </div>
+
+              {prefs.lastBackupStatus && (
+                <div className="rounded bg-surface px-2 py-1 text-[10px] text-muted font-mono truncate">
+                  Status: {prefs.lastBackupStatus}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Section>
 
@@ -362,10 +574,36 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
           </div>
         </div>
 
+        {/* Restore point alert banner */}
+        {hasRestorePoint && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] animate-in fade-in duration-150">
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="font-semibold text-amber-500">Restore Point Available</span>
+              <span className="text-muted text-[10px] truncate">
+                Captured prior to last import (
+                {new Date(hasRestorePoint.timestamp).toLocaleTimeString()}).
+              </span>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => void handleRollback()}
+              disabled={busy}
+              className="shrink-0 text-amber-500 hover:text-amber-400"
+            >
+              Undo Import
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => void backup()} disabled={busy}>
+          <Button variant="secondary" onClick={() => void backup('all')} disabled={busy}>
             {backupPassphrase.trim() ? 'Download encrypted backup' : 'Download backup'}
           </Button>
+          {projectId && (
+            <Button variant="secondary" onClick={() => void backup('current')} disabled={busy}>
+              Download project backup
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => restoreFileRef.current?.click()}
@@ -385,15 +623,6 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
             e.target.value = '' // allow re-picking the same file
           }}
         />
-
-        <label className="mt-1 flex items-center gap-2 text-text">
-          <input
-            type="checkbox"
-            checked={prefs?.autoBackup ?? false}
-            onChange={(e) => void setPref('autoBackup', e.target.checked)}
-          />
-          Auto-backup after changes
-        </label>
 
         <textarea
           value={importText}
@@ -467,7 +696,7 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
         )}
 
         {importPreview ? (
-          <div className="flex flex-col gap-1 rounded-md border border-border bg-surface p-2">
+          <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface p-3 animate-in fade-in duration-150">
             <div className="flex flex-wrap items-center gap-2">
               <Badge kind="info">{importPreview.total} entries</Badge>
               <Badge kind="neutral">{importPreview.projectCount} projects</Badge>
@@ -483,26 +712,102 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
                 </Badge>
               ) : null}
             </div>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-text">
-                <input
-                  type="radio"
-                  name="import-mode"
-                  checked={importMode === 'skip'}
-                  onChange={() => setImportMode('skip')}
-                />
-                Keep existing
-              </label>
-              <label className="flex items-center gap-1 text-text">
-                <input
-                  type="radio"
-                  name="import-mode"
-                  checked={importMode === 'replace'}
-                  onChange={() => setImportMode('replace')}
-                />
-                Replace existing
-              </label>
+
+            {/* Selective Categories Checklist */}
+            {importPreview.categories && importPreview.categories.length > 0 && (
+              <div className="flex flex-col gap-1.5 rounded border border-border/60 bg-bg/50 p-2 text-[11px]">
+                <div className="flex items-center justify-between font-medium text-text border-b border-border/40 pb-1">
+                  <span>Categories to restore:</span>
+                  <div className="flex gap-2 text-[10px] text-primary">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const all: Record<string, boolean> = {}
+                        importPreview.categories?.forEach((c) => (all[c.id] = true))
+                        setSelectedCategories((prev) => ({ ...prev, ...all }))
+                      }}
+                      className="hover:underline"
+                    >
+                      All
+                    </button>
+                    <span>|</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const none: Record<string, boolean> = {}
+                        importPreview.categories?.forEach((c) => (none[c.id] = false))
+                        setSelectedCategories((prev) => ({ ...prev, ...none }))
+                      }}
+                      className="hover:underline"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 pt-1">
+                  {importPreview.categories.map((cat) => (
+                    <label
+                      key={cat.id}
+                      className="flex items-center justify-between text-muted hover:text-text cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories[cat.id] ?? false}
+                          onChange={(e) =>
+                            setSelectedCategories((prev) => ({
+                              ...prev,
+                              [cat.id]: e.target.checked,
+                            }))
+                          }
+                          className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                        />
+                        <span>{cat.label}</span>
+                      </span>
+                      <span className="font-mono text-[10px] opacity-70">({cat.count})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Conflict resolution modes */}
+            <div className="flex flex-col gap-1 border-t border-border/50 pt-2 text-[11px]">
+              <span className="font-medium text-text">Conflict resolution:</span>
+              <div className="flex flex-col gap-1.5 text-text">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    checked={importMode === 'merge'}
+                    onChange={() => setImportMode('merge')}
+                  />
+                  <span>
+                    <strong className="text-primary font-medium">Merge & Rename</strong>{' '}
+                    (Recommended — keeps existing data, appends (Imported))
+                  </span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    checked={importMode === 'skip'}
+                    onChange={() => setImportMode('skip')}
+                  />
+                  <span>Keep existing (Skip conflicts)</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    checked={importMode === 'replace'}
+                    onChange={() => setImportMode('replace')}
+                  />
+                  <span>Replace existing (Overwrite)</span>
+                </label>
+              </div>
             </div>
+
             <Button variant="primary" onClick={() => void applyImport()} disabled={busy}>
               Import
             </Button>

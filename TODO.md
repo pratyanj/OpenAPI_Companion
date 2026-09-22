@@ -25,12 +25,16 @@
       - Quick Baseline (A) / Comparison (B) dropdown selectors and Swap (`⇄`) button inside the modal.
     - **Validated**: 90 test files, **848 tests passing (100%)**, zero lint or formatting issues, production build passing cleanly.
 
-- [ ] **3. ⏰ Automated Backup Scheduler & Smart Merge Import**
-  - **Problem**: Manual backups are easy to forget. If browser storage is cleared, data could be lost. Furthermore, importing a backup currently only offers "Replace All" or "Keep Existing", which can overwrite or drop newer presets.
-  - **Proposed Solution**:
-    - **Automated Periodic Backup**: Add a background backup scheduler in Settings with configurable frequencies: `Off`, `Every 30 minutes`, `Every 2 hours`, `Every 6 hours`, `Every 12 hours`, `Daily (24h)`, or `Custom interval`.
-    - **Timestamped File Naming**: Download files using descriptive naming convention: `openapi-companion-backup-YYYY-MM-DD-HHmm.json`.
-    - **Smart "Merge & Rename" Mode**: Enhance import engine with a third mode: `Merge & Rename`. If an imported preset or environment has a conflicting name, automatically append `(Imported)` or `(Copy)` and merge without overwriting existing data.
+- [x] **3. ⏰ Automated Backup Scheduler & Smart Merge Import**
+  - **Problem**: Manual backups are easy to forget. If browser storage is cleared, data could be lost. Furthermore, importing a backup previously only offered "Replace All" or "Keep Existing", which could overwrite or drop newer presets.
+  - **Delivered Solution**:
+    - **Automated Periodic Backup Scheduler**: Manifest V3 `chrome.alarms` background scheduler with configurable frequencies (`Off`, `Every 30 minutes`, `Every 2 hours`, `Every 6 hours`, `Every 12 hours`, `Daily (24h)`, or `Custom minutes`), with automatic alarm synchronization on settings save, browser startup, or extension update.
+    - **Smart Delta Detection ("Skip if unchanged")**: Queries storage envelope `updatedAt` timestamps across all keys before downloading; skips redundant backup operations if zero mutations occurred since the last backup.
+    - **Universal Downloader & Descriptive Naming**: Standardized backup naming convention `openapi-companion-backup-YYYY-MM-DD-HHmm.json` (or `openapi-companion-project-<slug>-backup-YYYY-MM-DD-HHmm.json`), using `chrome.downloads.download` in MV3 background service workers with DOM anchor fallback in UI contexts.
+    - **Smart Deep Merge Mode (`mode: 'merge'`)**: Entity-level deep merging for request presets, workflows, custom headers, auto-extraction rules, and environments. Conflicting entity names are automatically renamed with an `(Imported)` suffix and assigned fresh UUIDs, preventing data loss.
+    - **Pre-Import Safety Snapshot & 1-Click Rollback ("Undo Import")**: Automatically captures an atomic pre-import storage snapshot before modifying storage. Displays a persistent "Restore Point Available" alert banner with a 1-click "Undo Import" button.
+    - **Granular Selective Import Checklist**: Interactive category selection checklist (Projects & Metadata, Request Presets, Workflows, Custom Headers, Extraction Rules, Environments & Variables, Application Settings) allowing developers to selectively import only what they need.
+  - **Validated**: 92 test files, **865 tests passing (100%)**, 0 TypeScript errors, clean ESLint & Prettier checks, production build and Firefox package passing cleanly.
 
 - [ ] **4. 🛡️ Asynchronous Swagger UI Mounting Observer**
   - **Problem**: On single-page applications (SPAs) or frameworks like FastAPI where Swagger UI renders dynamically after initial script execution or API spec download, OpenAPI Companion can occasionally initialize too early, showing a dormant state or missing button injections.
