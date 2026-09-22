@@ -36,11 +36,16 @@
     - **Granular Selective Import Checklist**: Interactive category selection checklist (Projects & Metadata, Request Presets, Workflows, Custom Headers, Extraction Rules, Environments & Variables, Application Settings) allowing developers to selectively import only what they need.
   - **Validated**: 92 test files, **865 tests passing (100%)**, 0 TypeScript errors, clean ESLint & Prettier checks, production build and Firefox package passing cleanly.
 
-- [ ] **4. 🛡️ Asynchronous Swagger UI Mounting Observer**
-  - **Problem**: On single-page applications (SPAs) or frameworks like FastAPI where Swagger UI renders dynamically after initial script execution or API spec download, OpenAPI Companion can occasionally initialize too early, showing a dormant state or missing button injections.
-  - **Proposed Solution**:
-    - Add a 3-second non-blocking `MutationObserver` in `src/content/index.tsx` that watches for `#swagger-ui` or `.swagger-ui` container creation.
-    - Seamlessly initialize the headless content agent and button bars the moment Swagger UI mounts to the DOM without requiring a manual page refresh.
+- [x] **4. 🛡️ Asynchronous Swagger UI Mounting Observer**
+  - **Problem**: On single-page applications (SPAs) or frameworks like FastAPI, Springdoc, NestJS, and Next.js where Swagger UI renders dynamically after initial script execution or API spec download, OpenAPI Companion could occasionally initialize too early, showing a dormant state or missing button injections until a manual page refresh.
+  - **Delivered Solution**:
+    - **Fast Path Detection**: Instant 0ms synchronous boot if Swagger UI containers or meta tags are already present in the DOM on script execution (`isSwaggerPresent`).
+    - **Dynamic Mounting Observer (`src/content/swagger-mount-observer.ts`)**: 3.5s non-blocking `MutationObserver` window (`waitForSwaggerMount`) monitoring `childList` and `subtree` mutations on `document.documentElement` for `#swagger-ui`, `.swagger-ui`, `.swagger-container`, `#swagger-ui-container`, `.swagger-ui-wrap`, and `meta[name="swagger-ui"]`. Automatically disconnects immediately upon mount detection or timeout expiry without performance overhead.
+    - **SPA Client-Side Route Navigation Watcher (`watchSpaNavigation`)**: Hooks browser History API (`history.pushState`, `history.replaceState`) and listens to `popstate` and `hashchange` events to detect dynamic client-side route transitions into Swagger API documentation paths without full page reloads.
+    - **Idempotent Mutex Boot Guard (`bootAgent`)**: Guarantees atomic single-boot execution using internal state flags (`isBooting`, `isBooted`) and DOM container dataset markings (`dataset.oacAgent = 'booted'`), preventing duplicate adapters, duplicate button bars, or memory leaks.
+    - **Broadened Adapter Detection (`SwaggerUiAdapter.detect`)**: Enhanced container queries with expanded selector fallbacks to recognize modern framework wrappers.
+    - **Comprehensive Unit Testing**: Added 18 unit tests in `src/content/swagger-mount-observer.test.ts` covering synchronous fast path, asynchronous mutation detection, timeout handling, observer disconnection, and History API wrappers.
+  - **Validated**: 93 test files, **887 tests passing (100% green)**, 0 TypeScript compiler errors, clean ESLint, 100% Prettier formatting, production Vite build and Firefox bundle passing cleanly.
 
 - [ ] **5. ⌨️ Customizable Keyboard Shortcut Manager**
   - **Problem**: In-page shortcuts (<kbd>Alt+M</kbd> for Mock Data, <kbd>Alt+L</kbd> for Last Sent Payload, <kbd>Alt+Shift+F</kbd> for Format JSON, <kbd>Ctrl+Shift+V</kbd> for Paste cURL, <kbd>⌘K</kbd> for Palette) are powerful but not discoverable enough or remappable for developers with conflicting IDE/OS shortcuts.

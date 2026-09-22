@@ -73,6 +73,7 @@ import {
   type PanelState,
   type RpcResponse,
 } from './sidepanel-protocol'
+import { waitForSwaggerMount, watchSpaNavigation } from './swagger-mount-observer'
 
 const AGENT_FLAG = 'oacAgent'
 
@@ -427,19 +428,23 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
 }
 
-async function boot(): Promise<void> {
-  console.info(`${LOG} content agent loaded:`, location.href)
-  const bridge = new SwaggerBridge()
-  const adapter = new SwaggerUiAdapter(bridge)
-  if (!adapter.detect()) {
-    console.info(`${LOG} no Swagger UI detected on this page — staying dormant.`)
-    return // not an OpenAPI page — stay dormant (EC-005)
-  }
-  if (document.documentElement.dataset[AGENT_FLAG]) {
-    console.info(`${LOG} agent already running in this tab — skipping.`)
+let isBooting = false
+let isBooted = false
+let spaCleanup: (() => void) | null = null
+
+export async function bootAgent(
+  doc: Document = document,
+  adapterInstance?: SwaggerUiAdapter,
+): Promise<void> {
+  if (isBooting || isBooted || doc.documentElement?.dataset[AGENT_FLAG]) {
+    console.info(`${LOG} agent already running or booting in this tab — skipping.`)
     return // avoid double-injection (EC-043)
   }
-  document.documentElement.dataset[AGENT_FLAG] = '1'
+  isBooting = true
+  doc.documentElement.dataset[AGENT_FLAG] = '1'
+
+  const bridge = new SwaggerBridge()
+  const adapter = adapterInstance ?? new SwaggerUiAdapter(bridge)
 
   const storage = new StorageService({ area: chromeLocalArea(), bus })
   const project = new ProjectService({ storage, bus })
@@ -1272,7 +1277,50 @@ async function boot(): Promise<void> {
     })
   }
 
+  isBooting = false
+  isBooted = true
   pushState() // initial mirror for any already-open panel
+}
+
+export async function boot(): Promise<void> {
+  console.info(`${LOG} content agent loaded:`, location.href)
+  const bridge = new SwaggerBridge()
+  const adapter = new SwaggerUiAdapter(bridge)
+
+  // 1. Fast-path: immediate check
+  if (adapter.detect(document)) {
+    await bootAgent(document, adapter)
+    return
+  }
+
+  // 2. Slow-path: asynchronous mounting observer (3.5s window for SPAs / dynamic renders)
+  console.info(
+    `${LOG} Swagger UI not detected immediately — observing DOM for dynamic mount (3.5s)...`,
+  )
+  const mounted = await waitForSwaggerMount({ doc: document, timeoutMs: 3500 })
+  if (mounted) {
+    console.info(`${LOG} Swagger UI container detected dynamically — initializing content agent.`)
+    await bootAgent(document, adapter)
+    return
+  }
+
+  // 3. Dormant fallback: watch for SPA client-side route transitions
+  console.info(`${LOG} no Swagger UI detected on this page — staying dormant.`)
+  if (!spaCleanup) {
+    spaCleanup = watchSpaNavigation(async () => {
+      if (isBooted || isBooting) return
+      if (adapter.detect(document)) {
+        console.info(
+          `${LOG} Swagger UI detected after SPA route navigation — initializing content agent.`,
+        )
+        await bootAgent(document, adapter)
+        if (spaCleanup) {
+          spaCleanup()
+          spaCleanup = null
+        }
+      }
+    })
+  }
 }
 
 void boot()
