@@ -125,6 +125,7 @@ async function setup(over: { staleTab?: boolean } = {}) {
   await theme.init()
   const bus = new EventBus()
   const onOpenPalette = vi.fn()
+  const onOpenShortcutsModal = vi.fn()
   render(
     <PanelShell
       project={project}
@@ -132,11 +133,12 @@ async function setup(over: { staleTab?: boolean } = {}) {
       bus={bus}
       environmentId="default"
       onOpenPalette={onOpenPalette}
+      onOpenShortcutsModal={onOpenShortcutsModal}
       staleTab={over.staleTab}
       {...services()}
     />,
   )
-  return { onOpenPalette }
+  return { onOpenPalette, onOpenShortcutsModal }
 }
 
 describe('PanelShell (native side panel)', () => {
@@ -166,6 +168,12 @@ describe('PanelShell (native side panel)', () => {
     const { onOpenPalette } = await setup()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
     expect(onOpenPalette).toHaveBeenCalledTimes(1)
+  })
+
+  it('delegates the keyboard shortcuts button to the in-page modal', async () => {
+    const { onOpenShortcutsModal } = await setup()
+    fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts (?)' }))
+    expect(onOpenShortcutsModal).toHaveBeenCalledTimes(1)
   })
 
   // Reloading the extension leaves old content scripts in open tabs, where newer

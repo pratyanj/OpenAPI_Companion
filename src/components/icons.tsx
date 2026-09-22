@@ -57,6 +57,7 @@ import {
   ArrowLeftRight,
   Columns2,
   Rows2,
+  Keyboard,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -141,6 +142,7 @@ export const CompareIcon = make(GitCompare)
 export const SwapIcon = make(ArrowLeftRight)
 export const SplitViewIcon = make(Columns2)
 export const UnifiedViewIcon = make(Rows2)
+export const KeyboardIcon = make(Keyboard)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)

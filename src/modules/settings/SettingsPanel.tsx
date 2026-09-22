@@ -11,6 +11,7 @@ import {
   DeleteIcon,
   ExternalLinkIcon,
   EyeIcon,
+  KeyboardIcon,
   LockIcon,
 } from '@/components'
 import type { SettingsApi } from './settings-service'
@@ -33,6 +34,7 @@ interface SettingsPanelProps {
   theme: ThemeManager
   projectId?: string
   bus: EventBus
+  onOpenShortcutsModal?: () => void
 }
 
 const THEMES: ThemePreference[] = ['light', 'dark', 'system']
@@ -63,7 +65,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsPanelProps) {
+export function SettingsPanel({
+  settings,
+  io,
+  theme,
+  projectId,
+  bus,
+  onOpenShortcutsModal,
+}: SettingsPanelProps) {
   const { preference } = useTheme(theme)
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null)
@@ -331,6 +340,28 @@ export function SettingsPanel({ settings, io, theme, projectId, bus }: SettingsP
               {t}
             </button>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Keyboard Shortcuts">
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface/40 p-3">
+          <p className="text-[11px] text-muted leading-relaxed">
+            Customize keybindings for the Command Palette, Mock Data, History Refill, JSON
+            Formatting, and more directly on the active Swagger page.
+          </p>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] font-medium text-text">In-Page Manager</span>
+            <Button
+              variant="secondary"
+              onClick={onOpenShortcutsModal}
+              disabled={!onOpenShortcutsModal}
+              title="Open keyboard shortcuts configuration modal on the active Swagger page"
+              className="flex items-center gap-1.5 py-1 px-2.5 text-xs"
+            >
+              <KeyboardIcon className="h-3.5 w-3.5" />
+              <span>Configure Shortcuts...</span>
+            </Button>
+          </div>
         </div>
       </Section>
 

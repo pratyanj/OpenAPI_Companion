@@ -53,6 +53,9 @@ export type BackupFrequency = 'off' | '30m' | '2h' | '6h' | '12h' | '24h' | 'cus
 /** Scope for backup export: full workspace or current active project. */
 export type BackupScope = 'all' | 'current'
 
+import type { ShortcutActionId, ShortcutBinding } from '@/modules/shortcuts/types'
+import { DEFAULT_SHORTCUTS } from '@/modules/shortcuts/types'
+
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */
 export interface Preferences {
   /** Auto-write a backup to Downloads on a schedule. */
@@ -75,6 +78,8 @@ export interface Preferences {
   historyLimit: number
   /** In-page Swagger UI feature toggles (all enabled by default). */
   swaggerFeatures: SwaggerFeaturePreferences
+  /** Customizable keyboard shortcuts map. */
+  shortcuts?: Partial<Record<ShortcutActionId, ShortcutBinding>>
 }
 
 export const DEFAULT_BACKUP_FOLDER = 'OpenAPI-Companion-Backups'
@@ -88,6 +93,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   backupFolder: DEFAULT_BACKUP_FOLDER,
   historyLimit: 1000,
   swaggerFeatures: DEFAULT_SWAGGER_FEATURES,
+  shortcuts: DEFAULT_SHORTCUTS,
 }
 
 /** Per-project storage usage, plus the grand total. */

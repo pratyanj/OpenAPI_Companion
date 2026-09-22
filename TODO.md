@@ -47,11 +47,20 @@
     - **Comprehensive Unit Testing**: Added 18 unit tests in `src/content/swagger-mount-observer.test.ts` covering synchronous fast path, asynchronous mutation detection, timeout handling, observer disconnection, and History API wrappers.
   - **Validated**: 93 test files, **887 tests passing (100% green)**, 0 TypeScript compiler errors, clean ESLint, 100% Prettier formatting, production Vite build and Firefox bundle passing cleanly.
 
-- [ ] **5. ⌨️ Customizable Keyboard Shortcut Manager**
-  - **Problem**: In-page shortcuts (<kbd>Alt+M</kbd> for Mock Data, <kbd>Alt+L</kbd> for Last Sent Payload, <kbd>Alt+Shift+F</kbd> for Format JSON, <kbd>Ctrl+Shift+V</kbd> for Paste cURL, <kbd>⌘K</kbd> for Palette) are powerful but not discoverable enough or remappable for developers with conflicting IDE/OS shortcuts.
-  - **Proposed Solution**:
-    - Create a dedicated Keyboard Shortcuts modal accessible from the Side Panel footer, Command Palette, and Settings tab.
-    - Clean table displaying each shortcut, action description, and customizable key combination with conflict detection.
+- [x] **5. ⌨️ Customizable Keyboard Shortcut Manager**
+  - **Problem**: In-page shortcuts (<kbd>Alt+M</kbd> for Mock Data, <kbd>Alt+L</kbd> for Last Sent Payload, <kbd>Alt+Shift+F</kbd> for Format JSON, <kbd>Ctrl+Shift+V</kbd> for Paste cURL, <kbd>⌘K</kbd> for Palette) are powerful but not discoverable enough or remappable for developers with conflicting browser, OS, or extension shortcuts.
+  - **Delivered Solution**:
+    - **In-Page Shadow DOM Modal (`#oac-shortcuts-host`)**: Spacious top-centered dialog (640px+) rendered in the active Swagger page without CSS contamination, fully synchronized with `ThemeManager` (`light`, `dark`, `system`).
+    - **Custom Key Recorder**: Interactive live recorder capturing modifiers (<kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd>, <kbd>Meta/Cmd</kbd>) and keypresses with platform-aware formatting (<kbd>⌘</kbd>, <kbd>⌥</kbd>, <kbd>⇧</kbd> on macOS vs <kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd> on Windows/Linux).
+    - **Safety & Conflict Detection**: Protects reserved browser combinations (<kbd>Ctrl+W</kbd>, <kbd>Ctrl+T</kbd>, <kbd>Ctrl+N</kbd>, <kbd>F5</kbd>, <kbd>F12</kbd>, etc.) and flags same-context key conflicts with an interactive resolution banner offering 1-click **Swap Bindings** or **Override**.
+    - **Dynamic Content Script Reactivity**: Listens to `SHORTCUTS_CHANGED` bus events across tabs so remapped keys apply immediately without page reload in `swagger-mock-data`, `swagger-endpoint-history`, `swagger-paste-curl`, and global command palette listeners.
+    - **Multi-Entry Access**:
+      - "Configure Shortcuts..." action button in Side Panel Settings tab.
+      - Direct Keyboard icon button in Side Panel header.
+      - In-page trigger (<kbd>?</kbd> or <kbd>Ctrl+/</kbd> when not typing in inputs/textareas).
+      - RPC Bridge (`shortcutsModal.open`).
+    - **Granular Reset Controls**: 1-click per-shortcut reset to default bindings and a global "Reset All to Defaults" action.
+  - **Validated**: 96 test files, **917 tests passing (100% green)**, 0 TypeScript compiler errors, clean ESLint, 100% Prettier formatting, clean production Vite build and Firefox bundle.
 
 - [ ] **6. 📋 Pre-Public Repository Hygiene (Quick Check-offs)**
   - Fill placeholder tokens before public open-sourcing:

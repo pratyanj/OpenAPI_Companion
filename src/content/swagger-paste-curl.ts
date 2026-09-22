@@ -21,6 +21,12 @@ import {
 } from '@/adapters/swagger/swagger-request-dom'
 import type { ProductivityService } from '@/modules/productivity/productivity-service'
 import type { EndpointListItem } from '@/modules/productivity/types'
+import type { ShortcutActionId, ShortcutBinding } from '@/modules/shortcuts/types'
+import { matchesShortcut } from '@/modules/shortcuts/shortcut-utils'
+
+export interface SwaggerPasteCurlOptions {
+  getBinding?: (action: ShortcutActionId) => ShortcutBinding | undefined
+}
 
 export interface SwaggerPasteCurlHandle {
   openModal(initialCurl?: string): void
@@ -507,6 +513,7 @@ function ensureStyles(doc: Document): void {
 export function mountSwaggerPasteCurl(
   doc: Document = document,
   productivity?: ProductivityService,
+  options?: SwaggerPasteCurlOptions,
 ): SwaggerPasteCurlHandle {
   ensureStyles(doc)
 
@@ -884,9 +891,14 @@ export function mountSwaggerPasteCurl(
     }
   }
 
-  // Keyboard shortcut listener: Ctrl+Shift+V or ⌘+Shift+V when not inside an active input
+  // Keyboard shortcut listener: paste cURL when not inside an active input
   const onKeyDown = (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+    const pasteBinding = options?.getBinding?.('pasteCurl.paste') || {
+      key: 'v',
+      ctrlOrCmd: true,
+      shift: true,
+    }
+    if (matchesShortcut(pasteBinding, e)) {
       const activeTag = doc.activeElement?.tagName?.toLowerCase()
       if (activeTag !== 'input' && activeTag !== 'textarea') {
         e.preventDefault()

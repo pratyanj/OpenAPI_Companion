@@ -73,9 +73,18 @@ beforeEach(async () => {
   await theme.init()
 })
 
-function renderPanel(settings = mockSettings(), io = mockIo()) {
+function renderPanel(settings = mockSettings(), io = mockIo(), onOpenShortcutsModal?: () => void) {
   const bus = new EventBus()
-  render(<SettingsPanel settings={settings} io={io} theme={theme} projectId="p1" bus={bus} />)
+  render(
+    <SettingsPanel
+      settings={settings}
+      io={io}
+      theme={theme}
+      projectId="p1"
+      bus={bus}
+      onOpenShortcutsModal={onOpenShortcutsModal}
+    />,
+  )
   return { settings, io, bus }
 }
 
@@ -83,6 +92,7 @@ describe('SettingsPanel', () => {
   it('renders the categories, storage usage, and version', async () => {
     renderPanel()
     expect(screen.getByText('Appearance')).toBeInTheDocument()
+    expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument()
     expect(screen.getByText('Storage')).toBeInTheDocument()
     expect(screen.getByText('Data')).toBeInTheDocument()
     expect(await screen.findByText('2.0 KB')).toBeInTheDocument() // total used
@@ -263,5 +273,15 @@ describe('SettingsPanel', () => {
     await waitFor(() =>
       expect(settings.setPreference).toHaveBeenCalledWith('backupFolder', 'CustomFolder'),
     )
+  })
+
+  it('renders the keyboard shortcuts section and triggers onOpenShortcutsModal', async () => {
+    const onOpen = vi.fn()
+    renderPanel(mockSettings(), mockIo(), onOpen)
+    expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument()
+    const configureBtn = screen.getByRole('button', { name: /Configure Shortcuts/i })
+    expect(configureBtn).toBeInTheDocument()
+    fireEvent.click(configureBtn)
+    expect(onOpen).toHaveBeenCalledOnce()
   })
 })

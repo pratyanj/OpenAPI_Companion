@@ -63,6 +63,13 @@ import type {
 } from './extraction-rule-modal'
 import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
 import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
+import type { ShortcutsModalHandle } from './shortcuts-modal'
+import {
+  DEFAULT_SHORTCUTS,
+  type ShortcutActionId,
+  type ShortcutBinding,
+} from '@/modules/shortcuts/types'
+import { matchesShortcut } from '@/modules/shortcuts/shortcut-utils'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -509,6 +516,24 @@ export async function bootAgent(
   }
   await syncSwaggerFeatures()
 
+  let activeShortcuts: Record<string, ShortcutBinding> = { ...DEFAULT_SHORTCUTS }
+  try {
+    const initialPrefs = await settingsService.getPreferences()
+    if (initialPrefs.shortcuts) {
+      activeShortcuts = { ...DEFAULT_SHORTCUTS, ...initialPrefs.shortcuts }
+    }
+  } catch {
+    // ignore
+  }
+
+  const getShortcutBinding = (actionId: ShortcutActionId): ShortcutBinding => {
+    return activeShortcuts[actionId] || DEFAULT_SHORTCUTS[actionId]
+  }
+
+  bus.subscribe('SHORTCUTS_CHANGED', (payload) => {
+    activeShortcuts = { ...DEFAULT_SHORTCUTS, ...payload.shortcuts }
+  })
+
   const auth = new AuthenticationService({ storage, adapter, projectId: meta.id, bus })
   const environments = new EnvironmentService({ storage, projectId: meta.id, bus })
   const requests = new RequestService({
@@ -555,7 +580,7 @@ export async function bootAgent(
   let activeSecrets: string[] = []
 
   const swaggerVars = mountSwaggerVariables({}, [], document)
-  mountSwaggerMockData(document)
+  mountSwaggerMockData(document, { getBinding: getShortcutBinding })
 
   const saveVariableModal = mountSaveVariableModal(environments, bus, document)
   const saveVarTheme = new ThemeManager({ storage, root: saveVariableModal.themeRoot, bus })
@@ -567,6 +592,7 @@ export async function bootAgent(
   mountSwaggerResponseExport(document)
   mountSwaggerEndpointHistory(document, {
     storageKeyPrefix: `oac_last_payload_${meta.id}_`,
+    getBinding: getShortcutBinding,
   })
 
   const syncActiveVariables = async (): Promise<void> => {
@@ -623,7 +649,7 @@ export async function bootAgent(
   })
   await productivity.init()
   mountSwaggerPinnedEndpoints(productivity, document)
-  mountSwaggerPasteCurl(document, productivity)
+  mountSwaggerPasteCurl(document, productivity, { getBinding: getShortcutBinding })
   const headersService = new HeadersService({ storage, projectId: meta.id })
   mountSwaggerGlobalHeaders(document, headersService)
 
@@ -803,15 +829,48 @@ export async function bootAgent(
     }
   }
 
-  // Capture phase so Swagger's own inputs can't swallow the shortcut. `key` is
-  // optional-chained because page scripts can dispatch synthetic keydowns
-  // without it, and a TypeError here would kill the whole listener.
+  let shortcutsModal: ShortcutsModalHandle | null = null
+  const withShortcutsModal = async (): Promise<ShortcutsModalHandle | null> => {
+    if (shortcutsModal) return shortcutsModal
+    try {
+      const { mountShortcutsModal } = await import('./shortcuts-modal')
+      shortcutsModal = mountShortcutsModal(settingsService, bus, document)
+      const modalTheme = new ThemeManager({ storage, root: shortcutsModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return shortcutsModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page shortcuts modal overlay.`, cause)
+      return null
+    }
+  }
+
+  // Capture phase so Swagger's own inputs can't swallow the shortcut.
   document.addEventListener(
     'keydown',
     (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key?.toLowerCase() === 'k') {
+      // 1. Command palette shortcut
+      if (matchesShortcut(getShortcutBinding('palette.toggle'), e)) {
         e.preventDefault()
         void withPalette().then((p) => p?.toggle())
+        return
+      }
+
+      // 2. Keyboard shortcuts help shortcut
+      const helpBinding = getShortcutBinding('shortcuts.open')
+      if (matchesShortcut(helpBinding, e)) {
+        const target = e.target as HTMLElement | null
+        const isInput =
+          target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
+        if (!isInput || helpBinding.ctrlOrCmd || helpBinding.alt) {
+          e.preventDefault()
+          void withShortcutsModal().then((m) => m?.toggle())
+          return
+        }
       }
     },
     true,
@@ -1069,6 +1128,27 @@ export async function bootAgent(
       } catch (cause) {
         return err({
           code: 'EXTRACTION_RULE_MODAL_FAILED',
+          message: cause instanceof Error ? cause.message : String(cause),
+          recoverable: true,
+        })
+      }
+    },
+    // Panel's shortcuts manager → open the in-page modal (spacious overlay on the doc).
+    'shortcutsModal.open': async () => {
+      try {
+        const m = await withShortcutsModal()
+        if (!m) {
+          return err({
+            code: 'SHORTCUTS_MODAL_UNAVAILABLE',
+            message: 'Could not load in-page keyboard shortcuts modal',
+            recoverable: true,
+          })
+        }
+        m.open()
+        return ok(undefined)
+      } catch (cause) {
+        return err({
+          code: 'SHORTCUTS_MODAL_FAILED',
           message: cause instanceof Error ? cause.message : String(cause),
           recoverable: true,
         })

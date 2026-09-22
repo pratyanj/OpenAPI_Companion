@@ -318,6 +318,14 @@ export async function openPageExtractionRuleModal(
   return await rpcResult<void>('extractionRuleModal.open', options ?? {})
 }
 
+/**
+ * Ask the page to open its Keyboard Shortcuts Manager modal overlay.
+ * Lives in the page (top-centered, 640px+ wide) for ample room to browse & rebind keys.
+ */
+export async function openPageShortcutsModal(): Promise<Result<void>> {
+  return await rpcResult<void>('shortcutsModal.open')
+}
+
 export interface WorkflowEditorBridgeOpenOptions {
   workflow?: Workflow | null
 }

@@ -17,6 +17,9 @@ import {
   writeRequestParameters,
 } from '@/adapters/swagger/swagger-request-dom'
 
+import type { ShortcutActionId, ShortcutBinding } from '@/modules/shortcuts/types'
+import { matchesShortcut } from '@/modules/shortcuts/shortcut-utils'
+
 export interface EndpointPayloadSnapshot {
   endpointId: string
   body?: string
@@ -36,6 +39,7 @@ export interface SwaggerEndpointHistoryHandle {
 
 export interface EndpointHistoryOptions {
   storageKeyPrefix?: string
+  getBinding?: (action: ShortcutActionId) => ShortcutBinding | undefined
 }
 
 export const SVG_ICONS = {
@@ -506,9 +510,13 @@ export function mountSwaggerEndpointHistory(
     return count
   }
 
-  // Handle Alt+L shortcut inside opblocks
+  // Handle shortcut inside opblocks
   function onKeyDown(e: KeyboardEvent): void {
-    if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+    const refillBinding = options?.getBinding?.('endpointHistory.refill') || {
+      key: 'l',
+      alt: true,
+    }
+    if (matchesShortcut(refillBinding, e)) {
       if (doc.body?.classList.contains('oac-disable-endpoint-history')) return
       const activeEl = doc.activeElement
       const block = activeEl?.closest('.opblock')

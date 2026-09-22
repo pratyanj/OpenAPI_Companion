@@ -94,6 +94,9 @@ export interface EventPayload {
 
   // Settings / storage / data
   SETTINGS_UPDATED: { keys: string[] }
+  SHORTCUTS_CHANGED: {
+    shortcuts: Record<string, import('@/modules/shortcuts/types').ShortcutBinding>
+  }
   THEME_CHANGED: { theme: 'light' | 'dark' | 'system' }
   STORAGE_MIGRATED: { from: number; to: number }
   STORAGE_QUOTA_WARNING: { bytesInUse: number; quota: number }

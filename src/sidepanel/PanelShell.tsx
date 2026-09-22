@@ -9,6 +9,7 @@ import {
   ThemeSystemIcon,
   ChevronDownIcon,
   FolderIcon,
+  KeyboardIcon,
   PortChangeBanner,
   ProjectSwitcherModal,
 } from '@/components'
@@ -61,6 +62,8 @@ export interface PanelShellProps {
   onOpenExtractionRuleModal?: (
     options?: ExtractionRuleModalOpenOptions,
   ) => Promise<Result<void>> | Result<void> | void
+  /** Opens the keyboard shortcuts modal overlay in the PAGE (see `openPageShortcutsModal`). */
+  onOpenShortcutsModal?: () => void
   /** Opens the workflow editor overlay in the PAGE (see `openPageWorkflowEditor`). */
   onOpenWorkflowEditor?: (options?: WorkflowEditorBridgeOpenOptions) => void
   /** Opens the workflow runner overlay in the PAGE (see `openPageWorkflowRunner`). */
@@ -96,6 +99,7 @@ export function PanelShell({
   onOpenPresetEditor,
   onOpenHistoryDetail,
   onOpenExtractionRuleModal,
+  onOpenShortcutsModal,
   onOpenWorkflowEditor,
   onOpenWorkflowRunner,
   staleTab = false,
@@ -194,6 +198,11 @@ export function PanelShell({
           <IconButton label="Search endpoints (⌘K)" onClick={onOpenPalette}>
             <SearchIcon />
           </IconButton>
+          {onOpenShortcutsModal ? (
+            <IconButton label="Keyboard shortcuts (?)" onClick={onOpenShortcutsModal}>
+              <KeyboardIcon className="h-4 w-4" />
+            </IconButton>
+          ) : null}
           <IconButton label={`Theme: ${preference}. Click to change.`} onClick={cycleTheme}>
             <PreferenceIcon className="h-4 w-4" />
           </IconButton>
@@ -275,6 +284,7 @@ export function PanelShell({
           onOpenPresetEditor={onOpenPresetEditor}
           onOpenHistoryDetail={onOpenHistoryDetail}
           onOpenExtractionRuleModal={onOpenExtractionRuleModal}
+          onOpenShortcutsModal={onOpenShortcutsModal}
           onOpenWorkflowEditor={onOpenWorkflowEditor}
           onOpenWorkflowRunner={onOpenWorkflowRunner}
           onNavigate={setActiveTab}
