@@ -111,6 +111,45 @@ Known Issues
 
 ---
 
+# [1.2.0] - 2026-09-25
+
+## Added
+* **Localhost & Port Resilience / Project Switcher & Host Aliasing (with Custom Project Naming)**:
+  * **Smart Localhost & Loopback Grouping**: Added `isLocalHost`, `normalizeLocalOrigin`, and `extractPort` utilities to normalize `localhost`, `127.0.0.1`, `0.0.0.0`, and private IPv4 ranges (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`).
+  * **Persistent Origin Bindings**: Implemented atomic origin bindings map in storage (`meta/project-bindings`) that maps origins/ports directly to primary project IDs without data duplication.
+  * **Candidate Project Detection**: Content agent scans for existing projects on other ports or matching OpenAPI specs when a new port is opened and passes candidate metadata to the panel.
+  * **Port Change Alert Banner**: Built `PortChangeBanner` offering 1-click `Link to Port` (immediate aliasing and page reload) and `Copy Data` actions.
+  * **Header Project Switcher Modal**: Added a searchable project switcher dialog accessible via header badge button (`[ 📁 Project Name ▾ ]`) and Dashboard, allowing developers to switch views, link origins, unlink origins, copy data, or dismiss links.
+  * **Custom Project Naming & Inline Renaming**: Added custom project naming from OpenAPI spec `info.title`, plus inline rename on Dashboard and in the Project Switcher Modal with `PROJECT_UPDATED` event reactivity across the panel.
+* **Side-by-Side Response Diff / Comparator**:
+  * **Algorithmic Diff Engine (`src/utils/diff.ts`)**: Pure TypeScript Myers/LCS line diff (`computeLineDiff`) producing aligned side-by-side rows and unified diff lines; recursive JSON key-path comparator (`computeJsonDiff`); case-insensitive HTTP header delta comparator (`compareHeaders`); and metrics comparator (`compareMetrics`) for latency ms/% delta and payload byte size.
+  * **Interactive Diff Modal (`src/modules/history/ResponseDiffModal.tsx`)**: Dual split-pane view with synchronized side-by-side scrolling and single-column unified diff view with toggle button and "Only changes" filter.
+  * **Header & Metrics Summary**: Visual status code comparison pill badges, latency comparison with delta (`+45 ms (+32.1%)`), and response byte size delta.
+  * **Four Comparison Tabs**: Response Body, Request Body, Header Delta (Added/Removed/Changed), and Query/Path Parameters.
+  * **Seamless Entry Points**: Compare toggle in history panel, history timeline comparisons, dropdown menu actions, and baseline swap.
+* **Automated Backup Scheduler & Smart Merge Import**:
+  * **Automated Periodic Backup Scheduler**: Manifest V3 `chrome.alarms` background scheduler with configurable frequencies (`Off`, `Every 30 minutes`, `Every 2 hours`, `Every 6 hours`, `Every 12 hours`, `Daily (24h)`, or `Custom minutes`).
+  * **Smart Delta Detection ("Skip if unchanged")**: Queries storage envelope `updatedAt` timestamps across all keys before downloading; skips redundant backup operations if zero mutations occurred since the last backup.
+  * **Universal Downloader & Descriptive Naming**: Standardized backup naming convention `openapi-companion-backup-YYYY-MM-DD-HHmm.json` using `chrome.downloads.download` in MV3 background service workers with DOM anchor fallback.
+  * **Smart Deep Merge Mode (`mode: 'merge'`)**: Entity-level deep merging for request presets, workflows, custom headers, auto-extraction rules, and environments with conflict renaming.
+  * **Pre-Import Safety Snapshot & 1-Click Rollback ("Undo Import")**: Automatically captures an atomic pre-import storage snapshot before modifying storage with an undo banner.
+  * **Granular Selective Import Checklist**: Interactive category selection checklist allowing developers to selectively import only what they need.
+* **Asynchronous Swagger UI Mounting Observer**:
+  * **Fast Path Detection**: Instant 0ms synchronous boot if Swagger UI containers or meta tags are already present in the DOM on script execution (`isSwaggerPresent`).
+  * **Dynamic Mounting Observer (`src/content/swagger-mount-observer.ts`)**: 3.5s non-blocking `MutationObserver` window monitoring `childList` and `subtree` mutations on `document.documentElement` for `#swagger-ui`, `.swagger-ui`, `.swagger-container`, etc.
+  * **SPA Client-Side Route Navigation Watcher (`watchSpaNavigation`)**: Hooks browser History API (`history.pushState`, `history.replaceState`) and listens to `popstate` and `hashchange` events to detect dynamic client-side route transitions into Swagger API documentation paths without full page reloads.
+  * **Idempotent Mutex Boot Guard (`bootAgent`)**: Guarantees atomic single-boot execution using internal state flags and DOM container dataset markings.
+* **Customizable Keyboard Shortcut Manager**:
+  * **In-Page Shadow DOM Modal (`#oac-shortcuts-host`)**: Spacious top-centered dialog rendered in the active Swagger page without CSS contamination, fully synchronized with `ThemeManager`.
+  * **Custom Key Recorder**: Interactive live recorder capturing modifiers (<kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd>, <kbd>Meta/Cmd</kbd>) and keypresses with platform-aware formatting.
+  * **Safety & Conflict Detection**: Protects reserved browser combinations and flags same-context key conflicts with an interactive resolution banner offering 1-click **Swap Bindings** or **Override**.
+  * **Dynamic Content Script Reactivity**: Listens to `SHORTCUTS_CHANGED` bus events across tabs so remapped keys apply immediately without page reload.
+
+## Changed
+* **Repository Governance & Compliance**: Updated governance contacts, security links, CODEOWNERS, and license holder details.
+
+---
+
 # [1.1.3] - 2026-09-06
 
 ## Added
