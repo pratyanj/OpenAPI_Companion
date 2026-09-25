@@ -386,4 +386,63 @@ describe('HistoryPanel', () => {
     fireEvent.click(compareMenuItem)
     expect(await screen.findByText('Side-by-Side Response Diff')).toBeInTheDocument()
   })
+
+  it('displays chronological call indexing badges and supports dedicated headers and parameters tabs', async () => {
+    const second: HistoryEntry = { ...entry, id: 'h2', timestamp: 60_000, status: 201 }
+    const rec2: HistoryRecord = {
+      ...second,
+      requestBody: '{"name": "Alice"}',
+      responseBody: '{"id": 42}',
+      headers: { 'X-Custom-Header': 'custom-val' },
+      queryParams: { page: '1' },
+      pathParams: { orgId: 'org-99' },
+    }
+    const service = mockService({
+      list: vi.fn(async (): Promise<Result<HistoryEntry[]>> => ok([second, entry])),
+      get: vi.fn(async (id: string): Promise<Result<HistoryRecord | null>> => {
+        if (id === 'h2') return ok(rec2)
+        return ok(record)
+      }),
+    })
+    render(<HistoryPanel service={service} bus={new EventBus()} />)
+    const rows = await screen.findAllByRole('button', { name: 'View post /users details' })
+    fireEvent.click(rows[0]!)
+    const dialog = await screen.findByRole('dialog', { name: 'Request detail' })
+
+    // Verify chronological call index badges
+    expect(within(dialog).getByText('#2')).toBeInTheDocument()
+    expect(within(dialog).getByText('#1')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Call #2 of 2/)).toBeInTheDocument()
+
+    // Verify dedicated tabs exist
+    expect(screen.getByRole('tab', { name: 'Request' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Response' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Headers/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Query & Params/ })).toBeInTheDocument()
+
+    // Test Headers tab
+    fireEvent.click(screen.getByRole('tab', { name: /Headers/ }))
+    expect(screen.getByText('X-Custom-Header')).toBeInTheDocument()
+    expect(screen.getByText('custom-val')).toBeInTheDocument()
+
+    // Test Parameters tab
+    fireEvent.click(screen.getByRole('tab', { name: /Query & Params/ }))
+    expect(screen.getByText('page')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('orgId')).toBeInTheDocument()
+    expect(screen.getByText('org-99')).toBeInTheDocument()
+
+    // Switching calls preserves tab and updates dynamically in place without unmounting
+    const timeline = within(screen.getByRole('list', { name: 'Calls to this endpoint' }))
+    const callButtons = timeline
+      .getAllByRole('button')
+      .filter((btn) => !btn.getAttribute('title')?.includes('Compare'))
+    fireEvent.click(callButtons[1]!) // Switch to h1
+
+    await waitFor(() => {
+      expect(within(dialog).getByText(/Call #1 of 2/)).toBeInTheDocument()
+    })
+    // In h1, there are no query/path params, so the empty state appears while tab remains Parameters
+    expect(screen.getByText(/No query or path parameters/)).toBeInTheDocument()
+  })
 })

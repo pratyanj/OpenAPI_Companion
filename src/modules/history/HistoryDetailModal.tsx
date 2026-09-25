@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dialog, Spinner, ReplayIcon, LocateIcon, CompareIcon } from '@/components'
 import type { EventBus } from '@/core/events'
 import type { EnvironmentPanelService } from '@/modules/environment'
@@ -31,22 +31,30 @@ export function HistoryDetailModal({
   const [loading, setLoading] = useState(!initialRecord && Boolean(initialHistoryId))
   const [replaying, setReplaying] = useState(false)
 
+  // In-memory record cache for 0ms instantaneous switching without modal reload
+  const cacheRef = useRef<Map<string, HistoryRecord>>(new Map())
+  if (initialRecord && !cacheRef.current.has(initialRecord.id)) {
+    cacheRef.current.set(initialRecord.id, initialRecord)
+  }
+
   // Diff comparison modal state
   const [diffOpen, setDiffOpen] = useState(false)
   const [diffTargetId, setDiffTargetId] = useState<string | undefined>()
 
-  const loadRecord = useCallback(
+  const handleSelectCall = useCallback(
     async (id: string) => {
-      setLoading(true)
+      // 0ms instant switch if cached
+      const cached = cacheRef.current.get(id)
+      if (cached) {
+        setRecord(cached)
+        return
+      }
+      // Otherwise fetch in background without unmounting HistoryDetail or showing full spinner
       const res = await service.get(id)
       if (res.ok && res.value) {
+        cacheRef.current.set(id, res.value)
         setRecord(res.value)
-        const listRes = await service.list()
-        if (listRes.ok) {
-          setCalls(listRes.value.filter((e) => e.endpointId === res.value!.endpointId))
-        }
       }
-      setLoading(false)
     },
     [service],
   )
@@ -54,15 +62,27 @@ export function HistoryDetailModal({
   useEffect(() => {
     if (initialRecord) {
       setRecord(initialRecord)
+      cacheRef.current.set(initialRecord.id, initialRecord)
       void service.list().then((listRes) => {
         if (listRes.ok) {
           setCalls(listRes.value.filter((e) => e.endpointId === initialRecord.endpointId))
         }
       })
     } else if (initialHistoryId) {
-      void loadRecord(initialHistoryId)
+      setLoading(true)
+      void service.get(initialHistoryId).then(async (res) => {
+        if (res.ok && res.value) {
+          cacheRef.current.set(res.value.id, res.value)
+          setRecord(res.value)
+          const listRes = await service.list()
+          if (listRes.ok) {
+            setCalls(listRes.value.filter((e) => e.endpointId === res.value!.endpointId))
+          }
+        }
+        setLoading(false)
+      })
     }
-  }, [initialHistoryId, initialRecord, loadRecord, service])
+  }, [initialHistoryId, initialRecord, service])
 
   const handleReplay = async () => {
     if (!record) return
@@ -76,7 +96,11 @@ export function HistoryDetailModal({
         kind: 'success',
         message: `Replayed ${record.method.toUpperCase()} ${record.endpoint}`,
       })
-      // Reload calls to show the new execution
+      // Reload calls to show the new execution and cache new record
+      if (res.value) {
+        cacheRef.current.set(res.value.id, res.value)
+        setRecord(res.value)
+      }
       const listRes = await service.list()
       if (listRes.ok) {
         setCalls(listRes.value.filter((e) => e.endpointId === record.endpointId))
@@ -147,7 +171,7 @@ export function HistoryDetailModal({
             environmentService={environmentService}
             bus={bus}
             calls={calls}
-            onSelectCall={(id) => void loadRecord(id)}
+            onSelectCall={(id) => void handleSelectCall(id)}
             onCompare={(targetId) => {
               setDiffTargetId(targetId)
               setDiffOpen(true)
