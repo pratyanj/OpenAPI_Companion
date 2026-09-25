@@ -2,15 +2,14 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ok, type Result } from '@/types'
 import { EventBus } from '@/core/events'
-import { DEFAULT_SWAGGER_FEATURES } from '@/modules/settings/types'
+import { DEFAULT_PREFERENCES, DEFAULT_SWAGGER_FEATURES } from '@/modules/settings/types'
 import type { SettingsApi } from '@/modules/settings/settings-service'
 import { ConfigPanel } from './ConfigPanel'
 
 function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
   return {
     getPreferences: vi.fn(async () => ({
-      autoBackup: false,
-      historyLimit: 1000,
+      ...DEFAULT_PREFERENCES,
       swaggerFeatures: { ...DEFAULT_SWAGGER_FEATURES },
     })),
     setPreference: vi.fn(async (): Promise<Result<void>> => ok(undefined)),

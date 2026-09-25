@@ -1,0 +1,2 @@
+- [Localhost & Port Resilience / Project Switcher & Host Aliasing (with Custom Project Naming)](memory/localhost-port-resilience-project-switcher.md) — Implemented project resilience features including origin normalization, project linking, custom naming, and project switcher modal.
+- [Asynchronous Swagger UI Mounting Observer](memory/async-swagger-mount-observer.md) — Implemented waitForSwaggerMount and watchSpaNavigation to handle dynamically loaded Swagger UIs in SPAs.

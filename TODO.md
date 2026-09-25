@@ -1,6 +1,76 @@
+## 🚀 Next Version Sprint (v1.2.0 Action Items & Feature Roadmap)
 
-## 🎯 Today's Action Items & Bugs (V1.1.5 Sprint)
+- [x] **1. 🔌 Localhost & Port Resilience / Project Switcher & Host Aliasing (with Custom Project Naming)**
+  - **Problem**: When a backend restarts on a different port (e.g. `8008` -> `8009` because 8008 was in use), or when switching between `localhost:8008`, `127.0.0.1:8008`, and local network IP `192.168.x.x:8008`, all project data (saved presets, request templates, project variables, workflow suites, headers, and history) appears lost because project IDs are derived strictly from `origin + openApiUrl`.
+  - **Implemented Solution**:
+    - **Smart Localhost & Loopback Grouping**: Added `isLocalHost`, `normalizeLocalOrigin`, and `extractPort` utilities to normalize `localhost`, `127.0.0.1`, `0.0.0.0`, and private IPv4 ranges (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`).
+    - **Persistent Origin Bindings**: Implemented atomic origin bindings map in storage (`meta/project-bindings`) that maps origins/ports directly to primary project IDs without data duplication.
+    - **Candidate Project Detection**: Content agent scans for existing projects on other ports or matching OpenAPI specs when a new port is opened and passes candidate metadata to the panel.
+    - **Port Change Alert Banner**: Built `PortChangeBanner` offering 1-click `Link to Port` (immediate aliasing and page reload) and `Copy Data` actions.
+    - **Header Project Switcher Modal**: Added a searchable project switcher dialog accessible via header badge button (`[ 📁 Project Name ▾ ]`) and Dashboard, allowing developers to switch views, link origins, unlink origins, copy data, or dismiss links.
+    - **Custom Project Naming & Inline Renaming**: Added custom project naming from OpenAPI spec `info.title`, plus inline ✏️ rename on Dashboard and in the Project Switcher Modal with `PROJECT_UPDATED` event reactivity across the panel (**831 tests passed**).
 
+- [x] **2. ⚖️ Side-by-Side Response Diff / Comparator**
+  - **Problem**: Developers frequently test API behavior between two calls (e.g. comparing a baseline response with a modified payload, before/after migration, or comparing staging vs local) and currently have to manually eye-ball JSON differences.
+  - **Delivered Solution**:
+    - **Algorithmic Diff Engine (`src/utils/diff.ts`)**: Pure TypeScript Myers/LCS line diff (`computeLineDiff`) producing aligned side-by-side rows and unified diff lines; recursive JSON key-path comparator (`computeJsonDiff`); case-insensitive HTTP header delta comparator (`compareHeaders`); and metrics comparator (`compareMetrics`) for latency ms/% delta and payload byte size.
+    - **Interactive Diff Modal (`src/modules/history/ResponseDiffModal.tsx`)**: Dual split-pane view with synchronized side-by-side scrolling (`leftScrollRef` + `rightScrollRef`) and single-column unified diff view with toggle button and "Only changes" filter.
+    - **Header & Metrics Summary**: Visual status code comparison pill badges (`200 OK` vs `500 Server Error`), latency comparison with delta (`+45 ms (+32.1%)`), and response byte size delta (`+1.2 KB`).
+    - **Four Comparison Tabs**: Response Body, Request Body, Header Delta (Added/Removed/Changed), and Query/Path Parameters.
+    - **Seamless Entry Points**:
+      - "Compare" toggle in `HistoryPanel` search bar enabling checkbox multi-select mode to compare any 2 executions.
+      - "Compare latest 2 calls" in endpoint item dropdown menu.
+      - Top-level "Compare" action in `HistoryDetail` and `HistoryDetailModal` headers to compare baseline against previous call.
+      - Inline 1-click `Compare` icon buttons on every sibling call in the timeline.
+      - Quick Baseline (A) / Comparison (B) dropdown selectors and Swap (`⇄`) button inside the modal.
+    - **Validated**: 90 test files, **848 tests passing (100%)**, zero lint or formatting issues, production build passing cleanly.
+
+- [x] **3. ⏰ Automated Backup Scheduler & Smart Merge Import**
+  - **Problem**: Manual backups are easy to forget. If browser storage is cleared, data could be lost. Furthermore, importing a backup previously only offered "Replace All" or "Keep Existing", which could overwrite or drop newer presets.
+  - **Delivered Solution**:
+    - **Automated Periodic Backup Scheduler**: Manifest V3 `chrome.alarms` background scheduler with configurable frequencies (`Off`, `Every 30 minutes`, `Every 2 hours`, `Every 6 hours`, `Every 12 hours`, `Daily (24h)`, or `Custom minutes`), with automatic alarm synchronization on settings save, browser startup, or extension update.
+    - **Smart Delta Detection ("Skip if unchanged")**: Queries storage envelope `updatedAt` timestamps across all keys before downloading; skips redundant backup operations if zero mutations occurred since the last backup.
+    - **Universal Downloader & Descriptive Naming**: Standardized backup naming convention `openapi-companion-backup-YYYY-MM-DD-HHmm.json` (or `openapi-companion-project-<slug>-backup-YYYY-MM-DD-HHmm.json`), using `chrome.downloads.download` in MV3 background service workers with DOM anchor fallback in UI contexts.
+    - **Smart Deep Merge Mode (`mode: 'merge'`)**: Entity-level deep merging for request presets, workflows, custom headers, auto-extraction rules, and environments. Conflicting entity names are automatically renamed with an `(Imported)` suffix and assigned fresh UUIDs, preventing data loss.
+    - **Pre-Import Safety Snapshot & 1-Click Rollback ("Undo Import")**: Automatically captures an atomic pre-import storage snapshot before modifying storage. Displays a persistent "Restore Point Available" alert banner with a 1-click "Undo Import" button.
+    - **Granular Selective Import Checklist**: Interactive category selection checklist (Projects & Metadata, Request Presets, Workflows, Custom Headers, Extraction Rules, Environments & Variables, Application Settings) allowing developers to selectively import only what they need.
+  - **Validated**: 92 test files, **865 tests passing (100%)**, 0 TypeScript errors, clean ESLint & Prettier checks, production build and Firefox package passing cleanly.
+
+- [x] **4. 🛡️ Asynchronous Swagger UI Mounting Observer**
+  - **Problem**: On single-page applications (SPAs) or frameworks like FastAPI, Springdoc, NestJS, and Next.js where Swagger UI renders dynamically after initial script execution or API spec download, OpenAPI Companion could occasionally initialize too early, showing a dormant state or missing button injections until a manual page refresh.
+  - **Delivered Solution**:
+    - **Fast Path Detection**: Instant 0ms synchronous boot if Swagger UI containers or meta tags are already present in the DOM on script execution (`isSwaggerPresent`).
+    - **Dynamic Mounting Observer (`src/content/swagger-mount-observer.ts`)**: 3.5s non-blocking `MutationObserver` window (`waitForSwaggerMount`) monitoring `childList` and `subtree` mutations on `document.documentElement` for `#swagger-ui`, `.swagger-ui`, `.swagger-container`, `#swagger-ui-container`, `.swagger-ui-wrap`, and `meta[name="swagger-ui"]`. Automatically disconnects immediately upon mount detection or timeout expiry without performance overhead.
+    - **SPA Client-Side Route Navigation Watcher (`watchSpaNavigation`)**: Hooks browser History API (`history.pushState`, `history.replaceState`) and listens to `popstate` and `hashchange` events to detect dynamic client-side route transitions into Swagger API documentation paths without full page reloads.
+    - **Idempotent Mutex Boot Guard (`bootAgent`)**: Guarantees atomic single-boot execution using internal state flags (`isBooting`, `isBooted`) and DOM container dataset markings (`dataset.oacAgent = 'booted'`), preventing duplicate adapters, duplicate button bars, or memory leaks.
+    - **Broadened Adapter Detection (`SwaggerUiAdapter.detect`)**: Enhanced container queries with expanded selector fallbacks to recognize modern framework wrappers.
+    - **Comprehensive Unit Testing**: Added 18 unit tests in `src/content/swagger-mount-observer.test.ts` covering synchronous fast path, asynchronous mutation detection, timeout handling, observer disconnection, and History API wrappers.
+  - **Validated**: 93 test files, **887 tests passing (100% green)**, 0 TypeScript compiler errors, clean ESLint, 100% Prettier formatting, production Vite build and Firefox bundle passing cleanly.
+
+- [x] **5. ⌨️ Customizable Keyboard Shortcut Manager**
+  - **Problem**: In-page shortcuts (<kbd>Alt+M</kbd> for Mock Data, <kbd>Alt+L</kbd> for Last Sent Payload, <kbd>Alt+Shift+F</kbd> for Format JSON, <kbd>Ctrl+Shift+V</kbd> for Paste cURL, <kbd>⌘K</kbd> for Palette) are powerful but not discoverable enough or remappable for developers with conflicting browser, OS, or extension shortcuts.
+  - **Delivered Solution**:
+    - **In-Page Shadow DOM Modal (`#oac-shortcuts-host`)**: Spacious top-centered dialog (640px+) rendered in the active Swagger page without CSS contamination, fully synchronized with `ThemeManager` (`light`, `dark`, `system`).
+    - **Custom Key Recorder**: Interactive live recorder capturing modifiers (<kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd>, <kbd>Meta/Cmd</kbd>) and keypresses with platform-aware formatting (<kbd>⌘</kbd>, <kbd>⌥</kbd>, <kbd>⇧</kbd> on macOS vs <kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd> on Windows/Linux).
+    - **Safety & Conflict Detection**: Protects reserved browser combinations (<kbd>Ctrl+W</kbd>, <kbd>Ctrl+T</kbd>, <kbd>Ctrl+N</kbd>, <kbd>F5</kbd>, <kbd>F12</kbd>, etc.) and flags same-context key conflicts with an interactive resolution banner offering 1-click **Swap Bindings** or **Override**.
+    - **Dynamic Content Script Reactivity**: Listens to `SHORTCUTS_CHANGED` bus events across tabs so remapped keys apply immediately without page reload in `swagger-mock-data`, `swagger-endpoint-history`, `swagger-paste-curl`, and global command palette listeners.
+    - **Multi-Entry Access**:
+      - "Configure Shortcuts..." action button in Side Panel Settings tab.
+      - Direct Keyboard icon button in Side Panel header.
+      - In-page trigger (<kbd>?</kbd> or <kbd>Ctrl+/</kbd> when not typing in inputs/textareas).
+      - RPC Bridge (`shortcutsModal.open`).
+    - **Granular Reset Controls**: 1-click per-shortcut reset to default bindings and a global "Reset All to Defaults" action.
+  - **Validated**: 96 test files, **917 tests passing (100% green)**, 0 TypeScript compiler errors, clean ESLint, 100% Prettier formatting, clean production Vite build and Firefox bundle.
+
+- [x] **6. 📋 Pre-Public Repository Hygiene (Quick Check-offs)**
+  - Fill placeholder tokens before public open-sourcing:
+    - `LICENSE`: Set copyright holder to `Pratyanj (OpenAPI Companion contributors)`.
+    - `SECURITY.md`: Replaced `security@TODO-set-project-domain` with `pratyanjmodh1205@gmail.com` and linked GitHub Security Advisories.
+    - `CODE_OF_CONDUCT.md`: Replaced `conduct@TODO-set-project-domain` with `pratyanjmodh1205@gmail.com`.
+    - `.github/CODEOWNERS`: Replaced `@OWNER` with `@pratyanj`.
+    - `.github/ISSUE_TEMPLATE/config.yml`: Replaced `OWNER/REPO` with `pratyanj/OpenAPI_Companion`.
+
+## 🎯 Prior Sprints & Completed Features
 - [x] **1. 🐛 Fix Request Capture for No-Body Endpoints (Path/Query Only) & Rename to "Capture Live"**
   - **Issue**: In Requests tab, "Capture Open" button fails to capture endpoints that have only path parameters and query parameters with no JSON request body (e.g. `POST /tasks/{task_id}/labels/{label_id}`).
   - **Fix**: Update capture parser to extract path parameters from Swagger inputs (`input[data-param-name]`) and query parameters even when no body schema exists.
@@ -129,12 +199,11 @@
 > Running tracker for OpenAPI Companion. Checked items are done; unchecked need action. Last updated: 2026-07-01.
 
 ## 🔴 Before the repository goes public — fill placeholders
-
-- [ ] **`LICENSE`** — replace copyright holder `2026 OpenAPI Companion contributors` with your name/org if wanted (MIT — DD-036).
-- [ ] **`SECURITY.md`** — set a monitored security contact (`security@TODO-set-project-domain`) or rely on GitHub Private Vulnerability Reporting.
-- [ ] **`CODE_OF_CONDUCT.md`** — set enforcement contact (`conduct@TODO-set-project-domain`).
-- [ ] **`.github/CODEOWNERS`** — replace `@OWNER` with real GitHub usernames/teams.
-- [ ] **`.github/ISSUE_TEMPLATE/config.yml`** — replace `OWNER/REPO` in the security-advisory URL.
+- [x] **`LICENSE`** — copyright holder set to `Pratyanj (OpenAPI Companion contributors)` (MIT — DD-036).
+- [x] **`SECURITY.md`** — security contact set to `pratyanjmodh1205@gmail.com` and linked GitHub Private Vulnerability Reporting.
+- [x] **`CODE_OF_CONDUCT.md`** — enforcement contact set to `pratyanjmodh1205@gmail.com`.
+- [x] **`.github/CODEOWNERS`** — set `@pratyanj` as code owner.
+- [x] **`.github/ISSUE_TEMPLATE/config.yml`** — set `pratyanj/OpenAPI_Companion` in the security-advisory URL.
 
 ## 🟠 Decisions needing security-reviewer sign-off (before their phase ships)
 

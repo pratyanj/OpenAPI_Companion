@@ -7,9 +7,22 @@
  */
 import { APP_NAME } from '@/constants'
 import { bus } from '@/core/events'
-import { MigrationService, chromeLocalArea } from '@/core/storage'
+import { MigrationService, StorageService, chromeLocalArea } from '@/core/storage'
 import { OPEN_PANEL_REQUEST, PANEL_PORT, type PanelPortMessage } from '@/content/sidepanel-protocol'
 import { bindActionToPanel, openPanelFor, usesSidebarAction, sidebarAction } from '@/core/sidebar'
+import { SettingsService } from '@/modules/settings/settings-service'
+import { BACKUP_ALARM_NAME, syncBackupAlarm, runScheduledBackup } from './backup-scheduler'
+
+async function initBackupScheduler(): Promise<void> {
+  try {
+    const storage = new StorageService({ area: chromeLocalArea(), bus })
+    const settings = new SettingsService({ storage, bus })
+    const prefs = await settings.getPreferences()
+    await syncBackupAlarm(prefs)
+  } catch (e) {
+    console.error(`[${APP_NAME}] failed to init backup alarm:`, e)
+  }
+}
 
 async function runMigrations(reason: string): Promise<void> {
   const migrations = new MigrationService({ area: chromeLocalArea(), bus })
@@ -27,6 +40,7 @@ async function runMigrations(reason: string): Promise<void> {
 
 chrome.runtime.onInstalled.addListener((details) => {
   void runMigrations(details.reason)
+  void initBackupScheduler()
 })
 
 // Clicking the toolbar icon opens the panel (Chrome: side panel; Firefox: sidebar).
@@ -135,6 +149,21 @@ if (usesSidebarAction()) {
 
 chrome.runtime.onStartup?.addListener(() => {
   console.info(`[${APP_NAME}] service worker started`)
+  void initBackupScheduler()
+})
+
+// Listen for periodic auto-backup alarms
+chrome.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name === BACKUP_ALARM_NAME) {
+    void runScheduledBackup()
+  }
+})
+
+// Automatically re-synchronize the backup alarm whenever preferences change in storage
+chrome.storage?.onChanged?.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes['settings/preferences']) {
+    void initBackupScheduler()
+  }
 })
 
 // Message bridge (content <-> background).
@@ -142,6 +171,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'PING') {
     sendResponse({ type: 'PONG', app: APP_NAME })
     return false
+  }
+  if (message?.type === 'SYNC_BACKUP_ALARM') {
+    void initBackupScheduler()
+    sendResponse({ ok: true })
+    return true
   }
   // In-page launcher button or action → toggle or open the panel for the sender's tab.
   if (message?.type === OPEN_PANEL_REQUEST) {

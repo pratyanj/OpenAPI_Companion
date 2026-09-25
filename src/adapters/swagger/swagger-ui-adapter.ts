@@ -40,11 +40,14 @@ const noBridge = (op: string): AppError => ({
 export class SwaggerUiAdapter implements SwaggerAdapter {
   constructor(private readonly bridge?: AuthBridge) {}
 
-  detect(): boolean {
+  detect(doc: Document = document): boolean {
     return Boolean(
-      document.querySelector('#swagger-ui') ||
-      document.querySelector('.swagger-ui') ||
-      document.querySelector('meta[name="swagger-ui"]'),
+      doc.querySelector('#swagger-ui') ||
+      doc.querySelector('.swagger-ui') ||
+      doc.querySelector('meta[name="swagger-ui"]') ||
+      doc.querySelector('.swagger-container') ||
+      doc.querySelector('#swagger-ui-container') ||
+      doc.querySelector('.swagger-ui-wrap'),
     )
   }
 

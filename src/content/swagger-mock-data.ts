@@ -19,6 +19,12 @@ import {
   isAlreadyFormatted,
   type JsonValidationResult,
 } from './swagger-json-format'
+import type { ShortcutActionId, ShortcutBinding } from '@/modules/shortcuts/types'
+import { matchesShortcut } from '@/modules/shortcuts/shortcut-utils'
+
+export interface SwaggerMockDataOptions {
+  getBinding?: (action: ShortcutActionId) => ShortcutBinding | undefined
+}
 
 export interface SwaggerMockDataHandle {
   fillMockData(textarea: HTMLTextAreaElement, mode?: GenerationMode): boolean
@@ -435,7 +441,10 @@ export function triggerFormatAction(
   }
 }
 
-export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataHandle {
+export function mountSwaggerMockData(
+  doc: Document = document,
+  options?: SwaggerMockDataOptions,
+): SwaggerMockDataHandle {
   ensureStyles(doc)
 
   function showStatusFeedback(
@@ -636,8 +645,15 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
   }
 
   function onKeyDown(e: KeyboardEvent): void {
-    // Alt+Shift+F: Format JSON
-    if (e.altKey && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+    const formatBinding = options?.getBinding?.('jsonFormat.format') || {
+      key: 'f',
+      alt: true,
+      shift: true,
+    }
+    const mockBinding = options?.getBinding?.('mockData.generate') || { key: 'm', alt: true }
+
+    // Format JSON shortcut
+    if (matchesShortcut(formatBinding, e)) {
       if (doc.body?.classList.contains('oac-disable-json-format')) return
       const target = doc.activeElement
       if (target instanceof HTMLTextAreaElement && target.matches('textarea.body-param__text')) {
@@ -656,8 +672,8 @@ export function mountSwaggerMockData(doc: Document = document): SwaggerMockDataH
       }
     }
 
-    // Alt+M: Fill mock data
-    if (e.altKey && !e.shiftKey && (e.key === 'm' || e.key === 'M')) {
+    // Fill mock data shortcut
+    if (matchesShortcut(mockBinding, e)) {
       if (doc.body?.classList.contains('oac-disable-mock-data')) return
       const target = doc.activeElement
       if (target instanceof HTMLTextAreaElement && target.matches('textarea.body-param__text')) {

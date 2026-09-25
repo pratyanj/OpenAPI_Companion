@@ -46,6 +46,7 @@ import type {
   ExtractionRuleModalOpenOptions,
   WorkflowEditorBridgeOpenOptions,
   WorkflowRunnerBridgeOpenOptions,
+  RemoteProjectApi,
 } from '@/sidepanel/bridge'
 
 interface PanelOutletProps {
@@ -73,6 +74,8 @@ interface PanelOutletProps {
   onOpenExtractionRuleModal?: (
     options?: ExtractionRuleModalOpenOptions,
   ) => Promise<Result<void>> | Result<void> | void
+  /** Opens the in-page keyboard shortcuts modal overlay. */
+  onOpenShortcutsModal?: () => void
   /** Opens the in-page workflow editor overlay. */
   onOpenWorkflowEditor?: (options?: WorkflowEditorBridgeOpenOptions) => void
   /** Opens the in-page workflow runner overlay. */
@@ -81,6 +84,8 @@ interface PanelOutletProps {
   onNavigate?: (tabId: string) => void
   /** Adapter reads for the dashboard's spec summary (version / endpoint count). */
   swagger?: DocStats
+  projectService?: RemoteProjectApi
+  onOpenProjectSwitcher?: () => void
 }
 
 export function PanelOutlet({
@@ -102,10 +107,13 @@ export function PanelOutlet({
   onOpenPresetEditor,
   onOpenHistoryDetail,
   onOpenExtractionRuleModal,
+  onOpenShortcutsModal,
   onOpenWorkflowEditor,
   onOpenWorkflowRunner: _onOpenWorkflowRunner,
   onNavigate,
   swagger,
+  projectService,
+  onOpenProjectSwitcher,
 }: PanelOutletProps) {
   if (activeTab === 'dashboard') {
     // The rich dashboard needs the read services; fall back if they're absent.
@@ -133,9 +141,12 @@ export function PanelOutlet({
           onOpenPalette={onOpenPalette}
           onNavigate={onNavigate}
           swagger={swagger}
+          projectService={projectService}
+          onOpenProjectSwitcher={onOpenProjectSwitcher}
         />
       )
     }
+
     return <BasicHome project={project} />
   }
 
@@ -220,6 +231,7 @@ export function PanelOutlet({
         theme={theme}
         projectId={project?.id}
         bus={bus}
+        onOpenShortcutsModal={onOpenShortcutsModal}
       />
     )
   }

@@ -125,6 +125,7 @@ async function setup(over: { staleTab?: boolean } = {}) {
   await theme.init()
   const bus = new EventBus()
   const onOpenPalette = vi.fn()
+  const onOpenShortcutsModal = vi.fn()
   render(
     <PanelShell
       project={project}
@@ -132,11 +133,12 @@ async function setup(over: { staleTab?: boolean } = {}) {
       bus={bus}
       environmentId="default"
       onOpenPalette={onOpenPalette}
+      onOpenShortcutsModal={onOpenShortcutsModal}
       staleTab={over.staleTab}
       {...services()}
     />,
   )
-  return { onOpenPalette }
+  return { onOpenPalette, onOpenShortcutsModal }
 }
 
 describe('PanelShell (native side panel)', () => {
@@ -144,7 +146,7 @@ describe('PanelShell (native side panel)', () => {
     await setup()
     expect(screen.getByText('OpenAPI Companion')).toBeInTheDocument()
     expect(screen.getByRole('tablist')).toBeInTheDocument()
-    expect(screen.getByText('Petstore API')).toBeInTheDocument()
+    expect(screen.getAllByText('Petstore API').length).toBeGreaterThanOrEqual(1)
   })
 
   it('switches to the interactive History tab', async () => {
@@ -168,6 +170,12 @@ describe('PanelShell (native side panel)', () => {
     expect(onOpenPalette).toHaveBeenCalledTimes(1)
   })
 
+  it('delegates the keyboard shortcuts button to the in-page modal', async () => {
+    const { onOpenShortcutsModal } = await setup()
+    fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts (?)' }))
+    expect(onOpenShortcutsModal).toHaveBeenCalledTimes(1)
+  })
+
   // Reloading the extension leaves old content scripts in open tabs, where newer
   // RPC methods don't exist — the panel must say so, not fail silently.
   it('warns when the page is running an older build', async () => {
@@ -178,5 +186,87 @@ describe('PanelShell (native side panel)', () => {
   it('shows no warning when the builds match', async () => {
     await setup()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('renders PortChangeBanner when candidate projects exist', async () => {
+    const storage = new StorageService({ area: createFakeArea(), now: () => 0 })
+    const theme = new ThemeManager({
+      storage,
+      root: document.createElement('div'),
+      matchMedia: () => noMatch,
+    })
+    await theme.init()
+    const bus = new EventBus()
+    const mockProjectService = {
+      rename: vi.fn(async () => ok(project)),
+      linkOrigin: vi.fn(async () => ok(undefined)),
+      unlinkOrigin: vi.fn(async () => ok(undefined)),
+      copyData: vi.fn(async () => ok(5)),
+      listAll: vi.fn(async () => ok([])),
+      dismissCandidates: vi.fn(async () => ok(undefined)),
+    }
+
+    render(
+      <PanelShell
+        project={project}
+        theme={theme}
+        bus={bus}
+        environmentId="default"
+        onOpenPalette={vi.fn()}
+        candidateProjects={[
+          {
+            id: 'p_8008',
+            name: 'Local API 8008',
+            originUrl: 'http://localhost:8008',
+            openApiUrl: 'http://localhost:8008/docs',
+            presetCount: 3,
+            variableCount: 2,
+          },
+        ]}
+        projectService={mockProjectService}
+        {...services()}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/Port Change Detected/)).toBeInTheDocument()
+    expect(screen.getByText(/Local API 8008/)).toBeInTheDocument()
+  })
+
+  it('opens ProjectSwitcherModal when clicking project button in header', async () => {
+    const storage = new StorageService({ area: createFakeArea(), now: () => 0 })
+    const theme = new ThemeManager({
+      storage,
+      root: document.createElement('div'),
+      matchMedia: () => noMatch,
+    })
+    await theme.init()
+    const bus = new EventBus()
+    const mockProjectService = {
+      rename: vi.fn(async () => ok(project)),
+      linkOrigin: vi.fn(async () => ok(undefined)),
+      unlinkOrigin: vi.fn(async () => ok(undefined)),
+      copyData: vi.fn(async () => ok(5)),
+      listAll: vi.fn(async () => ok([])),
+      dismissCandidates: vi.fn(async () => ok(undefined)),
+    }
+
+    render(
+      <PanelShell
+        project={project}
+        theme={theme}
+        bus={bus}
+        environmentId="default"
+        onOpenPalette={vi.fn()}
+        projectService={mockProjectService}
+        {...services()}
+      />,
+    )
+
+    const switchBtn = screen.getByTitle(/Switch or link project/)
+    fireEvent.click(switchBtn)
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Switch or Link Projects')).toBeInTheDocument()
   })
 })

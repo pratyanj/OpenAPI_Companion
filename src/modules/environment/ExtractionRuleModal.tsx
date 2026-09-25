@@ -18,6 +18,8 @@ const COMMON_PROPERTY_PRESETS = [
   { prop: 'access_token', varName: 'ACCESS_TOKEN', isSecret: true },
   { prop: 'token', varName: 'TOKEN', isSecret: true },
   { prop: 'id', varName: 'ID', isSecret: false },
+  { prop: '[0].id', varName: 'FIRST_ITEM_ID', isSecret: false },
+  { prop: 'items[0].id', varName: 'FIRST_ITEM_ID', isSecret: false },
   { prop: 'data.id', varName: 'ITEM_ID', isSecret: false },
   { prop: 'jwt', varName: 'JWT', isSecret: true },
 ]
@@ -121,11 +123,11 @@ export function ExtractionRuleModal({
           <Input
             value={property}
             onChange={(e) => setProperty(e.target.value)}
-            placeholder="access_token, token, data.id"
+            placeholder="token, [0].id, items[0].id, data.id"
           />
           <span className="text-[10px] text-muted">
-            Dot-notation in JSON response (e.g. <code>token</code> or <code>data.items[0].id</code>
-            ).
+            Dot & bracket notation for objects and lists (e.g. <code>[0].id</code>,{' '}
+            <code>items[0].id</code>, or <code>data.id</code>).
           </span>
         </div>
 

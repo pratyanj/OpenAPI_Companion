@@ -18,8 +18,8 @@ The project is pre-release. Once v1.0.0 ships, security fixes target the **lates
 
 Report privately through one of:
 
-1. **GitHub Private Vulnerability Reporting** (preferred) — repository **Security** tab → **Report a vulnerability**.
-2. **Email** — `security@TODO-set-project-domain` *(maintainer: replace with a monitored address before going public).*
+1. **GitHub Private Vulnerability Reporting** (preferred) — repository **Security** tab → [Report a vulnerability](https://github.com/pratyanj/OpenAPI_Companion/security/advisories/new).
+2. **Email** — `pratyanjmodh1205@gmail.com`.
 
 Please include:
 - A clear description of the issue and its impact.

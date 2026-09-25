@@ -85,7 +85,10 @@ describe('HistoryPanel', () => {
     // Picking another call loads that record into the same inspector.
     ;(service.get as ReturnType<typeof vi.fn>).mockClear()
     const timeline = within(screen.getByRole('list', { name: 'Calls to this endpoint' }))
-    fireEvent.click(timeline.getAllByRole('button')[1]!)
+    const callButtons = timeline
+      .getAllByRole('button')
+      .filter((btn) => !btn.getAttribute('title')?.includes('Compare'))
+    fireEvent.click(callButtons[1]!)
     await waitFor(() => expect(service.get).toHaveBeenCalledWith('h1'))
   })
 
@@ -330,5 +333,57 @@ describe('HistoryPanel', () => {
 
     expect(onOpenHistoryDetail).toHaveBeenCalledWith('h1')
     expect(screen.queryByRole('dialog', { name: 'Request detail' })).not.toBeInTheDocument()
+  })
+
+  it('supports compare mode: toggles selection checkboxes and launches diff modal', async () => {
+    const second: HistoryEntry = {
+      ...entry,
+      id: 'h2',
+      endpointId: 'get /items',
+      endpoint: '/items',
+      method: 'get',
+    }
+    const service = mockService({
+      list: vi.fn(async (): Promise<Result<HistoryEntry[]>> => ok([second, entry])),
+    })
+    render(<HistoryPanel service={service} bus={new EventBus()} />)
+    await screen.findByText('/users')
+
+    // Click "Compare" mode button in search header
+    const compareToggle = screen.getByRole('button', { name: /Compare/ })
+    fireEvent.click(compareToggle)
+
+    // Checkboxes should appear
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(2)
+
+    // Select both items
+    fireEvent.click(checkboxes[0]!)
+    fireEvent.click(checkboxes[1]!)
+
+    // Now Compare action button in banner should be enabled
+    const banner = screen.getByText(/Select 2 calls/).parentElement!
+    const launchBtn = within(banner).getByRole('button', { name: /Compare/ })
+    fireEvent.click(launchBtn)
+
+    // Diff modal opens
+    expect(await screen.findByText('Side-by-Side Response Diff')).toBeInTheDocument()
+  })
+
+  it('opens compare diff modal directly from item menu', async () => {
+    const second: HistoryEntry = { ...entry, id: 'h2', timestamp: 60_000 }
+    const service = mockService({
+      list: vi.fn(async (): Promise<Result<HistoryEntry[]>> => ok([second, entry])),
+    })
+    render(<HistoryPanel service={service} bus={new EventBus()} />)
+    await screen.findByText('2 calls')
+
+    // Open row menu
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for post /users' }))
+    const compareMenuItem = screen.getByRole('menuitem', { name: /Compare latest 2 calls/ })
+    expect(compareMenuItem).toBeInTheDocument()
+
+    fireEvent.click(compareMenuItem)
+    expect(await screen.findByText('Side-by-Side Response Diff')).toBeInTheDocument()
   })
 })

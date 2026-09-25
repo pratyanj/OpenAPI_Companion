@@ -3,12 +3,14 @@ import {
   Badge,
   Button,
   CopyButton,
+  IconButton,
   KeyIcon,
   Menu,
   Tabs,
   type TabDef,
   ClockIcon,
   CopyIcon,
+  CompareIcon,
   RequestIcon,
   ResponseIcon,
 } from '@/components'
@@ -139,6 +141,8 @@ export interface HistoryDetailProps {
   calls?: HistoryEntry[]
   /** Load another call of this operation into the inspector. */
   onSelectCall?: (id: string) => void
+  /** Launch side-by-side diff against another call. */
+  onCompare?: (targetCallId: string) => void
   /** Origin for building full URLs / code snippets in the copy menu. */
   baseUrl?: string
   /** Environment service for saving response values to project variables. */
@@ -157,6 +161,7 @@ export function HistoryDetail({
   record,
   calls = [],
   onSelectCall,
+  onCompare,
   baseUrl,
   environmentService,
   bus,
@@ -247,12 +252,12 @@ export function HistoryDetail({
             {calls.map((call) => {
               const active = call.id === record.id
               return (
-                <li key={call.id}>
+                <li key={call.id} className="flex items-center gap-1">
                   <button
                     type="button"
                     aria-current={active}
                     onClick={() => onSelectCall?.(call.id)}
-                    className={`flex w-full items-center gap-2 rounded-md border px-2 py-1 text-left text-[11px] ${
+                    className={`flex flex-1 items-center gap-2 rounded-md border px-2 py-1 text-left text-[11px] ${
                       active
                         ? 'border-primary bg-surface text-text'
                         : 'border-border text-muted hover:bg-surface hover:text-text'
@@ -262,6 +267,16 @@ export function HistoryDetail({
                     <span className="flex-1 truncate">{formatTime(call.timestamp)}</span>
                     {call.durationMs != null ? <span>{call.durationMs} ms</span> : null}
                   </button>
+                  {!active && onCompare ? (
+                    <IconButton
+                      label={`Compare with call from ${formatTime(call.timestamp)}`}
+                      title="Compare with this call"
+                      onClick={() => onCompare(call.id)}
+                      className="h-7 w-7 rounded-md border border-border text-muted hover:text-primary hover:border-primary shrink-0"
+                    >
+                      <CompareIcon className="h-3.5 w-3.5" />
+                    </IconButton>
+                  ) : null}
                 </li>
               )
             })}

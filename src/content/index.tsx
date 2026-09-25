@@ -12,8 +12,13 @@
 import { ok, err } from '@/types'
 import { bus } from '@/core/events'
 import { StorageService, chromeLocalArea } from '@/core/storage'
-import { ProjectService, type ProjectMeta } from '@/core/project'
-import { docIdentityUrl } from '@/utils'
+import {
+  ProjectService,
+  type ProjectMeta,
+  type ProjectInput,
+  type CandidateProject,
+} from '@/core/project'
+import { docIdentityUrl, isLocalHost } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
@@ -58,6 +63,13 @@ import type {
 } from './extraction-rule-modal'
 import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
 import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
+import type { ShortcutsModalHandle } from './shortcuts-modal'
+import {
+  DEFAULT_SHORTCUTS,
+  type ShortcutActionId,
+  type ShortcutBinding,
+} from '@/modules/shortcuts/types'
+import { matchesShortcut } from '@/modules/shortcuts/shortcut-utils'
 import {
   RPC_REQUEST,
   STATE_PUSH,
@@ -68,8 +80,49 @@ import {
   type PanelState,
   type RpcResponse,
 } from './sidepanel-protocol'
+import { waitForSwaggerMount, watchSpaNavigation } from './swagger-mount-observer'
 
 const AGENT_FLAG = 'oacAgent'
+
+/**
+ * Attempts to extract the OpenAPI/Swagger specification title from the page.
+ * Tries multiple selectors commonly used in Swagger UI implementations.
+ */
+function extractOpenApiTitle(doc: Document = document): string | undefined {
+  // Try common selectors for Swagger UI title
+  const selectors = [
+    '.title', // Common in older Swagger UI
+    '.info .title', // Info section title
+    '[data-test="api-title"]', // Test attribute
+    '.swagger-ui .topbar .title', // Topbar title
+    '.swagger-ui .info__title', // Info title in newer versions
+    '.block-title', // Block title
+    'h1', // Fallback to first h1
+  ]
+
+  for (const selector of selectors) {
+    const el = doc.querySelector(selector)
+    if (el && el.textContent?.trim()) {
+      const title = el.textContent.trim()
+      if (title && title.length > 0) {
+        return title
+      }
+    }
+  }
+
+  // Try to get from SwaggerUI window object if available
+  try {
+    const win = window as unknown as Record<string, unknown>
+    const bundle = win.SwaggerUIBundle as { spec?: { info?: { title?: string } } } | undefined
+    if (bundle?.spec?.info?.title && typeof bundle.spec.info.title === 'string') {
+      return bundle.spec.info.title
+    }
+  } catch {
+    // ignore
+  }
+
+  return undefined
+}
 const LOG = '[OpenAPI Companion]'
 
 const SWAGGER_FEATURE_STYLES_ID = 'oac-swagger-feature-styles'
@@ -382,26 +435,34 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
 }
 
-async function boot(): Promise<void> {
-  console.info(`${LOG} content agent loaded:`, location.href)
-  const bridge = new SwaggerBridge()
-  const adapter = new SwaggerUiAdapter(bridge)
-  if (!adapter.detect()) {
-    console.info(`${LOG} no Swagger UI detected on this page — staying dormant.`)
-    return // not an OpenAPI page — stay dormant (EC-005)
-  }
-  if (document.documentElement.dataset[AGENT_FLAG]) {
-    console.info(`${LOG} agent already running in this tab — skipping.`)
+let isBooting = false
+let isBooted = false
+let spaCleanup: (() => void) | null = null
+
+export async function bootAgent(
+  doc: Document = document,
+  adapterInstance?: SwaggerUiAdapter,
+): Promise<void> {
+  if (isBooting || isBooted || doc.documentElement?.dataset[AGENT_FLAG]) {
+    console.info(`${LOG} agent already running or booting in this tab — skipping.`)
     return // avoid double-injection (EC-043)
   }
-  document.documentElement.dataset[AGENT_FLAG] = '1'
+  isBooting = true
+  doc.documentElement.dataset[AGENT_FLAG] = '1'
+
+  const bridge = new SwaggerBridge()
+  const adapter = adapterInstance ?? new SwaggerUiAdapter(bridge)
 
   const storage = new StorageService({ area: chromeLocalArea(), bus })
   const project = new ProjectService({ storage, bus })
+  // Extract OpenAPI title for project naming and candidate detection
+  const specTitle = extractOpenApiTitle(document)
+
   const identified = await project.identify({
     origin: location.origin,
     openApiUrl: docIdentityUrl(location.href), // stable across Swagger's hash routing
     docType: 'swagger-ui',
+    title: specTitle,
   })
   const meta: ProjectMeta | null = identified.ok ? identified.value : null
   if (!meta) {
@@ -414,6 +475,31 @@ async function boot(): Promise<void> {
   console.info(
     `${LOG} agent ready — project "${meta.name}" (${meta.id}), build ${__BUILD_ID__}. Open the side panel.`,
   )
+
+  // If this is a local project, check for candidate projects from other ports that could be linked.
+  // Suppress candidate check entirely if this origin is already linked to a project.
+  let candidateProjects: CandidateProject[] | undefined
+  const isAlreadyLinked =
+    Boolean(meta.linkedOrigins?.includes(location.origin)) ||
+    Boolean(await project.getBindingForOrigin(location.origin))
+
+  if (!isAlreadyLinked && isLocalHost(location.origin)) {
+    try {
+      const openApiUrl = adapter.specUrl() || docIdentityUrl(location.href)
+      const input: ProjectInput = {
+        origin: location.origin,
+        openApiUrl,
+        docType: 'swagger-ui',
+        title: specTitle,
+      }
+      const candidatesResult = await project.findCandidateProjects(input, specTitle)
+      if (candidatesResult.ok && candidatesResult.value.length > 0) {
+        candidateProjects = candidatesResult.value
+      }
+    } catch (error) {
+      console.warn(`${LOG} failed to find candidate projects:`, error)
+    }
+  }
 
   mountLauncher() // floating button to open the panel from the page
 
@@ -429,6 +515,24 @@ async function boot(): Promise<void> {
     }
   }
   await syncSwaggerFeatures()
+
+  let activeShortcuts: Record<string, ShortcutBinding> = { ...DEFAULT_SHORTCUTS }
+  try {
+    const initialPrefs = await settingsService.getPreferences()
+    if (initialPrefs.shortcuts) {
+      activeShortcuts = { ...DEFAULT_SHORTCUTS, ...initialPrefs.shortcuts }
+    }
+  } catch {
+    // ignore
+  }
+
+  const getShortcutBinding = (actionId: ShortcutActionId): ShortcutBinding => {
+    return activeShortcuts[actionId] || DEFAULT_SHORTCUTS[actionId]
+  }
+
+  bus.subscribe('SHORTCUTS_CHANGED', (payload) => {
+    activeShortcuts = { ...DEFAULT_SHORTCUTS, ...payload.shortcuts }
+  })
 
   const auth = new AuthenticationService({ storage, adapter, projectId: meta.id, bus })
   const environments = new EnvironmentService({ storage, projectId: meta.id, bus })
@@ -476,7 +580,7 @@ async function boot(): Promise<void> {
   let activeSecrets: string[] = []
 
   const swaggerVars = mountSwaggerVariables({}, [], document)
-  mountSwaggerMockData(document)
+  mountSwaggerMockData(document, { getBinding: getShortcutBinding })
 
   const saveVariableModal = mountSaveVariableModal(environments, bus, document)
   const saveVarTheme = new ThemeManager({ storage, root: saveVariableModal.themeRoot, bus })
@@ -488,6 +592,7 @@ async function boot(): Promise<void> {
   mountSwaggerResponseExport(document)
   mountSwaggerEndpointHistory(document, {
     storageKeyPrefix: `oac_last_payload_${meta.id}_`,
+    getBinding: getShortcutBinding,
   })
 
   const syncActiveVariables = async (): Promise<void> => {
@@ -544,7 +649,7 @@ async function boot(): Promise<void> {
   })
   await productivity.init()
   mountSwaggerPinnedEndpoints(productivity, document)
-  mountSwaggerPasteCurl(document, productivity)
+  mountSwaggerPasteCurl(document, productivity, { getBinding: getShortcutBinding })
   const headersService = new HeadersService({ storage, projectId: meta.id })
   mountSwaggerGlobalHeaders(document, headersService)
 
@@ -724,15 +829,48 @@ async function boot(): Promise<void> {
     }
   }
 
-  // Capture phase so Swagger's own inputs can't swallow the shortcut. `key` is
-  // optional-chained because page scripts can dispatch synthetic keydowns
-  // without it, and a TypeError here would kill the whole listener.
+  let shortcutsModal: ShortcutsModalHandle | null = null
+  const withShortcutsModal = async (): Promise<ShortcutsModalHandle | null> => {
+    if (shortcutsModal) return shortcutsModal
+    try {
+      const { mountShortcutsModal } = await import('./shortcuts-modal')
+      shortcutsModal = mountShortcutsModal(settingsService, bus, document)
+      const modalTheme = new ThemeManager({ storage, root: shortcutsModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return shortcutsModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page shortcuts modal overlay.`, cause)
+      return null
+    }
+  }
+
+  // Capture phase so Swagger's own inputs can't swallow the shortcut.
   document.addEventListener(
     'keydown',
     (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key?.toLowerCase() === 'k') {
+      // 1. Command palette shortcut
+      if (matchesShortcut(getShortcutBinding('palette.toggle'), e)) {
         e.preventDefault()
         void withPalette().then((p) => p?.toggle())
+        return
+      }
+
+      // 2. Keyboard shortcuts help shortcut
+      const helpBinding = getShortcutBinding('shortcuts.open')
+      if (matchesShortcut(helpBinding, e)) {
+        const target = e.target as HTMLElement | null
+        const isInput =
+          target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
+        if (!isInput || helpBinding.ctrlOrCmd || helpBinding.alt) {
+          e.preventDefault()
+          void withShortcutsModal().then((m) => m?.toggle())
+          return
+        }
       }
     },
     true,
@@ -883,7 +1021,9 @@ async function boot(): Promise<void> {
       environmentId: currentEnv,
       pageOrigin: location.origin,
       buildId: __BUILD_ID__,
+      ...(candidateProjects !== undefined ? { candidateProjects } : {}),
     }
+
     const adapterState: AdapterReadState = {
       detect: adapter.detect(),
       version: adapter.version(),
@@ -988,6 +1128,27 @@ async function boot(): Promise<void> {
       } catch (cause) {
         return err({
           code: 'EXTRACTION_RULE_MODAL_FAILED',
+          message: cause instanceof Error ? cause.message : String(cause),
+          recoverable: true,
+        })
+      }
+    },
+    // Panel's shortcuts manager → open the in-page modal (spacious overlay on the doc).
+    'shortcutsModal.open': async () => {
+      try {
+        const m = await withShortcutsModal()
+        if (!m) {
+          return err({
+            code: 'SHORTCUTS_MODAL_UNAVAILABLE',
+            message: 'Could not load in-page keyboard shortcuts modal',
+            recoverable: true,
+          })
+        }
+        m.open()
+        return ok(undefined)
+      } catch (cause) {
+        return err({
+          code: 'SHORTCUTS_MODAL_FAILED',
           message: cause instanceof Error ? cause.message : String(cause),
           recoverable: true,
         })
@@ -1134,6 +1295,38 @@ async function boot(): Promise<void> {
         recoverable: true,
       })
     },
+    'project.rename': async ([name, targetId]) => {
+      const target = typeof targetId === 'string' && targetId ? targetId : meta.id
+      const res = await project.renameProject(target, name as string)
+      if (res.ok && target === meta.id) {
+        meta.name = (name as string).trim()
+        pushState()
+      }
+      return res
+    },
+    'project.linkOrigin': async ([targetProjectId]) => {
+      const res = await project.linkOriginToProject(location.origin, targetProjectId as string)
+      if (res.ok) {
+        candidateProjects = undefined
+        location.reload()
+      }
+      return res
+    },
+    'project.unlinkOrigin': async () => {
+      const res = await project.unlinkOrigin(location.origin)
+      if (res.ok) {
+        location.reload()
+      }
+      return res
+    },
+    'project.copyData': ([sourceProjectId]) =>
+      project.copyProjectData(sourceProjectId as string, meta.id),
+    'project.listAll': () => project.listAllProjects(),
+    'project.dismissCandidates': () => {
+      candidateProjects = undefined
+      pushState()
+      return ok(undefined)
+    },
   }
 
   chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
@@ -1164,7 +1357,50 @@ async function boot(): Promise<void> {
     })
   }
 
+  isBooting = false
+  isBooted = true
   pushState() // initial mirror for any already-open panel
+}
+
+export async function boot(): Promise<void> {
+  console.info(`${LOG} content agent loaded:`, location.href)
+  const bridge = new SwaggerBridge()
+  const adapter = new SwaggerUiAdapter(bridge)
+
+  // 1. Fast-path: immediate check
+  if (adapter.detect(document)) {
+    await bootAgent(document, adapter)
+    return
+  }
+
+  // 2. Slow-path: asynchronous mounting observer (3.5s window for SPAs / dynamic renders)
+  console.info(
+    `${LOG} Swagger UI not detected immediately — observing DOM for dynamic mount (3.5s)...`,
+  )
+  const mounted = await waitForSwaggerMount({ doc: document, timeoutMs: 3500 })
+  if (mounted) {
+    console.info(`${LOG} Swagger UI container detected dynamically — initializing content agent.`)
+    await bootAgent(document, adapter)
+    return
+  }
+
+  // 3. Dormant fallback: watch for SPA client-side route transitions
+  console.info(`${LOG} no Swagger UI detected on this page — staying dormant.`)
+  if (!spaCleanup) {
+    spaCleanup = watchSpaNavigation(async () => {
+      if (isBooted || isBooting) return
+      if (adapter.detect(document)) {
+        console.info(
+          `${LOG} Swagger UI detected after SPA route navigation — initializing content agent.`,
+        )
+        await bootAgent(document, adapter)
+        if (spaCleanup) {
+          spaCleanup()
+          spaCleanup = null
+        }
+      }
+    })
+  }
 }
 
 void boot()

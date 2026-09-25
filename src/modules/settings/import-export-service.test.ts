@@ -4,6 +4,8 @@ import { EventBus } from '@/core/events'
 import { createFakeArea } from '@/tests/fake-storage'
 import { APP_NAME, SCHEMA_VERSION } from '@/constants'
 import { ImportExportService, type Downloader } from './import-export-service'
+import { formatBackupDate } from './downloader'
+import { DEFAULT_BACKUP_FOLDER } from './types'
 
 function setup(download?: Downloader, bus = new EventBus()) {
   const storage = new StorageService({ area: createFakeArea(), now: () => 42 })
@@ -50,15 +52,32 @@ describe('ImportExportService.backup', () => {
     bus.subscribe('DATA_BACKED_UP', backedUp)
     await seed(storage)
 
+    const expectedFilename = `openapi-companion-backup-${formatBackupDate(42)}.json`
     const r = await service.backup()
-    expect(r.ok && r.value).toBe('openapi-companion-backup-42.json')
+    expect(r.ok && r.value).toBe(expectedFilename)
     expect(download).toHaveBeenCalledWith(
-      'openapi-companion-backup-42.json',
+      expectedFilename,
       expect.stringContaining('"app"'),
       'application/json',
+      expect.objectContaining({ subfolder: DEFAULT_BACKUP_FOLDER, saveAs: false }),
     )
     expect(backedUp).toHaveBeenCalledWith(
-      expect.objectContaining({ auto: false, filename: 'openapi-companion-backup-42.json' }),
+      expect.objectContaining({ auto: false, filename: expectedFilename }),
+    )
+  })
+
+  it('passes custom subfolder to download options', async () => {
+    const download = vi.fn()
+    const { service, storage } = setup(download)
+    await seed(storage)
+
+    const r = await service.backup(false, undefined, undefined, undefined, 'MyCustomBackups')
+    expect(r.ok).toBe(true)
+    expect(download).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      'application/json',
+      expect.objectContaining({ subfolder: 'MyCustomBackups', saveAs: false }),
     )
   })
 })
@@ -251,5 +270,227 @@ describe('ImportExportService.applyImport', () => {
 
     const restoredCred = await targetStorage.getData<{ login?: { password?: string } }>(key)
     expect(restoredCred.ok && restoredCred.value?.login?.password).toBe('SUPER_SECRET')
+  })
+
+  it('detects storage delta changes via hasChangesSince', async () => {
+    const area = createFakeArea()
+    let currentTime = 100
+    const storage = new StorageService({ area, now: () => currentTime })
+    const io = new ImportExportService({ storage, now: () => currentTime })
+
+    // No entries yet
+    expect(await io.hasChangesSince(0)).toBe(true)
+
+    // Set an entry at t=100
+    await storage.set(
+      projectKey('p1', 'requests', 'template/t1'),
+      { name: 'P1' },
+      { immediate: true },
+    )
+
+    // Checked against lastBackupAt = 50 (should detect change)
+    expect(await io.hasChangesSince(50)).toBe(true)
+
+    // Checked against lastBackupAt = 100 (equal, no newer changes)
+    expect(await io.hasChangesSince(100)).toBe(false)
+
+    // Checked against lastBackupAt = 150 (newer backup, no changes)
+    expect(await io.hasChangesSince(150)).toBe(false)
+
+    // Update entry at t=200
+    currentTime = 200
+    await storage.set(
+      projectKey('p1', 'requests', 'template/t1'),
+      { name: 'P1-updated' },
+      { immediate: true },
+    )
+    expect(await io.hasChangesSince(150)).toBe(true)
+  })
+
+  it('exports only project-specific entries via exportProject', async () => {
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => 10 })
+    await storage.set(
+      projectKey('p1', 'requests', 'template/t1'),
+      { name: 'Preset P1' },
+      { immediate: true },
+    )
+    await storage.set(
+      projectKey('p2', 'requests', 'template/t2'),
+      { name: 'Preset P2' },
+      { immediate: true },
+    )
+    await storage.set(settingsKey('theme'), 'dark', { immediate: true })
+
+    const io = new ImportExportService({ storage, now: () => 10 })
+    const res = await io.exportProject('p1')
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+
+    const bundle = JSON.parse(res.value)
+    const keys = Object.keys(bundle.entries)
+    expect(keys.some((k) => k.includes('p1'))).toBe(true)
+    expect(keys.some((k) => k.includes('p2'))).toBe(false)
+    expect(keys.some((k) => k.includes('settings/theme'))).toBe(false)
+  })
+
+  it('smart merge mode renames conflicting presets and preserves existing ones', async () => {
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => 100 })
+    const presetKey = projectKey('p1', 'requests', 'template/t1')
+    await storage.set(
+      presetKey,
+      { id: 't1', name: 'Get Users', endpoint: '/users' },
+      { immediate: true },
+    )
+
+    const io = new ImportExportService({ storage, now: () => 100 })
+    const incomingBundle = JSON.stringify({
+      app: APP_NAME,
+      appVersion: '1.0.0',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 100,
+      entries: {
+        [presetKey]: { id: 't1', name: 'Get Users', endpoint: '/users/v2' },
+      },
+    })
+
+    const res = await io.applyImport(incomingBundle, 'merge')
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.renamed).toBe(1)
+    expect(res.value.imported).toBe(1)
+
+    // Original preset remains untouched
+    const original = await storage.getData<{ name: string; endpoint: string }>(presetKey)
+    expect(original.ok && original.value?.endpoint).toBe('/users')
+
+    // Conflicting preset was saved under a new key with (Imported) suffix
+    const allTemplates = await storage.list(projectKey('p1', 'requests', 'template/'))
+    expect(allTemplates.ok && allTemplates.value.length).toBe(2)
+    const newKey = allTemplates.ok ? allTemplates.value.find((k) => k !== presetKey) : null
+    expect(newKey).toBeDefined()
+    if (newKey) {
+      const importedPreset = await storage.getData<{ name: string; endpoint: string }>(newKey)
+      expect(importedPreset.ok && importedPreset.value?.name).toBe('Get Users (Imported)')
+      expect(importedPreset.ok && importedPreset.value?.endpoint).toBe('/users/v2')
+    }
+  })
+
+  it('smart merge mode merges variables into existing environments non-destructively', async () => {
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => 100 })
+    const envKey = projectKey('p1', 'environments', 'default')
+    await storage.set(
+      envKey,
+      {
+        id: 'default',
+        name: 'Default',
+        variables: {
+          API_URL: { key: 'API_URL', value: 'http://localhost:3000' },
+          TOKEN: { key: 'TOKEN', value: 'local-secret' },
+        },
+      },
+      { immediate: true },
+    )
+
+    const io = new ImportExportService({ storage, now: () => 100 })
+    const incomingBundle = JSON.stringify({
+      app: APP_NAME,
+      appVersion: '1.0.0',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 100,
+      entries: {
+        [envKey]: {
+          id: 'default',
+          name: 'Default',
+          variables: {
+            API_URL: { key: 'API_URL', value: 'http://production.com' }, // conflicting variable
+            NEW_VAR: { key: 'NEW_VAR', value: 'brand-new' }, // new variable
+          },
+        },
+      },
+    })
+
+    const res = await io.applyImport(incomingBundle, 'merge')
+    expect(res.ok).toBe(true)
+
+    const merged = await storage.getData<{ variables: Record<string, { value: string }> }>(envKey)
+    expect(merged.ok).toBe(true)
+    if (!merged.ok || !merged.value) return
+
+    // Local variable value is preserved over incoming conflict
+    expect(merged.value.variables.API_URL?.value).toBe('http://localhost:3000')
+    expect(merged.value.variables.TOKEN?.value).toBe('local-secret')
+    // Incoming new variable is safely merged
+    expect(merged.value.variables.NEW_VAR?.value).toBe('brand-new')
+  })
+
+  it('supports selective category filtering during import', async () => {
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => 100 })
+    const io = new ImportExportService({ storage, now: () => 100 })
+
+    const bundle = JSON.stringify({
+      app: APP_NAME,
+      appVersion: '1.0.0',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 100,
+      entries: {
+        [projectKey('p1', 'requests', 'template/t1')]: { name: 'Preset' },
+        [settingsKey('theme')]: 'light',
+      },
+    })
+
+    // Import only presets, omitting settings
+    const res = await io.applyImport(bundle, 'replace', undefined, ['presets'])
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.value.imported).toBe(1)
+    expect(res.value.skipped).toBe(1)
+
+    const preset = await storage.getData(projectKey('p1', 'requests', 'template/t1'))
+    expect(preset.ok && preset.value).toBeDefined()
+    const theme = await storage.getData(settingsKey('theme'))
+    expect(theme.ok && theme.value).toBeNull()
+  })
+
+  it('creates pre-import restore point snapshot and successfully rolls back', async () => {
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => 100 })
+    const io = new ImportExportService({ storage, now: () => 100 })
+
+    const themeKey = settingsKey('theme')
+    await storage.set(themeKey, 'dark', { immediate: true })
+
+    const incomingBundle = JSON.stringify({
+      app: APP_NAME,
+      appVersion: '1.0.0',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 100,
+      entries: {
+        [themeKey]: 'light',
+      },
+    })
+
+    // Apply import in replace mode
+    const importRes = await io.applyImport(incomingBundle, 'replace')
+    expect(importRes.ok).toBe(true)
+    const afterImport = await storage.getData(themeKey)
+    expect(afterImport.ok && afterImport.value).toBe('light')
+
+    // Snapshot is available
+    const snapshot = await io.getPreImportSnapshot()
+    expect(snapshot).not.toBeNull()
+    expect(snapshot?.entries[themeKey]).toBe('dark')
+
+    // Roll back last import
+    const rollbackRes = await io.rollbackLastImport()
+    expect(rollbackRes.ok).toBe(true)
+    const afterRollback = await storage.getData(themeKey)
+    expect(afterRollback.ok && afterRollback.value).toBe('dark')
+
+    // Snapshot is cleared after rollback
+    expect(await io.getPreImportSnapshot()).toBeNull()
   })
 })

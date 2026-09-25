@@ -21,6 +21,7 @@ import {
   openPagePresetEditor,
   openPageHistoryDetail,
   openPageExtractionRuleModal,
+  openPageShortcutsModal,
   openPageWorkflowEditor,
   openPageWorkflowRunner,
   RemoteSwaggerAdapter,
@@ -30,7 +31,9 @@ import {
   createRemoteHistoryService,
   createRemoteCollectionsService,
   createRemoteWorkflowsService,
+  createRemoteProjectService,
 } from './bridge'
+
 import { STATE_PUSH, PANEL_PORT, type PanelPortMessage } from '@/content/sidepanel-protocol'
 import { closeSelf } from '@/core/sidebar'
 import { PanelShell } from './PanelShell'
@@ -138,6 +141,7 @@ async function render(root: Root): Promise<void> {
         onOpenPresetEditor={openPagePresetEditor}
         onOpenHistoryDetail={openPageHistoryDetail}
         onOpenExtractionRuleModal={openPageExtractionRuleModal}
+        onOpenShortcutsModal={openPageShortcutsModal}
         onOpenWorkflowEditor={openPageWorkflowEditor}
         onOpenWorkflowRunner={openPageWorkflowRunner}
         authService={createRemoteAuthService()}
@@ -150,6 +154,8 @@ async function render(root: Root): Promise<void> {
         swagger={adapter}
         settingsService={new SettingsService({ storage, bus })}
         importExportService={new ImportExportService({ storage, bus })}
+        candidateProjects={ctx.candidateProjects}
+        projectService={createRemoteProjectService()}
       />
     </StrictMode>,
   )
