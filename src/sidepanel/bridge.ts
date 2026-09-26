@@ -326,6 +326,14 @@ export async function openPageShortcutsModal(): Promise<Result<void>> {
   return await rpcResult<void>('shortcutsModal.open')
 }
 
+/**
+ * Ask the page to open its Project Switcher modal overlay.
+ * Lives in the page (top-centered, 640px+ wide) for ample room to search, link, and copy project data.
+ */
+export async function openPageProjectSwitcher(): Promise<Result<void>> {
+  return await rpcResult<void>('projectSwitcher.open')
+}
+
 export interface WorkflowEditorBridgeOpenOptions {
   workflow?: Workflow | null
 }

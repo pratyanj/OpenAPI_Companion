@@ -65,6 +65,8 @@ import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow
 import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
 import type { ShortcutsModalHandle } from './shortcuts-modal'
 import type { VariablesModalHandle } from './variables-modal'
+import type { ProjectSwitcherModalHandle } from './project-switcher-modal'
+import type { RemoteProjectApi } from '@/sidepanel/bridge'
 import {
   DEFAULT_SHORTCUTS,
   type ShortcutActionId,
@@ -870,6 +872,54 @@ export async function bootAgent(
     }
   }
 
+  let projectSwitcherModal: ProjectSwitcherModalHandle | null = null
+  const withProjectSwitcherModal = async (): Promise<ProjectSwitcherModalHandle | null> => {
+    if (projectSwitcherModal) return projectSwitcherModal
+    try {
+      const { mountProjectSwitcherModal } = await import('./project-switcher-modal')
+      const localProjectApi: RemoteProjectApi = {
+        rename: (name, targetId) => {
+          const t = targetId || meta.id
+          return project.renameProject(t, name)
+        },
+        linkOrigin: async (targetId) => {
+          const res = await project.linkOriginToProject(location.origin, targetId)
+          if (res.ok) {
+            candidateProjects = undefined
+            location.reload()
+          }
+          return res
+        },
+        unlinkOrigin: async () => {
+          const res = await project.unlinkOrigin(location.origin)
+          if (res.ok) {
+            location.reload()
+          }
+          return res
+        },
+        copyData: (sourceId) => project.copyProjectData(sourceId, meta.id),
+        listAll: () => project.listAllProjects(),
+        dismissCandidates: async () => {
+          candidateProjects = undefined
+          pushState()
+          return ok(undefined)
+        },
+      }
+      projectSwitcherModal = mountProjectSwitcherModal(localProjectApi, meta, bus, document)
+      const modalTheme = new ThemeManager({ storage, root: projectSwitcherModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return projectSwitcherModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page project switcher modal overlay.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut.
   document.addEventListener(
     'keydown',
@@ -1345,6 +1395,18 @@ export async function bootAgent(
       return err({
         code: 'VARIABLES_MODAL_MOUNT_FAILED',
         message: 'Could not toggle variables modal overlay',
+        recoverable: true,
+      })
+    },
+    'projectSwitcher.open': async () => {
+      const modal = await withProjectSwitcherModal()
+      if (modal) {
+        modal.open()
+        return ok(undefined)
+      }
+      return err({
+        code: 'PROJECT_SWITCHER_MOUNT_FAILED',
+        message: 'Could not open project switcher modal overlay',
         recoverable: true,
       })
     },

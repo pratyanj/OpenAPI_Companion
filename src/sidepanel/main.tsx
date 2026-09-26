@@ -22,6 +22,7 @@ import {
   openPageHistoryDetail,
   openPageExtractionRuleModal,
   openPageShortcutsModal,
+  openPageProjectSwitcher,
   openPageWorkflowEditor,
   openPageWorkflowRunner,
   RemoteSwaggerAdapter,
@@ -142,6 +143,7 @@ async function render(root: Root): Promise<void> {
         onOpenHistoryDetail={openPageHistoryDetail}
         onOpenExtractionRuleModal={openPageExtractionRuleModal}
         onOpenShortcutsModal={openPageShortcutsModal}
+        onOpenProjectSwitcher={openPageProjectSwitcher}
         onOpenWorkflowEditor={openPageWorkflowEditor}
         onOpenWorkflowRunner={openPageWorkflowRunner}
         authService={createRemoteAuthService()}

@@ -13,6 +13,7 @@ This document maintains a continuous, detailed record of bugs, issues, and unexp
 | **BUG-003** | History Modal Inspector Re-Mounting & Missing Chronological Index Numbers | `HistoryPanel.tsx`, `HistoryDetailModal.tsx` | **Resolved** |
 | **BUG-004** | Git Tag Syntax Error & Redundant "Release" Word in Tag Name | Release process (`git tag`) | **Resolved** |
 | **BUG-005** | Unauthorized Git Commit / Push Actions | Agent workflow / Git constraints | **Resolved** |
+| **BUG-006** | Project Switcher Modal Squished Inside 400px Side Panel | `ProjectSwitcherModal`, `PanelShell.tsx`, `content/index.tsx` | **Resolved** |
 
 ---
 
@@ -146,6 +147,33 @@ Whenever closing and reopening the native Side Panel or the in-page floating sid
   - Keep all modified and new files uncommitted until the user explicitly requests committing/pushing.
 * **WHAT NOT TO DO**:
   - **NEVER** run `git commit` or `git push` autonomously.
+
+---
+
+### BUG-006: Project Switcher Modal Squished Inside 400px Side Panel
+
+#### 1. Symptom / Reported Bug:
+When clicking the active project badge / "Switch or Link Projects" button in the side panel header or the dashboard banner, the `ProjectSwitcherModal` opened inside the native Chrome side panel. Because Chrome's side panel is fixed to ~400px width, the modal's multi-column project list, port matcher, variable stats, and action buttons were squished, distorted, and awkward to view and navigate.
+
+#### 2. Root Cause:
+* `PanelShell.tsx` was directly rendering `<ProjectSwitcherModal>` in its own internal React tree.
+* Modals requiring wide tabular layouts or multi-column cards cannot fit gracefully in narrow 400px columns.
+* Previous wide modals (`CommandPalette`, `ShortcutsModal`, `WorkflowEditorModal`, `QuickVariableModal`) had already moved to in-page Shadow DOM overlays, but `ProjectSwitcherModal` was still trapped inside `PanelShell`.
+
+#### 3. Resolution:
+* Created [`src/content/project-switcher-modal.tsx`](file:///p:/React%20native/OpenAPI_Companion/src/content/project-switcher-modal.tsx) providing `mountProjectSwitcherModal()` into `#oac-project-switcher-host` in Shadow DOM with isolated CSS and an imperative handle (`open`, `close`, `toggle`, `destroy`).
+* Integrated lazy loader `withProjectSwitcherModal()` in [`src/content/index.tsx`](file:///p:/React%20native/OpenAPI_Companion/src/content/index.tsx) and exposed RPC method `'projectSwitcher.open'`.
+* Added and exported `openPageProjectSwitcher()` in [`src/sidepanel/bridge.ts`](file:///p:/React%20native/OpenAPI_Companion/src/sidepanel/bridge.ts).
+* Updated [`src/sidepanel/main.tsx`](file:///p:/React%20native/OpenAPI_Companion/src/sidepanel/main.tsx) to pass `onOpenProjectSwitcher={openPageProjectSwitcher}` to `PanelShell`.
+* Updated [`src/sidepanel/PanelShell.tsx`](file:///p:/React%20native/OpenAPI_Companion/src/sidepanel/PanelShell.tsx) to delegate the header project button and dashboard banner to `onOpenProjectSwitcher`, guarding `<ProjectSwitcherModal>` so it never renders inside the side panel when the bridge is active.
+
+#### 4. Lessons Learned:
+* **WHAT TO DO**:
+  - Always host spacious, multi-column management modals directly on the webpage overlay via Shadow DOM rather than inside the narrow 400px side panel.
+  - Expose an RPC method from content script (`projectSwitcher.open`) and delegate modal opening from the sidepanel bridge.
+  - Import components directly (e.g. `@/components/ProjectSwitcherModal`) when bundling across multiple entry points to prevent circular rollup chunk warnings.
+* **WHAT NOT TO DO**:
+  - **Do NOT** render complex, wide modals inside the side panel when an in-page Shadow DOM overlay host is available.
 
 ---
 

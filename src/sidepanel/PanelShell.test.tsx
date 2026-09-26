@@ -233,7 +233,36 @@ describe('PanelShell (native side panel)', () => {
     expect(screen.getByText(/Local API 8008/)).toBeInTheDocument()
   })
 
-  it('opens ProjectSwitcherModal when clicking project button in header', async () => {
+  it('delegates project switcher button to the in-page modal when onOpenProjectSwitcher is provided', async () => {
+    const storage = new StorageService({ area: createFakeArea(), now: () => 0 })
+    const theme = new ThemeManager({
+      storage,
+      root: document.createElement('div'),
+      matchMedia: () => noMatch,
+    })
+    await theme.init()
+    const bus = new EventBus()
+    const onOpenProjectSwitcher = vi.fn()
+
+    render(
+      <PanelShell
+        project={project}
+        theme={theme}
+        bus={bus}
+        environmentId="default"
+        onOpenPalette={vi.fn()}
+        onOpenProjectSwitcher={onOpenProjectSwitcher}
+        {...services()}
+      />,
+    )
+
+    const switchBtn = screen.getByTitle(/Switch or link project/)
+    fireEvent.click(switchBtn)
+
+    expect(onOpenProjectSwitcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders fallback ProjectSwitcherModal when onOpenProjectSwitcher is not provided', async () => {
     const storage = new StorageService({ area: createFakeArea(), now: () => 0 })
     const theme = new ThemeManager({
       storage,

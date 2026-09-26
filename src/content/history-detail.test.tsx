@@ -59,6 +59,17 @@ describe('mountHistoryDetail (in-page history request detail overlay)', () => {
     expect(el).not.toBeNull()
     expect(el?.getAttribute('aria-label')).toBe('Request detail')
     expect(overlay.isOpen()).toBe(true)
+
+    // Switch to Query & Params tab to inspect query and path parameter tables
+    const paramsTab = Array.from(shadow()?.querySelectorAll('button') ?? []).find((b) =>
+      b.textContent?.includes('Query & Params'),
+    )
+    if (paramsTab) {
+      await act(async () => {
+        paramsTab.click()
+      })
+    }
+
     expect(el?.textContent).toContain('Query Parameters')
     expect(el?.textContent).toContain('redirect')
     expect(el?.textContent).toContain('dashboard')

@@ -147,7 +147,7 @@ function VariableRow({
         </button>
 
         {/* Copy raw value */}
-        <CopyButton value={editingValue} label="Copy raw value" />
+        <CopyButton text={editingValue} label="Copy raw value" />
 
         {/* Secret Toggle */}
         <IconButton
@@ -210,6 +210,21 @@ export function QuickVariableModal({
     }
   }, [service, initialEnvId])
 
+  useEffect(() => {
+    if (!bus) return
+    const unsub = bus.subscribe('ENVIRONMENT_CHANGED', () => {
+      void (async () => {
+        const [listRes, activeId] = await Promise.all([service.list(), service.getActiveId()])
+        if (listRes.ok) {
+          const targetId = initialEnvId || activeId || listRes.value[0]?.id || 'default'
+          const matched = listRes.value.find((e) => e.id === targetId) ?? listRes.value[0] ?? null
+          setCurrentEnv(matched)
+        }
+      })()
+    })
+    return unsub
+  }, [bus, service, initialEnvId])
+
   const handleNewKeyChange = (e: ChangeEvent<HTMLInputElement>) => {
     const formatted = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_')
     setNewKey(formatted)
@@ -250,7 +265,6 @@ export function QuickVariableModal({
     setSecretManuallySet(false)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 1800)
-    bus?.publish('ENVIRONMENT_CHANGED', { environmentId: currentEnv.id })
     keyInputRef.current?.focus()
   }
 
@@ -301,7 +315,6 @@ export function QuickVariableModal({
     setCurrentEnv(res.value)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 1800)
-    bus?.publish('ENVIRONMENT_CHANGED', { environmentId: currentEnv.id })
     return true
   }
 
@@ -328,7 +341,6 @@ export function QuickVariableModal({
     setCurrentEnv(res.value)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 1800)
-    bus?.publish('ENVIRONMENT_CHANGED', { environmentId: currentEnv.id })
   }
 
   const handleToggleSecret = async (key: string, makeSecret: boolean) => {
@@ -357,7 +369,6 @@ export function QuickVariableModal({
     setCurrentEnv(res.value)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 1800)
-    bus?.publish('ENVIRONMENT_CHANGED', { environmentId: currentEnv.id })
   }
 
   // Filter variable rows

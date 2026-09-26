@@ -11,8 +11,8 @@ import {
   FolderIcon,
   KeyboardIcon,
   PortChangeBanner,
-  ProjectSwitcherModal,
 } from '@/components'
+import { ProjectSwitcherModal } from '@/components/ProjectSwitcherModal'
 import { useEventBus, useTheme } from '@/hooks'
 import type { EventBus } from '@/core/events'
 import type { ProjectMeta, CandidateProject } from '@/core/project'
@@ -64,6 +64,8 @@ export interface PanelShellProps {
   ) => Promise<Result<void>> | Result<void> | void
   /** Opens the keyboard shortcuts modal overlay in the PAGE (see `openPageShortcutsModal`). */
   onOpenShortcutsModal?: () => void
+  /** Opens the project switcher modal overlay in the PAGE (see `openPageProjectSwitcher`). */
+  onOpenProjectSwitcher?: () => void
   /** Opens the workflow editor overlay in the PAGE (see `openPageWorkflowEditor`). */
   onOpenWorkflowEditor?: (options?: WorkflowEditorBridgeOpenOptions) => void
   /** Opens the workflow runner overlay in the PAGE (see `openPageWorkflowRunner`). */
@@ -100,6 +102,7 @@ export function PanelShell({
   onOpenHistoryDetail,
   onOpenExtractionRuleModal,
   onOpenShortcutsModal,
+  onOpenProjectSwitcher,
   onOpenWorkflowEditor,
   onOpenWorkflowRunner,
   staleTab = false,
@@ -198,6 +201,14 @@ export function PanelShell({
   const cycleTheme = () => void theme.setPreference(NEXT_PREFERENCE[theme.getPreference()])
   const PreferenceIcon = PREFERENCE_ICON[preference]
 
+  const handleOpenProjectSwitcher = () => {
+    if (onOpenProjectSwitcher) {
+      onOpenProjectSwitcher()
+    } else {
+      setIsProjectSwitcherOpen(true)
+    }
+  }
+
   return (
     <div className="flex h-screen max-h-screen flex-col bg-bg text-text overscroll-none overflow-hidden">
       <header className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg px-3 py-2">
@@ -205,7 +216,7 @@ export function PanelShell({
           <strong className="text-sm whitespace-nowrap">OpenAPI Companion</strong>
           <button
             type="button"
-            onClick={() => setIsProjectSwitcherOpen(true)}
+            onClick={handleOpenProjectSwitcher}
             className="flex items-center gap-1 rounded bg-surface/60 px-1.5 py-0.5 text-xs font-medium text-text hover:bg-surface border border-border transition-colors truncate max-w-[140px] text-left"
             title={`Switch or link project (Active: ${currentProjectName})`}
           >
@@ -311,11 +322,11 @@ export function PanelShell({
           onNavigate={handleTabChange}
           swagger={swagger}
           projectService={projectService}
-          onOpenProjectSwitcher={() => setIsProjectSwitcherOpen(true)}
+          onOpenProjectSwitcher={handleOpenProjectSwitcher}
         />
       </div>
 
-      {isProjectSwitcherOpen && projectService ? (
+      {!onOpenProjectSwitcher && isProjectSwitcherOpen && projectService ? (
         <ProjectSwitcherModal
           isOpen={isProjectSwitcherOpen}
           onClose={() => setIsProjectSwitcherOpen(false)}
