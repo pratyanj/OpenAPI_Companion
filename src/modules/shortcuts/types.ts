@@ -9,6 +9,7 @@ export type ShortcutActionId =
   | 'jsonFormat.format'
   | 'pasteCurl.paste'
   | 'shortcuts.open'
+  | 'variables.open'
 
 export interface ShortcutBinding {
   /** Target key, lowercase (e.g. 'k', 'm', 'l', 'f', 'v', '/') */
@@ -80,6 +81,14 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     context: 'global',
     contextLabel: 'Global',
     defaultBinding: { key: '/', ctrlOrCmd: true },
+  },
+  {
+    id: 'variables.open',
+    name: 'Quick Variables Editor',
+    description: 'Opens in-page environment variables modal to search, add, or edit variables with instant save',
+    context: 'global',
+    contextLabel: 'Global',
+    defaultBinding: { key: 'v', alt: true },
   },
 ]
 

@@ -108,6 +108,7 @@ export const SearchIcon = make(Search)
 export const PlaceholderIcon = make(Construction)
 export const CopyIcon = make(Copy)
 export const CopiedIcon = make(Check)
+export const CheckIcon = CopiedIcon
 export const RequestIcon = make(ArrowUpRight)
 export const ExternalLinkIcon = make(ArrowUpRight)
 export const ResponseIcon = make(ArrowDownLeft)

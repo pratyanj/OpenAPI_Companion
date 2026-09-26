@@ -64,6 +64,7 @@ import type {
 import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
 import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
 import type { ShortcutsModalHandle } from './shortcuts-modal'
+import type { VariablesModalHandle } from './variables-modal'
 import {
   DEFAULT_SHORTCUTS,
   type ShortcutActionId,
@@ -849,6 +850,26 @@ export async function bootAgent(
     }
   }
 
+  let variablesModal: VariablesModalHandle | null = null
+  const withVariablesModal = async (): Promise<VariablesModalHandle | null> => {
+    if (variablesModal) return variablesModal
+    try {
+      const { mountVariablesModal } = await import('./variables-modal')
+      variablesModal = mountVariablesModal(environments, bus, document)
+      const modalTheme = new ThemeManager({ storage, root: variablesModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return variablesModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page variables modal overlay.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut.
   document.addEventListener(
     'keydown',
@@ -871,6 +892,14 @@ export async function bootAgent(
           void withShortcutsModal().then((m) => m?.toggle())
           return
         }
+      }
+
+      // 3. Quick Variables modal shortcut (Alt+V)
+      const varBinding = getShortcutBinding('variables.open')
+      if (matchesShortcut(varBinding, e)) {
+        e.preventDefault()
+        void withVariablesModal().then((m) => m?.toggle({ envId: currentEnv }))
+        return
       }
     },
     true,
@@ -1292,6 +1321,30 @@ export async function bootAgent(
       return err({
         code: 'WORKFLOW_RUNNER_MOUNT_FAILED',
         message: 'Could not open workflow runner overlay',
+        recoverable: true,
+      })
+    },
+    'variablesModal.open': async ([options]) => {
+      const modal = await withVariablesModal()
+      if (modal) {
+        modal.open(options as { envId?: string } | undefined)
+        return ok(undefined)
+      }
+      return err({
+        code: 'VARIABLES_MODAL_MOUNT_FAILED',
+        message: 'Could not open variables modal overlay',
+        recoverable: true,
+      })
+    },
+    'variablesModal.toggle': async ([options]) => {
+      const modal = await withVariablesModal()
+      if (modal) {
+        modal.toggle(options as { envId?: string } | undefined)
+        return ok(undefined)
+      }
+      return err({
+        code: 'VARIABLES_MODAL_MOUNT_FAILED',
+        message: 'Could not toggle variables modal overlay',
         recoverable: true,
       })
     },

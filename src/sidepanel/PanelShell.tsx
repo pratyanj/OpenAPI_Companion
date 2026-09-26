@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useCallback, useEffect, useState, type ComponentType } from 'react'
 import {
   IconButton,
   Tabs,
@@ -139,28 +139,49 @@ export function PanelShell({
     }
   })
 
+  const lastTabKey = project?.id ? `oac_last_tab_${project.id}` : 'oac_last_tab'
+
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      setActiveTab(tab)
+      try {
+        if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+          chrome.storage.local.set({ [lastTabKey]: tab, oac_last_tab: tab })
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [lastTabKey],
+  )
+
   useEventBus(bus, 'ENVIRONMENT_CHANGED', (payload) => setActiveEnv(payload.environmentId))
   useEventBus(bus, 'TAB_NAVIGATE', (payload) => {
     const tab = payload?.tab
     if (tab && TABS.some((t) => t.id === tab)) {
-      setActiveTab(tab)
+      handleTabChange(tab)
     }
   })
 
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
-        chrome.storage.local.get('oac_requested_tab', (res) => {
+        chrome.storage.local.get(['oac_requested_tab', lastTabKey, 'oac_last_tab'], (res) => {
           if (res?.oac_requested_tab && TABS.some((t) => t.id === res.oac_requested_tab)) {
-            setActiveTab(res.oac_requested_tab)
+            handleTabChange(res.oac_requested_tab)
             chrome.storage.local.remove('oac_requested_tab')
+          } else {
+            const saved = res?.[lastTabKey] || res?.oac_last_tab
+            if (saved && TABS.some((t) => t.id === saved)) {
+              setActiveTab(saved)
+            }
           }
         })
       }
     } catch {
       // ignore
     }
-  }, [])
+  }, [handleTabChange, lastTabKey])
 
   // ⌘K works from the panel too, but the palette itself opens in the page.
   useEffect(() => {
@@ -256,7 +277,7 @@ export function PanelShell({
       ) : null}
 
       <nav className="flex-shrink-0 border-b border-border bg-bg px-2 py-2">
-        <Tabs tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
+        <Tabs tabs={TABS} activeId={activeTab} onChange={handleTabChange} />
       </nav>
 
       <div
@@ -287,7 +308,7 @@ export function PanelShell({
           onOpenShortcutsModal={onOpenShortcutsModal}
           onOpenWorkflowEditor={onOpenWorkflowEditor}
           onOpenWorkflowRunner={onOpenWorkflowRunner}
-          onNavigate={setActiveTab}
+          onNavigate={handleTabChange}
           swagger={swagger}
           projectService={projectService}
           onOpenProjectSwitcher={() => setIsProjectSwitcherOpen(true)}
