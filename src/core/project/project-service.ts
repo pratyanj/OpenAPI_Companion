@@ -245,6 +245,7 @@ export class ProjectService {
 
   /**
    * Link an origin to a target project (creates an alias mapping).
+   * Automatically cleans up any previous project binding so 1-click switching is seamless.
    */
   async linkOriginToProject(origin: string, targetProjectId: string): Promise<Result<void>> {
     const targetMetaRes = await this.getProjectMeta(targetProjectId)
@@ -252,10 +253,27 @@ export class ProjectService {
 
     const bindingsRes = await this.getBindings()
     const bindings = bindingsRes.ok ? bindingsRes.value : {}
+    const oldProjectId = bindings[origin]
     bindings[origin] = targetProjectId
 
     const written = await this.storage.set(PROJECT_BINDINGS_KEY, bindings, { immediate: true })
     if (!written.ok) return written
+
+    // If previously bound to a different project, remove origin from old project's linkedOrigins
+    if (oldProjectId && oldProjectId !== targetProjectId) {
+      const oldMetaRes = await this.getProjectMeta(oldProjectId)
+      if (oldMetaRes.ok && oldMetaRes.value) {
+        const oldMeta = oldMetaRes.value
+        const remaining = (oldMeta.linkedOrigins ?? []).filter((o) => o !== origin)
+        const updatedOldMeta: ProjectMeta = {
+          ...oldMeta,
+          linkedOrigins: remaining.length > 0 ? remaining : undefined,
+        }
+        await this.storage.set(projectKey(oldProjectId, 'metadata'), updatedOldMeta, {
+          immediate: true,
+        })
+      }
+    }
 
     // Update target project's linkedOrigins array
     const meta = targetMetaRes.value
@@ -278,26 +296,46 @@ export class ProjectService {
    */
   async unlinkOrigin(origin: string): Promise<Result<void>> {
     const bindingsRes = await this.getBindings()
-    if (!bindingsRes.ok) return ok(undefined)
-
-    const bindings = bindingsRes.value
+    const bindings = bindingsRes.ok ? bindingsRes.value : {}
     const targetProjectId = bindings[origin]
-    if (!targetProjectId) return ok(undefined)
 
-    delete bindings[origin]
-    await this.storage.set(PROJECT_BINDINGS_KEY, bindings, { immediate: true })
+    if (targetProjectId) {
+      delete bindings[origin]
+      await this.storage.set(PROJECT_BINDINGS_KEY, bindings, { immediate: true })
 
-    const metaRes = await this.getProjectMeta(targetProjectId)
-    if (metaRes.ok) {
-      const meta = metaRes.value
-      const remaining = (meta.linkedOrigins ?? []).filter((o) => o !== origin)
-      const updatedMeta: ProjectMeta = {
-        ...meta,
-        linkedOrigins: remaining.length > 0 ? remaining : undefined,
+      const metaRes = await this.getProjectMeta(targetProjectId)
+      if (metaRes.ok && metaRes.value) {
+        const meta = metaRes.value
+        const remaining = (meta.linkedOrigins ?? []).filter((o) => o !== origin)
+        const updatedMeta: ProjectMeta = {
+          ...meta,
+          linkedOrigins: remaining.length > 0 ? remaining : undefined,
+        }
+        await this.storage.set(projectKey(targetProjectId, 'metadata'), updatedMeta, {
+          immediate: true,
+        })
       }
-      await this.storage.set(projectKey(targetProjectId, 'metadata'), updatedMeta, {
-        immediate: true,
-      })
+    } else {
+      // Check if any project has this origin in linkedOrigins without explicit binding
+      const allProjectsRes = await this.listAllProjects()
+      if (allProjectsRes.ok) {
+        for (const p of allProjectsRes.value) {
+          if (p.linkedOrigins?.includes(origin)) {
+            const metaRes = await this.getProjectMeta(p.id)
+            if (metaRes.ok && metaRes.value) {
+              const meta = metaRes.value
+              const remaining = (meta.linkedOrigins ?? []).filter((o) => o !== origin)
+              const updatedMeta: ProjectMeta = {
+                ...meta,
+                linkedOrigins: remaining.length > 0 ? remaining : undefined,
+              }
+              await this.storage.set(projectKey(p.id, 'metadata'), updatedMeta, {
+                immediate: true,
+              })
+            }
+          }
+        }
+      }
     }
 
     return ok(undefined)

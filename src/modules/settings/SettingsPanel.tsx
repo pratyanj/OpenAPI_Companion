@@ -13,6 +13,8 @@ import {
   EyeIcon,
   KeyboardIcon,
   LockIcon,
+  MessageSquareIcon,
+  FeedbackModal,
 } from '@/components'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
@@ -76,6 +78,7 @@ export function SettingsPanel({
   const { preference } = useTheme(theme)
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   type ConfirmTarget = 'project' | 'all' | { type: 'single'; projectId: string; name?: string }
   const [confirm, setConfirm] = useState<ConfirmTarget | null>(null)
   const [importText, setImportText] = useState('')
@@ -855,6 +858,24 @@ export function SettingsPanel({
         ) : null}
       </Section>
 
+      <Section title="Feedback & Support">
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface/30 p-3">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Have a feature suggestion, encountered a bug, or want to share feedback? We appreciate every message!
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="secondary"
+              onClick={() => setIsFeedbackOpen(true)}
+              className="gap-1.5 self-start"
+            >
+              <MessageSquareIcon className="h-3.5 w-3.5 text-primary" />
+              <span>Share Feedback</span>
+            </Button>
+          </div>
+        </div>
+      </Section>
+
       <Section title="General">
         <div className="flex items-center justify-between">
           <span className="text-muted">{APP_NAME}</span>
@@ -890,6 +911,12 @@ export function SettingsPanel({
           </div>
         </Dialog>
       ) : null}
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
+      />
     </div>
   )
 }

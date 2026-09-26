@@ -65,7 +65,7 @@ describe('mountProjectSwitcherModal (in-page project switcher overlay)', () => {
 
     expect(modal.isOpen()).toBe(true)
     expect(dialog()).not.toBeNull()
-    expect(dialog()?.getAttribute('aria-label')).toBe('Switch or Link Projects')
+    expect(dialog()?.getAttribute('aria-label')).toBe('Workspaces & Projects')
 
     await act(async () => {
       modal.close()
@@ -92,6 +92,60 @@ describe('mountProjectSwitcherModal (in-page project switcher overlay)', () => {
       modal.toggle()
     })
     expect(modal.isOpen()).toBe(false)
+
+    await act(async () => {
+      modal.destroy()
+    })
+  })
+
+  it('renders connected URL chips and switches workspace on button click', async () => {
+    const bus = new EventBus()
+    const service = mockProjectService()
+    service.listAll = vi.fn(async () =>
+      ok([
+        {
+          id: 'project_123',
+          name: 'Current App',
+          originUrl: 'http://127.0.0.1:8008',
+          openApiUrl: 'http://127.0.0.1:8008/openapi.json',
+          linkedOrigins: ['http://localhost:8009'],
+          presetCount: 5,
+          variableCount: 3,
+        },
+        {
+          id: 'project_456',
+          name: 'Payment Service',
+          originUrl: 'http://127.0.0.1:4200',
+          openApiUrl: 'http://127.0.0.1:4200/swagger.json',
+          presetCount: 10,
+          variableCount: 6,
+        },
+      ]),
+    )
+
+    const modal = mountProjectSwitcherModal(service, mockProject, bus)
+    await act(async () => {
+      modal.open()
+    })
+
+    const el = dialog()
+    expect(el).not.toBeNull()
+    expect(el?.textContent).toContain('Current App')
+    expect(el?.textContent).toContain('(this tab)')
+    expect(el?.textContent).toContain(':8009')
+    expect(el?.textContent).toContain('Payment Service')
+    expect(el?.textContent).toContain('Switch to This Project')
+
+    // Click "Switch to This Project"
+    const switchBtn = Array.from(shadow()?.querySelectorAll('button') ?? []).find((b) =>
+      b.textContent?.includes('Switch to This Project'),
+    )
+    expect(switchBtn).toBeDefined()
+    await act(async () => {
+      switchBtn?.click()
+    })
+
+    expect(service.linkOrigin).toHaveBeenCalledWith('project_456')
 
     await act(async () => {
       modal.destroy()

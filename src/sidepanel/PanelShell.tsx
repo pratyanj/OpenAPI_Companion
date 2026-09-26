@@ -11,8 +11,12 @@ import {
   FolderIcon,
   KeyboardIcon,
   PortChangeBanner,
+  MessageSquareIcon,
+  OnboardingModal,
+  FeedbackModal,
 } from '@/components'
 import { ProjectSwitcherModal } from '@/components/ProjectSwitcherModal'
+import { isOnboardingCompleted } from '@/services/feedback-service'
 import { useEventBus, useTheme } from '@/hooks'
 import type { EventBus } from '@/core/events'
 import type { ProjectMeta, CandidateProject } from '@/core/project'
@@ -124,7 +128,17 @@ export function PanelShell({
   const [currentProjectName, setCurrentProjectName] = useState(project.name)
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false)
   const [candidates, setCandidates] = useState<CandidateProject[]>(candidateProjects ?? [])
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const { preference } = useTheme(theme)
+
+  useEffect(() => {
+    isOnboardingCompleted().then((completed) => {
+      if (!completed) {
+        setIsOnboardingOpen(true)
+      }
+    })
+  }, [])
 
   useEffect(() => {
     setCurrentProjectName(project.name)
@@ -235,6 +249,9 @@ export function PanelShell({
               <KeyboardIcon className="h-4 w-4" />
             </IconButton>
           ) : null}
+          <IconButton label="Share feedback" onClick={() => setIsFeedbackOpen(true)}>
+            <MessageSquareIcon className="h-4 w-4" />
+          </IconButton>
           <IconButton label={`Theme: ${preference}. Click to change.`} onClick={cycleTheme}>
             <PreferenceIcon className="h-4 w-4" />
           </IconButton>
@@ -338,6 +355,18 @@ export function PanelShell({
       ) : null}
 
       <ToastLayer bus={bus} />
+
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
+      />
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
+      />
     </div>
   )
 }

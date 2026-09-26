@@ -1427,9 +1427,10 @@ export async function bootAgent(
       }
       return res
     },
-    'project.unlinkOrigin': async () => {
-      const res = await project.unlinkOrigin(location.origin)
-      if (res.ok) {
+    'project.unlinkOrigin': async ([targetOrigin]) => {
+      const originToUnlink = (targetOrigin as string | undefined) || location.origin
+      const res = await project.unlinkOrigin(originToUnlink)
+      if (res.ok && originToUnlink === location.origin) {
         location.reload()
       }
       return res

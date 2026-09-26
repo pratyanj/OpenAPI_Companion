@@ -14,6 +14,8 @@ This document maintains a continuous, detailed record of bugs, issues, and unexp
 | **BUG-004** | Git Tag Syntax Error & Redundant "Release" Word in Tag Name | Release process (`git tag`) | **Resolved** |
 | **BUG-005** | Unauthorized Git Commit / Push Actions | Agent workflow / Git constraints | **Resolved** |
 | **BUG-006** | Project Switcher Modal Squished Inside 400px Side Panel | `ProjectSwitcherModal`, `PanelShell.tsx`, `content/index.tsx` | **Resolved** |
+| **BUG-007** | Project Linking Confusion & Complex Multi-Step Unlink/Link UX | `ProjectSwitcherModal`, `ProjectService` | **Resolved** |
+| **BUG-008** | Cyclic Component Barrel Imports & Hoisted `vi.mock` Scoping in Vitest | `components/index.ts`, `OnboardingModal`, `FeedbackModal` | **Resolved** |
 
 ---
 
@@ -176,6 +178,67 @@ When clicking the active project badge / "Switch or Link Projects" button in the
   - **Do NOT** render complex, wide modals inside the side panel when an in-page Shadow DOM overlay host is available.
 
 ---
+
+### BUG-007: Project Linking Confusion & Complex Multi-Step Unlink/Link UX
+
+#### 1. Symptom / Reported Bug:
+The previous modal used technical "Link" and "Unlink Origin" buttons. Users found it difficult to understand which origins/ports belonged to which project, and moving an origin to a different project required a confusing multi-step dance (first finding and clicking "Unlink Origin", then searching for the target project, then clicking "Link").
+
+#### 2. Root Cause:
+* Technical terminology ("Link", "Unlink Origin", "Bindings") exposed internal storage implementation details rather than a user-friendly workspace concept.
+* Projects did not visually group their connected URLs/ports, hiding which ports belonged to which project.
+* `linkOriginToProject` did not automatically clean up previous project associations, forcing manual unlinking prior to re-linking.
+
+#### 3. Resolution:
+* Redesigned `ProjectSwitcherModal.tsx` around **Workspaces & Projects**:
+  - Each project is presented as a clean Card displaying its **Connected Ports & URLs as visual chips** (e.g. `[ :8008 (this tab) ]`, `[ :8009 ✕ ]`).
+  - Added 1-Click **"Switch to This Project"** action which moves the current tab's origin directly to the target project in one atomic operation.
+  - Enhanced `ProjectService.linkOriginToProject` to automatically remove the origin from any previous project's `linkedOrigins`, eliminating the need for manual pre-unlinking.
+  - Added individual `✕` button to each extra port chip to disconnect ports directly without switching.
+  - Replaced "Unlink Origin" with plain-English "Disconnect Tab" (reverting the tab to its own independent workspace).
+* Added unit tests in `project-service.test.ts` and `project-switcher-modal.test.tsx` verifying 1-click re-linking and chip rendering.
+
+#### 4. Lessons Learned:
+* **WHAT TO DO**:
+  - Use visual tags/chips to make multi-origin relationships immediately transparent to the developer.
+  - Provide 1-click atomic actions ("Switch to This Project") that handle internal cleanup under the hood.
+  - Use plain-English terminology ("Workspaces", "Connected Ports", "Switch", "Disconnect").
+* **WHAT NOT TO DO**:
+  - **Do NOT** require users to manually unlink/deregister an entity before moving it to a new target.
+  - **Do NOT** hide relationship mappings inside technical labels like "Link" without showing which URLs are actually connected.
+
+---
+
+### BUG-008: Cyclic Component Barrel Imports & Hoisted `vi.mock` Scoping in Vitest
+
+#### 1. Symptom / Reported Bug:
+When running Vitest on new modal test suites (`OnboardingModal.test.tsx`, `FeedbackModal.test.tsx`), tests crashed with:
+`ReferenceError: Cannot access '__vi_import_4__' before initialization`
+and in `feedback-service.test.ts`:
+`ReferenceError: chrome is not defined`.
+
+#### 2. Root Cause:
+* **Cyclic Barrel Imports**: Components in `src/components/` imported shared primitives from `@/components` (the barrel `index.ts`), while `index.ts` re-exported those same modals. When Vitest evaluated test files with hoisted mocks, this cyclic dependency triggered an uninitialized module access.
+* **Hoisted `vi.mock` Factory Scope**: In Vitest, `vi.mock` factories are hoisted to the top of the file above top-level imports. Referencing an imported symbol (such as `ok` from `@/types`) inside the factory causes a ReferenceError at runtime.
+* **Unstubbed Chrome Global**: Node test environments do not have a global `chrome` object by default unless stubbed.
+
+#### 3. Resolution:
+* **Relative Imports Inside Component Directory**: Switched all sibling component imports in `OnboardingModal.tsx` and `FeedbackModal.tsx` to direct relative paths (e.g. `./Dialog`, `./Button`, `./Input`, `./Spinner`, `./icons`) instead of importing from the `@/components` barrel.
+* **Inline Result Objects in Mock Factories**: Replaced calls to imported functions like `ok(...)` inside `vi.mock` factories with plain `{ ok: true, value: ... }` objects.
+* **Storage Stub with `createFakeArea`**: Used `createFakeArea()` and `vi.stubGlobal('chrome', { storage: { local: fakeArea } })` to provide realistic, isolated in-memory Chrome storage.
+* All 102 test files (953 tests) and `tsc --noEmit` pass with 0 errors.
+
+#### 4. Lessons Learned:
+* **WHAT TO DO**:
+  - Within `src/components/`, always import sibling components relatively (`./Dialog`), never via the barrel (`@/components`).
+  - Keep `vi.mock` factory functions free of external top-level imported variables; use inline mocks or literals.
+  - In unit tests exercising `chrome.storage.local`, use `createFakeArea()` from `@/tests/fake-storage` with `vi.stubGlobal('chrome', ...)`.
+* **WHAT NOT TO DO**:
+  - **Do NOT** import from `@/components` inside any file inside `src/components/` to prevent cyclic import deadlocks.
+  - **Do NOT** reference top-level imports inside `vi.mock` factories.
+
+---
+
 
 ## Quick Reference: Checklist for Future Features & Fixes
 

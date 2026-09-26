@@ -430,7 +430,7 @@ export function createRemoteWorkflowsService(): WorkflowsPanelService {
 export interface RemoteProjectApi {
   rename: (name: string, projectId?: string) => Promise<Result<ProjectMeta>>
   linkOrigin: (targetProjectId: string) => Promise<Result<void>>
-  unlinkOrigin: () => Promise<Result<void>>
+  unlinkOrigin: (origin?: string) => Promise<Result<void>>
   copyData: (sourceProjectId: string) => Promise<Result<number>>
   listAll: () => Promise<Result<CandidateProject[]>>
   dismissCandidates: () => Promise<Result<void>>
@@ -440,7 +440,7 @@ export function createRemoteProjectService(): RemoteProjectApi {
   return {
     rename: (name, projectId) => rpcResult('project.rename', name, projectId),
     linkOrigin: (targetProjectId) => rpcResult('project.linkOrigin', targetProjectId),
-    unlinkOrigin: () => rpcResult('project.unlinkOrigin'),
+    unlinkOrigin: (origin) => rpcResult('project.unlinkOrigin', origin),
     copyData: (sourceProjectId) => rpcResult('project.copyData', sourceProjectId),
     listAll: () => rpcResult('project.listAll'),
     dismissCandidates: () => rpcResult('project.dismissCandidates'),

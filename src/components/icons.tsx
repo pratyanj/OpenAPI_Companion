@@ -58,6 +58,7 @@ import {
   Columns2,
   Rows2,
   Keyboard,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -115,6 +116,7 @@ export const ResponseIcon = make(ArrowDownLeft)
 export const ClockIcon = make(Clock)
 export const DownloadIcon = make(Download)
 export const GenerateIcon = make(Sparkles)
+export const SparklesIcon = make(Sparkles)
 export const RegenerateIcon = make(RefreshCw)
 export const FavoriteIcon = make(Star)
 export const CodeIcon = make(Code)
@@ -144,6 +146,8 @@ export const SwapIcon = make(ArrowLeftRight)
 export const SplitViewIcon = make(Columns2)
 export const UnifiedViewIcon = make(Rows2)
 export const KeyboardIcon = make(Keyboard)
+export const MessageSquareIcon = make(MessageSquare)
+export const StarIcon = make(Star)
 
 // Toast kinds
 export const ToastSuccessIcon = make(CircleCheck)
