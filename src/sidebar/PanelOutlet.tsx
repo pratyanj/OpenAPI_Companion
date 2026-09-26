@@ -86,6 +86,8 @@ interface PanelOutletProps {
   swagger?: DocStats
   projectService?: RemoteProjectApi
   onOpenProjectSwitcher?: () => void
+  /** Opens the in-page feedback modal overlay. */
+  onOpenFeedbackModal?: (options?: { initialCategory?: 'feature' | 'bug' | 'general' }) => void
 }
 
 export function PanelOutlet({
@@ -114,6 +116,7 @@ export function PanelOutlet({
   swagger,
   projectService,
   onOpenProjectSwitcher,
+  onOpenFeedbackModal,
 }: PanelOutletProps) {
   if (activeTab === 'dashboard') {
     // The rich dashboard needs the read services; fall back if they're absent.
@@ -232,6 +235,7 @@ export function PanelOutlet({
         projectId={project?.id}
         bus={bus}
         onOpenShortcutsModal={onOpenShortcutsModal}
+        onOpenFeedbackModal={onOpenFeedbackModal}
       />
     )
   }

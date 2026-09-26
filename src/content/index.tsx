@@ -66,6 +66,7 @@ import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow
 import type { ShortcutsModalHandle } from './shortcuts-modal'
 import type { VariablesModalHandle } from './variables-modal'
 import type { ProjectSwitcherModalHandle } from './project-switcher-modal'
+import type { FeedbackModalHandle, FeedbackModalOpenOptions } from './feedback-modal'
 import type { RemoteProjectApi } from '@/sidepanel/bridge'
 import {
   DEFAULT_SHORTCUTS,
@@ -920,6 +921,26 @@ export async function bootAgent(
     }
   }
 
+  let feedbackModal: FeedbackModalHandle | null = null
+  const withFeedbackModal = async (): Promise<FeedbackModalHandle | null> => {
+    if (feedbackModal) return feedbackModal
+    try {
+      const { mountFeedbackModal } = await import('./feedback-modal')
+      feedbackModal = mountFeedbackModal(bus, document)
+      const modalTheme = new ThemeManager({ storage, root: feedbackModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return feedbackModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page feedback modal overlay.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut.
   document.addEventListener(
     'keydown',
@@ -1407,6 +1428,18 @@ export async function bootAgent(
       return err({
         code: 'PROJECT_SWITCHER_MOUNT_FAILED',
         message: 'Could not open project switcher modal overlay',
+        recoverable: true,
+      })
+    },
+    'feedbackModal.open': async (options) => {
+      const modal = await withFeedbackModal()
+      if (modal) {
+        modal.open(options as FeedbackModalOpenOptions | undefined)
+        return ok(undefined)
+      }
+      return err({
+        code: 'FEEDBACK_MODAL_MOUNT_FAILED',
+        message: 'Could not open feedback modal overlay',
         recoverable: true,
       })
     },

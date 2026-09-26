@@ -334,6 +334,20 @@ export async function openPageProjectSwitcher(): Promise<Result<void>> {
   return await rpcResult<void>('projectSwitcher.open')
 }
 
+export interface FeedbackModalBridgeOpenOptions {
+  initialCategory?: 'feature' | 'bug' | 'general'
+}
+
+/**
+ * Ask the page to open its Feedback & Suggestions modal overlay.
+ * Lives in the page (centered, spacious) over the Swagger documentation.
+ */
+export async function openPageFeedbackModal(
+  options?: FeedbackModalBridgeOpenOptions,
+): Promise<Result<void>> {
+  return await rpcResult<void>('feedbackModal.open', options)
+}
+
 export interface WorkflowEditorBridgeOpenOptions {
   workflow?: Workflow | null
 }

@@ -45,6 +45,7 @@ interface SettingsPanelProps {
   projectId?: string
   bus: EventBus
   onOpenShortcutsModal?: () => void
+  onOpenFeedbackModal?: (options?: { initialCategory?: 'feature' | 'bug' | 'general' }) => void
 }
 
 const THEMES: ThemePreference[] = ['light', 'dark', 'system']
@@ -82,11 +83,20 @@ export function SettingsPanel({
   projectId,
   bus,
   onOpenShortcutsModal,
+  onOpenFeedbackModal,
 }: SettingsPanelProps) {
   const { preference } = useTheme(theme)
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+
+  const handleOpenFeedback = () => {
+    if (onOpenFeedbackModal) {
+      onOpenFeedbackModal()
+    } else {
+      setIsFeedbackOpen(true)
+    }
+  }
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null)
   type ConfirmTarget = 'project' | 'all' | { type: 'single'; projectId: string; name?: string }
@@ -877,7 +887,7 @@ export function SettingsPanel({
           <div className="flex items-center gap-2 pt-1">
             <Button
               variant="secondary"
-              onClick={() => setIsFeedbackOpen(true)}
+              onClick={handleOpenFeedback}
               className="gap-1.5 self-start"
             >
               <MessageSquareIcon className="h-3.5 w-3.5 text-primary" />

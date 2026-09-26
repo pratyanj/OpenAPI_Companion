@@ -17,6 +17,7 @@ This document maintains a continuous, detailed record of bugs, issues, and unexp
 | **BUG-007** | Project Linking Confusion & Complex Multi-Step Unlink/Link UX | `ProjectSwitcherModal`, `ProjectService` | **Resolved** |
 | **BUG-008** | Cyclic Component Barrel Imports & Hoisted `vi.mock` Scoping in Vitest | `components/index.ts`, `OnboardingModal`, `FeedbackModal` | **Resolved** |
 | **BUG-009** | Extension Update Lifecycle: Missing `onUpdateAvailable` & Data Loss on Manual Reinstall | `update-service.ts`, `background/index.ts`, `PanelShell.tsx` | **Resolved** |
+| **BUG-010** | Feedback Modal Squished Inside 400px Side Panel Column | `FeedbackModal.tsx`, `feedback-modal.tsx`, `PanelShell.tsx` | **Resolved** |
 
 ---
 
@@ -266,7 +267,37 @@ When updating the extension, Chrome did not display an update notification or up
   - Always bump `version` in `package.json` before uploading to Chrome Web Store.
 * **WHAT NOT TO DO**:
   - **Do NOT** advise users or developers to remove and reinstall the extension to update it.
-  - **Do NOT** omit `chrome.runtime.onUpdateAvailable` handling in persistent side panel extensions.
+---
+
+### BUG-010: Feedback Modal Squished Inside 400px Side Panel Column & Migration to In-Page Swagger Overlay
+
+#### 1. Symptom / Reported Bug:
+When opening the **Share Feedback & Suggestions** modal from either the Side Panel header or Settings tab, the modal opened inside the narrow (~400px) Chrome Side Panel column. This severely constrained the modal layout:
+- The 3-category selector buttons (`💡 Feature Idea`, `🐛 Bug Report`, `💬 General`) were squished into narrow columns.
+- The 5-star experience rating labels and stars felt crowded.
+- The message textarea had limited horizontal space for typing detailed suggestions.
+- The metadata footer and action buttons were cramped at the bottom.
+
+#### 2. Root Cause:
+- `PanelShell.tsx` and `SettingsPanel.tsx` were directly rendering `<FeedbackModal>` in their local React component trees inside the Side Panel iframe/window.
+- Modals styled with standard dialog dimensions (`max-w-lg` = 512px) overflow or get crushed when rendered inside a 400px-wide side panel container.
+
+#### 3. Resolution:
+- **In-Page Shadow DOM Overlay Mount**: Created `src/content/feedback-modal.tsx` exporting `mountFeedbackModal(bus, doc)` mounting into `#oac-feedback-modal-host` directly in the active Swagger page DOM.
+- **Isolated Styling & Backdrop**: Uses Shadow DOM with injected `styles/index.css` and `Dialog.tsx`'s full-viewport fixed overlay (`fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/60 backdrop-blur-[1px]`), giving it generous 512px–672px width and centering over the Swagger documentation.
+- **RPC Exposure**: Registered `feedbackModal.open` in `src/content/index.tsx` with lazy loading via dynamic import (`await import('./feedback-modal')`).
+- **Side Panel Bridge & Fallback**: Exported `openPageFeedbackModal()` in `src/sidepanel/bridge.ts`. Wired into `PanelShell.tsx` header button and `SettingsPanel.tsx` "Share Feedback" button via `PanelOutlet.tsx`, with automatic graceful fallback to opening locally inside the panel if disconnected from an active Swagger tab.
+- **Automated Test Coverage**: Added `src/content/feedback-modal.test.tsx` verifying Shadow DOM mounting, opening/closing, initial category passing, and clean DOM unmounting on destroy. All 104 test files (963 tests) pass cleanly. Dual bundle build (`npm run build` and `npm run build:firefox`) verified with 0 errors.
+
+#### 4. Lessons Learned:
+* **WHAT TO DO**:
+  - Always host multi-column forms, star-rating dialogs, and feedback prompts directly in the webpage viewport via Shadow DOM rather than confining them to the 400px side panel.
+  - Provide graceful local fallbacks in the Side Panel so users can still submit feedback even when viewing empty or disconnected tabs.
+  - Lazily load modal bundles in the content script so initial page script footprint remains minimal.
+* **WHAT NOT TO DO**:
+  - **Do NOT** render 500px+ dialogs inside a 400px side panel without checking if an in-page overlay host can provide full viewport space.
+
+---
 
 
 

@@ -77,6 +77,10 @@ export interface PanelShellProps {
   onOpenShortcutsModal?: () => void
   /** Opens the project switcher modal overlay in the PAGE (see `openPageProjectSwitcher`). */
   onOpenProjectSwitcher?: () => void
+  /** Opens the feedback modal overlay in the PAGE (see `openPageFeedbackModal`). */
+  onOpenFeedbackModal?: (options?: {
+    initialCategory?: 'feature' | 'bug' | 'general'
+  }) => Promise<Result<void>> | Result<void> | void
   /** Opens the workflow editor overlay in the PAGE (see `openPageWorkflowEditor`). */
   onOpenWorkflowEditor?: (options?: WorkflowEditorBridgeOpenOptions) => void
   /** Opens the workflow runner overlay in the PAGE (see `openPageWorkflowRunner`). */
@@ -114,6 +118,7 @@ export function PanelShell({
   onOpenExtractionRuleModal,
   onOpenShortcutsModal,
   onOpenProjectSwitcher,
+  onOpenFeedbackModal,
   onOpenWorkflowEditor,
   onOpenWorkflowRunner,
   staleTab = false,
@@ -247,6 +252,22 @@ export function PanelShell({
     }
   }
 
+  const handleOpenFeedback = (options?: { initialCategory?: 'feature' | 'bug' | 'general' }) => {
+    if (onOpenFeedbackModal) {
+      void Promise.resolve(onOpenFeedbackModal(options))
+        .then((res) => {
+          if (res && typeof res === 'object' && 'ok' in res && !(res as { ok: boolean }).ok) {
+            setIsFeedbackOpen(true)
+          }
+        })
+        .catch(() => {
+          setIsFeedbackOpen(true)
+        })
+    } else {
+      setIsFeedbackOpen(true)
+    }
+  }
+
   return (
     <div className="flex h-screen max-h-screen flex-col bg-bg text-text overscroll-none overflow-hidden">
       <header className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg px-3 py-2">
@@ -273,7 +294,7 @@ export function PanelShell({
               <KeyboardIcon className="h-4 w-4" />
             </IconButton>
           ) : null}
-          <IconButton label="Share feedback" onClick={() => setIsFeedbackOpen(true)}>
+          <IconButton label="Share feedback" onClick={() => handleOpenFeedback()}>
             <MessageSquareIcon className="h-4 w-4" />
           </IconButton>
           <IconButton label={`Theme: ${preference}. Click to change.`} onClick={cycleTheme}>
@@ -394,6 +415,7 @@ export function PanelShell({
           swagger={swagger}
           projectService={projectService}
           onOpenProjectSwitcher={handleOpenProjectSwitcher}
+          onOpenFeedbackModal={handleOpenFeedback}
         />
       </div>
 
