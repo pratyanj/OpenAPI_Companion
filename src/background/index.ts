@@ -12,6 +12,7 @@ import { OPEN_PANEL_REQUEST, PANEL_PORT, type PanelPortMessage } from '@/content
 import { bindActionToPanel, openPanelFor, usesSidebarAction, sidebarAction } from '@/core/sidebar'
 import { SettingsService } from '@/modules/settings/settings-service'
 import { BACKUP_ALARM_NAME, syncBackupAlarm, runScheduledBackup } from './backup-scheduler'
+import { setPendingUpdate } from '@/services/update-service'
 
 async function initBackupScheduler(): Promise<void> {
   try {
@@ -42,6 +43,14 @@ chrome.runtime.onInstalled.addListener((details) => {
   void runMigrations(details.reason)
   void initBackupScheduler()
 })
+
+// Handle pending update notification from Chrome Web Store / browser runtime
+if (chrome.runtime?.onUpdateAvailable) {
+  chrome.runtime.onUpdateAvailable.addListener((details) => {
+    console.info(`[${APP_NAME}] Update available: v${details.version}`)
+    void setPendingUpdate(details.version)
+  })
+}
 
 // Clicking the toolbar icon opens the panel (Chrome: side panel; Firefox: sidebar).
 bindActionToPanel((error) => console.error(`[${APP_NAME}] could not bind action:`, error))

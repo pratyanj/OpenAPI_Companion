@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ComponentType } from 'react'
 import {
   IconButton,
+  Button,
   Tabs,
   ToastLayer,
   SearchIcon,
@@ -14,9 +15,15 @@ import {
   MessageSquareIcon,
   OnboardingModal,
   FeedbackModal,
+  CloseIcon,
 } from '@/components'
 import { ProjectSwitcherModal } from '@/components/ProjectSwitcherModal'
 import { isOnboardingCompleted } from '@/services/feedback-service'
+import {
+  getPendingUpdate,
+  applyUpdateAndReload,
+  type PendingUpdate,
+} from '@/services/update-service'
 import { useEventBus, useTheme } from '@/hooks'
 import type { EventBus } from '@/core/events'
 import type { ProjectMeta, CandidateProject } from '@/core/project'
@@ -130,6 +137,7 @@ export function PanelShell({
   const [candidates, setCandidates] = useState<CandidateProject[]>(candidateProjects ?? [])
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null)
   const { preference } = useTheme(theme)
 
   useEffect(() => {
@@ -138,6 +146,22 @@ export function PanelShell({
         setIsOnboardingOpen(true)
       }
     })
+
+    getPendingUpdate().then(setPendingUpdate)
+
+    const onStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (areaName === 'local' && changes['oac_update_available']) {
+        const val = changes['oac_update_available'].newValue as PendingUpdate | undefined
+        setPendingUpdate(val ?? null)
+      }
+    }
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+      chrome.storage.onChanged.addListener(onStorageChange)
+      return () => chrome.storage.onChanged.removeListener(onStorageChange)
+    }
   }, [])
 
   useEffect(() => {
@@ -257,6 +281,36 @@ export function PanelShell({
           </IconButton>
         </div>
       </header>
+
+      {pendingUpdate ? (
+        <div
+          role="status"
+          className="flex-shrink-0 flex items-center justify-between gap-2 border-b border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-text shadow-sm"
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-emerald-500 font-bold shrink-0">⚡</span>
+            <span className="truncate text-[11px]">
+              Update ready (<strong>v{pendingUpdate.version}</strong>)!
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="primary"
+              onClick={() => void applyUpdateAndReload()}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] py-0.5 px-2 h-auto"
+            >
+              Update Now
+            </Button>
+            <IconButton
+              label="Dismiss update notification"
+              onClick={() => setPendingUpdate(null)}
+              className="h-5 w-5 text-muted hover:text-text"
+            >
+              <CloseIcon className="h-3 w-3" />
+            </IconButton>
+          </div>
+        </div>
+      ) : null}
 
       {staleTab ? (
         <p

@@ -16,6 +16,7 @@ This document maintains a continuous, detailed record of bugs, issues, and unexp
 | **BUG-006** | Project Switcher Modal Squished Inside 400px Side Panel | `ProjectSwitcherModal`, `PanelShell.tsx`, `content/index.tsx` | **Resolved** |
 | **BUG-007** | Project Linking Confusion & Complex Multi-Step Unlink/Link UX | `ProjectSwitcherModal`, `ProjectService` | **Resolved** |
 | **BUG-008** | Cyclic Component Barrel Imports & Hoisted `vi.mock` Scoping in Vitest | `components/index.ts`, `OnboardingModal`, `FeedbackModal` | **Resolved** |
+| **BUG-009** | Extension Update Lifecycle: Missing `onUpdateAvailable` & Data Loss on Manual Reinstall | `update-service.ts`, `background/index.ts`, `PanelShell.tsx` | **Resolved** |
 
 ---
 
@@ -238,6 +239,37 @@ and in `feedback-service.test.ts`:
   - **Do NOT** reference top-level imports inside `vi.mock` factories.
 
 ---
+
+### BUG-009: Extension Update Lifecycle: Missing `onUpdateAvailable` & Data Loss on Manual Reinstall
+
+#### 1. Symptom / Reported Bug:
+When updating the extension, Chrome did not display an update notification or update button to users. Users assumed they had to **Remove** and reinstall the extension from `chrome://extensions`, which permanently wiped out their `chrome.storage.local` database (all saved projects, auth tokens, history records, and variables).
+
+#### 2. Root Cause:
+* **Deferred Chrome Updates**: Chrome downloads Web Store updates in the background but suppresses applying them while the extension's side panel or background worker is active. Without `chrome.runtime.onUpdateAvailable`, the update sits dormant until browser restart.
+* **Missing In-Extension Update Checks**: The extension had no mechanism to trigger `chrome.runtime.requestUpdateCheck()` on demand.
+* **Storage Destruction on Uninstallation**: Clicking the trash can / "Remove" button in `chrome://extensions` is an explicit uninstall, which causes Chrome to drop all extension storage partitions. Clicking the circular **Reload (⟳)** button or calling `chrome.runtime.reload()`, however, preserves 100% of storage.
+
+#### 3. Resolution:
+* **Background Update Listener**: Added `chrome.runtime.onUpdateAvailable` listener in `src/background/index.ts` to capture downloaded updates and persist `oac_update_available: { version, at }`.
+* **Top Update Banner in Side Panel**: In `PanelShell.tsx`, added a live notification banner that surfaces when a new build is ready:
+  `⚡ Update ready (v1.2.1)! [Update Now] [Dismiss]`.
+* **Safe In-Place Reload**: Clicking **"Update Now"** calls `applyUpdateAndReload()` (`chrome.runtime.reload()`), instantly restarting the extension with the new code while retaining 100% of projects, tokens, and history.
+* **Manual Check Button in Settings**: Added a **"Check for updates"** button in `SettingsPanel.tsx` using `chrome.runtime.requestUpdateCheck()`. If running unpacked, informs developers to use the ⟳ reload icon instead of removing the extension.
+* **Version Bump to `1.2.1`**: Bumped `package.json` to `1.2.1` to trigger Chrome Web Store and browser update listeners.
+
+#### 4. Lessons Learned:
+* **WHAT TO DO**:
+  - Always listen to `chrome.runtime.onUpdateAvailable` in MV3 background workers to give users control over applying updates.
+  - Use `chrome.runtime.reload()` for updates — it never deletes `chrome.storage.local` data.
+  - In local development, always use the circular **Reload (⟳)** button in `chrome://extensions`, NEVER the "Remove" trash can.
+  - Always bump `version` in `package.json` before uploading to Chrome Web Store.
+* **WHAT NOT TO DO**:
+  - **Do NOT** advise users or developers to remove and reinstall the extension to update it.
+  - **Do NOT** omit `chrome.runtime.onUpdateAvailable` handling in persistent side panel extensions.
+
+
+
 
 
 ## Quick Reference: Checklist for Future Features & Fixes

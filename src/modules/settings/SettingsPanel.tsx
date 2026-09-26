@@ -15,7 +15,15 @@ import {
   LockIcon,
   MessageSquareIcon,
   FeedbackModal,
+  Spinner,
+  RegenerateIcon,
 } from '@/components'
+import {
+  getPendingUpdate,
+  checkForUpdates,
+  applyUpdateAndReload,
+  type PendingUpdate,
+} from '@/services/update-service'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type {
@@ -79,6 +87,8 @@ export function SettingsPanel({
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null)
   type ConfirmTarget = 'project' | 'all' | { type: 'single'; projectId: string; name?: string }
   const [confirm, setConfirm] = useState<ConfirmTarget | null>(null)
   const [importText, setImportText] = useState('')
@@ -121,6 +131,7 @@ export function SettingsPanel({
     void settings.getPreferences().then(setPrefs)
     void loadMetrics()
     void io.getPreImportSnapshot?.().then((snap) => setHasRestorePoint(snap ?? null))
+    void getPendingUpdate().then(setPendingUpdate)
   }, [settings, loadMetrics, io])
 
   const setPref = async <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
@@ -887,6 +898,74 @@ export function SettingsPanel({
         <div className="flex items-center justify-between">
           <span className="text-muted">Build</span>
           <span className="font-mono text-text">{__BUILD_ID__}</span>
+        </div>
+
+        {pendingUpdate ? (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-emerald-500">
+                Update Ready (v{pendingUpdate.version})
+              </span>
+              <span className="text-[10px] text-text-muted">
+                Reload to apply update without losing any project data.
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => void applyUpdateAndReload()}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1"
+            >
+              Reload Now
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-muted">Updates</span>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setCheckingUpdate(true)
+              try {
+                const res = await checkForUpdates()
+                if (res.status === 'update_available' && res.version) {
+                  setPendingUpdate({ version: res.version, at: Date.now() })
+                  bus.publish('NOTIFY', {
+                    kind: 'success',
+                    message: `Update ready (v${res.version})! Click Reload to apply.`,
+                  })
+                } else if (res.status === 'no_update') {
+                  bus.publish('NOTIFY', {
+                    kind: 'success',
+                    message: `OpenAPI Companion is up to date (v${APP_VERSION}).`,
+                  })
+                } else if (res.status === 'throttled') {
+                  bus.publish('NOTIFY', {
+                    kind: 'warning',
+                    message: res.message || 'Checked recently. Please try again later.',
+                  })
+                } else {
+                  bus.publish('NOTIFY', {
+                    kind: 'warning',
+                    message:
+                      res.message ||
+                      'Running unpacked version. Use the circular reload button (⟳) in chrome://extensions to update.',
+                  })
+                }
+              } finally {
+                setCheckingUpdate(false)
+              }
+            }}
+            disabled={checkingUpdate}
+            className="gap-1.5"
+          >
+            {checkingUpdate ? (
+              <Spinner className="h-3 w-3" />
+            ) : (
+              <RegenerateIcon className="h-3 w-3" />
+            )}
+            <span>{checkingUpdate ? 'Checking...' : 'Check for updates'}</span>
+          </Button>
         </div>
       </Section>
 
