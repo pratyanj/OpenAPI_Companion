@@ -186,6 +186,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: true })
     return true
   }
+  // Relay feedback submissions through the background worker to bypass webpage CORS/CSP
+  if (message?.type === 'SUBMIT_FEEDBACK') {
+    void (async () => {
+      try {
+        const targetEndpoint = message.targetEndpoint as string
+        const payload = message.payload
+        const isGoogleScript = typeof targetEndpoint === 'string' && targetEndpoint.includes('script.google.com')
+        const headers: Record<string, string> = {
+          'Content-Type': isGoogleScript ? 'text/plain;charset=utf-8' : 'application/json',
+          Accept: 'application/json',
+        }
+        const res = await fetch(targetEndpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+        })
+
+        if (!res.ok) {
+          sendResponse({ ok: false, error: `HTTP ${res.status}` })
+          return
+        }
+
+        // Flush any previously saved offline feedback drafts
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+            const stored = await chrome.storage.local.get('oac_pending_feedback')
+            const pending = stored['oac_pending_feedback']
+            if (Array.isArray(pending) && pending.length > 0) {
+              await chrome.storage.local.remove('oac_pending_feedback')
+              for (const draft of pending) {
+                await fetch(targetEndpoint, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify(draft),
+                }).catch(() => {})
+              }
+            }
+          }
+        } catch {
+          // ignore queue flush error
+        }
+
+        sendResponse({ ok: true })
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) })
+      }
+    })()
+    return true // async response
+  }
   // In-page launcher button or action → toggle or open the panel for the sender's tab.
   if (message?.type === OPEN_PANEL_REQUEST) {
     if (message.forceOpen) {

@@ -86,11 +86,45 @@ export async function sendFeedback(
     metadata: payload.metadata ?? getRuntimeMetadata(),
   }
 
+  // 1. In browser extension context, delegate submission to the Background Service Worker.
+  // The service worker has full host_permissions and is exempt from webpage CORS/CSP restrictions.
+  if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+    try {
+      const bgResult = await new Promise<{ ok: boolean; status?: number; error?: string }>(
+        (resolve) => {
+          chrome.runtime.sendMessage(
+            {
+              type: 'SUBMIT_FEEDBACK',
+              targetEndpoint,
+              payload: fullPayload,
+            },
+            (response) => {
+              if (chrome.runtime?.lastError) {
+                resolve({ ok: false, error: chrome.runtime.lastError.message })
+              } else {
+                resolve(response ?? { ok: false })
+              }
+            },
+          )
+        },
+      )
+
+      if (bgResult.ok) {
+        return ok({ savedLocally: false })
+      }
+    } catch {
+      // Fall through to direct fetch fallback
+    }
+  }
+
+  // 2. Direct fetch fallback (for test environments or when runtime is unavailable)
   try {
+    const isGoogleScript =
+      typeof targetEndpoint === 'string' && targetEndpoint.includes('script.google.com')
     const res = await fetch(targetEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': isGoogleScript ? 'text/plain;charset=utf-8' : 'application/json',
         Accept: 'application/json',
       },
       body: JSON.stringify(fullPayload),

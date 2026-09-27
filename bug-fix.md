@@ -18,6 +18,7 @@ This document maintains a continuous, detailed record of bugs, issues, and unexp
 | **BUG-008** | Cyclic Component Barrel Imports & Hoisted `vi.mock` Scoping in Vitest | `components/index.ts`, `OnboardingModal`, `FeedbackModal` | **Resolved** |
 | **BUG-009** | Extension Update Lifecycle: Missing `onUpdateAvailable` & Data Loss on Manual Reinstall | `update-service.ts`, `background/index.ts`, `PanelShell.tsx` | **Resolved** |
 | **BUG-010** | Feedback Modal Squished Inside 400px Side Panel Column | `FeedbackModal.tsx`, `feedback-modal.tsx`, `PanelShell.tsx` | **Resolved** |
+| **BUG-011** | Webpage CORS / CSP Blocking In-Page Feedback Submissions | `feedback-service.ts`, `background/index.ts` | **Resolved** |
 
 ---
 
@@ -296,6 +297,33 @@ When opening the **Share Feedback & Suggestions** modal from either the Side Pan
   - Lazily load modal bundles in the content script so initial page script footprint remains minimal.
 * **WHAT NOT TO DO**:
   - **Do NOT** render 500px+ dialogs inside a 400px side panel without checking if an in-page overlay host can provide full viewport space.
+
+---
+
+### BUG-011: Webpage CORS / CSP Blocking In-Page Feedback Submissions
+
+#### 1. Symptom / Reported Bug:
+When submitting feedback via the new in-page Swagger overlay, the user received an amber warning toast:
+`⚠️ Feedback saved offline! Will send when connected.`
+even though the computer was connected to the internet.
+
+#### 2. Root Cause:
+* **Webpage CORS / CSP Restrictions in Manifest V3**: In MV3, scripts running inside the host webpage (content scripts) are bound to the host page's origin and Content Security Policy (CSP).
+* When `fetch()` was called directly from the in-page DOM to Google Apps Script (`https://script.google.com/macros/s/.../exec`), the browser blocked the network call due to CORS preflight failure (`OPTIONS`) and redirect policies (`script.googleusercontent.com` does not send `Access-Control-Allow-Origin` to arbitrary webpage origins).
+* `feedback-service.ts` caught this browser network failure and safely persisted the message into `oac_pending_feedback` local storage, but reported `savedLocally: true`.
+
+#### 3. Resolution:
+* **Background Worker Delegation**: Routed feedback submissions through `chrome.runtime.sendMessage({ type: 'SUBMIT_FEEDBACK' })` to `src/background/index.ts`.
+* In Chrome extensions (MV3), the Background Service Worker has standing `host_permissions: ['http://*/*', 'https://*/*']` and is completely exempt from webpage CORS, CSP, and origin restrictions.
+* The background worker delivers the POST payload to the webhook, uses `Content-Type: text/plain;charset=utf-8` for Google Apps Script to eliminate preflight failure, follows the 302 redirect seamlessly, and automatically flushes any previously queued drafts in `oac_pending_feedback`.
+* **Automated Unit Tests**: Added unit tests in `src/services/feedback-service.test.ts` verifying background delegation and fallback. All 104 test files (965 tests) pass cleanly. Dual builds verified.
+
+#### 4. Lessons Learned:
+* **WHAT TO DO**:
+  - Always route external telemetry, analytics, and webhook submissions through the Background Service Worker (`chrome.runtime.sendMessage`) rather than calling `fetch()` from in-page content scripts.
+  - Background workers have full `host_permissions` and bypass webpage CORS and CSP limitations.
+* **WHAT NOT TO DO**:
+  - **Do NOT** make cross-origin `fetch()` requests directly from in-page content scripts to third-party endpoints that lack permissive CORS preflight headers.
 
 ---
 

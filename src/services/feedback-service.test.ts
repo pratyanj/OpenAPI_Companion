@@ -75,6 +75,57 @@ describe('feedback-service', () => {
     expect(Array.isArray(stored[PENDING_FEEDBACK_KEY])).toBe(true)
   })
 
+  it('delegates to chrome.runtime.sendMessage when available in extension context', async () => {
+    const mockSendMessage = vi.fn((_message, callback) => {
+      callback({ ok: true })
+    })
+    vi.stubGlobal('chrome', {
+      storage: { local: fakeArea },
+      runtime: { sendMessage: mockSendMessage },
+    })
+
+    const res = await sendFeedback({
+      type: 'user_feedback',
+      email: 'dev@example.com',
+      rating: 5,
+    })
+
+    expect(res.ok).toBe(true)
+    if (res.ok) {
+      expect(res.value.savedLocally).toBe(false)
+    }
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SUBMIT_FEEDBACK' }),
+      expect.any(Function),
+    )
+  })
+
+  it('falls back to offline storage if chrome.runtime.sendMessage fails', async () => {
+    const mockSendMessage = vi.fn((_message, callback) => {
+      callback({ ok: false, error: 'Network failure' })
+    })
+    const fakeFetch = vi.fn(async () => {
+      throw new Error('fetch error')
+    })
+    vi.stubGlobal('fetch', fakeFetch)
+    vi.stubGlobal('chrome', {
+      storage: { local: fakeArea },
+      runtime: { sendMessage: mockSendMessage },
+    })
+
+    const res = await sendFeedback({
+      type: 'user_feedback',
+      email: 'dev@example.com',
+    })
+
+    expect(res.ok).toBe(true)
+    if (res.ok) {
+      expect(res.value.savedLocally).toBe(true)
+    }
+    const stored = await fakeArea.get(PENDING_FEEDBACK_KEY)
+    expect(stored[PENDING_FEEDBACK_KEY]).toHaveLength(1)
+  })
+
   it('reads and writes onboarding completion status and email', async () => {
     expect(await isOnboardingCompleted()).toBe(false)
 
