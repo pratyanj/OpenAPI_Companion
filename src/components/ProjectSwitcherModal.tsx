@@ -6,7 +6,6 @@ import {
   Button,
   IconButton,
   Input,
-  Badge,
   Spinner,
   SearchIcon,
   CopyIcon,
@@ -15,6 +14,7 @@ import {
   CloseIcon,
   FolderIcon,
   SwapIcon,
+  PlusIcon,
 } from '@/components'
 import { extractPort, normalizeLocalOrigin } from '@/utils/doc-url'
 
@@ -207,40 +207,49 @@ export function ProjectSwitcherModal({
   const projectName = activeEntry?.name ?? currentProject.name
 
   return (
-    <Dialog title="Workspaces & Projects" onClose={onClose} size="lg">
-      <div className="flex flex-col gap-3.5 p-4 text-xs text-text max-h-[78vh] overflow-y-auto">
-        {/* Subtitle / explanation */}
-        <p className="text-[11px] text-muted -mt-1 leading-relaxed">
-          Manage workspaces and connected Swagger ports or URLs. Switch this Swagger tab to any
-          workspace with a single click.
-        </p>
-
-        {/* Search input */}
-        <div className="relative">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search workspaces by name, port, or host..."
-            className="pl-8 h-8 text-xs"
-            autoFocus
-          />
-          <SearchIcon className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted pointer-events-none" />
-          {search ? (
-            <IconButton
-              label="Clear search"
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1.5 h-5 w-5 text-muted hover:text-text"
-            >
-              <CloseIcon className="h-3 w-3" />
-            </IconButton>
-          ) : null}
+    <Dialog
+      title={
+        <div className="flex items-center gap-2.5">
+          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[11px] font-bold tracking-wider text-primary border border-primary/30">
+            API
+          </span>
+          <span className="text-base font-bold text-text tracking-tight">Workspaces</span>
         </div>
+      }
+      ariaLabel="Workspaces & Projects"
+      onClose={onClose}
+      size="lg"
+      headerClassName="border-b border-border/40 px-5 pt-4 pb-3 bg-transparent"
+      contentClassName="p-5 pt-3.5 flex flex-col gap-4 text-xs text-text max-h-[80vh] overflow-y-auto"
+    >
+      {/* Search input */}
+      <div className="relative">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search workspaces"
+          className="pl-10 pr-9 h-10 text-sm rounded-xl bg-surface/60 border-border/80 text-text placeholder:text-muted/70 focus:border-primary/50 transition-colors"
+          autoFocus
+        />
+        <SearchIcon className="absolute left-3.5 top-3 h-4 w-4 text-muted pointer-events-none" />
+        {search ? (
+          <IconButton
+            label="Clear search"
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-2.5 h-5 w-5 text-muted hover:text-text"
+          >
+            <CloseIcon className="h-3 w-3" />
+          </IconButton>
+        ) : null}
+      </div>
 
-        {/* Current active workspace card */}
-        <div className="flex flex-col gap-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3">
+      {/* Current active workspace card */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted tracking-tight">active workspace</span>
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/50 bg-primary/[0.06] p-4 transition-colors">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <FolderIcon className="h-4 w-4 text-primary shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <FolderIcon className="h-5 w-5 text-primary shrink-0" />
               {editingId === currentProject.id ? (
                 <div className="flex items-center gap-1.5">
                   <Input
@@ -250,7 +259,7 @@ export function ProjectSwitcherModal({
                       if (e.key === 'Enter') void handleSaveRename(currentProject.id)
                       if (e.key === 'Escape') setEditingId(null)
                     }}
-                    className="h-6 text-xs w-48"
+                    className="h-7 text-xs w-48 rounded-lg"
                     autoFocus
                   />
                   <IconButton
@@ -271,22 +280,23 @@ export function ProjectSwitcherModal({
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-bold text-sm text-text truncate">{projectName}</span>
+                  <span className="font-bold text-base text-text truncate">{projectName}</span>
                   <IconButton
                     label="Rename current project"
                     onClick={() => handleStartRename(currentProject.id, projectName)}
                     className="h-4 w-4 text-muted hover:text-text shrink-0"
                   >
-                    <EditIcon className="h-3 w-3" />
+                    <EditIcon className="h-3.5 w-3.5" />
                   </IconButton>
                 </div>
               )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <Badge kind="success" className="text-[10px] px-2 py-0.5 font-medium">
-                Active for this tab
-              </Badge>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-500 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>this tab</span>
+              </div>
               {isTabAliased ? (
                 <Button
                   variant="ghost"
@@ -298,7 +308,7 @@ export function ProjectSwitcherModal({
                   {busyId === `unlink-${currentProject.originUrl}` ? (
                     <Spinner className="h-3 w-3" />
                   ) : (
-                    'Disconnect Tab'
+                    'Disconnect'
                   )}
                 </Button>
               ) : null}
@@ -306,232 +316,187 @@ export function ProjectSwitcherModal({
           </div>
 
           {/* Connected URLs & Ports chips */}
-          <div className="flex flex-col gap-1 pt-1">
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-muted">
-              Connected Ports & URLs ({currentAssociatedOrigins.length}):
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {currentAssociatedOrigins.map((orig) => {
-                const isTab = orig === currentProject.originUrl
-                const chip = formatOriginChip(orig)
-                const isUnlinking = busyId === `unlink-${orig}`
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            {currentAssociatedOrigins.map((orig) => {
+              const isTab = orig === currentProject.originUrl
+              const chip = formatOriginChip(orig)
+              const isUnlinking = busyId === `unlink-${orig}`
 
-                return (
-                  <span
-                    key={orig}
-                    title={chip.full}
-                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[11px] border transition-colors ${
-                      isTab
-                        ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
-                        : 'bg-surface text-text border-border'
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        isTab ? 'bg-emerald-500 animate-pulse' : 'bg-muted/60'
-                      }`}
-                    />
-                    <span>{chip.label}</span>
-                    {isTab ? (
-                      <span className="text-[9px] uppercase font-bold text-primary/80">
-                        (this tab)
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => void handleDisconnectOrigin(orig, false)}
-                        disabled={busyId !== null}
-                        title={`Disconnect ${chip.label} from this project`}
-                        className="text-muted/60 hover:text-rose-500 ml-0.5 transition-colors"
-                      >
-                        {isUnlinking ? (
-                          <Spinner className="h-2.5 w-2.5" />
-                        ) : (
-                          <CloseIcon className="h-2.5 w-2.5" />
-                        )}
-                      </button>
-                    )}
-                  </span>
-                )
-              })}
-            </div>
+              return (
+                <span
+                  key={orig}
+                  title={chip.full}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1 font-mono text-xs border transition-colors ${
+                    isTab
+                      ? 'bg-primary/15 text-primary border-primary/40 font-semibold'
+                      : 'bg-surface/90 text-muted border-border/80 font-medium'
+                  }`}
+                >
+                  <span>{chip.label}</span>
+                  {!isTab ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleDisconnectOrigin(orig, false)}
+                      disabled={busyId !== null}
+                      title={`Disconnect ${chip.label} from this project`}
+                      className="text-muted/60 hover:text-rose-500 ml-0.5 transition-colors"
+                    >
+                      {isUnlinking ? (
+                        <Spinner className="h-2.5 w-2.5" />
+                      ) : (
+                        <CloseIcon className="h-2.5 w-2.5" />
+                      )}
+                    </button>
+                  ) : null}
+                </span>
+              )
+            })}
           </div>
 
           {/* Stats badges */}
-          <div className="flex items-center gap-2 pt-1 border-t border-primary/15 text-[10px] text-muted">
-            <span>
-              <strong className="text-text">{activeEntry?.presetCount ?? 0}</strong> presets
-            </span>
-            <span>•</span>
-            <span>
-              <strong className="text-text">{activeEntry?.variableCount ?? 0}</strong> variables
-            </span>
+          <div className="text-xs text-muted flex items-center gap-1.5 pt-0.5 font-normal">
+            <span>{activeEntry?.presetCount ?? 0} presets</span>
+            <span>·</span>
+            <span>{activeEntry?.variableCount ?? 0} variables</span>
           </div>
         </div>
+      </div>
 
-        {/* Other workspaces list */}
-        <div className="flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-            All Workspaces ({otherProjects.length})
+      {/* Other workspaces list */}
+      <div className="flex flex-col gap-1.5 pt-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted tracking-tight">
+            all workspaces · {otherProjects.length}
           </span>
+          <IconButton
+            label="Workspaces are auto-created when visiting new Swagger tabs"
+            title="Workspaces are auto-created when visiting new Swagger tabs or backends"
+            className="h-6 w-6 text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+            onClick={() => {
+              onToast?.(
+                'Open any backend or Swagger port in your browser to automatically create a workspace for it!',
+                'success',
+              )
+            }}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </IconButton>
+        </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-6 text-muted">
-              <Spinner className="h-5 w-5" />
-            </div>
-          ) : otherProjects.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-6 text-center text-muted">
-              {search
-                ? 'No workspaces matching your search.'
-                : 'No other workspaces found. Any additional backend ports or Swagger origins you test will appear here.'}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {otherProjects.map((p) => {
-                const isEditing = editingId === p.id
-                const pOrigins = Array.from(
-                  new Set([p.originUrl, ...(p.linkedOrigins ?? [])]),
-                )
+        {loading ? (
+          <div className="flex items-center justify-center py-6 text-muted">
+            <Spinner className="h-5 w-5" />
+          </div>
+        ) : otherProjects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/80 p-6 text-center text-xs text-muted">
+            {search
+              ? 'No workspaces matching your search.'
+              : 'No other workspaces found. Any additional backend ports or Swagger origins you test will appear here.'}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {otherProjects.map((p) => {
+              const isEditing = editingId === p.id
+              const pOrigins = Array.from(
+                new Set([p.originUrl, ...(p.linkedOrigins ?? [])]),
+              )
 
-                return (
-                  <div
-                    key={p.id}
-                    className="flex flex-col gap-2 rounded-lg border border-border/80 bg-surface/40 p-3 hover:bg-surface hover:border-border transition-colors"
-                  >
-                    {/* Header: Project Name & Data Badges */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <FolderIcon className="h-3.5 w-3.5 text-muted shrink-0" />
-                        {isEditing ? (
-                          <div className="flex items-center gap-1.5">
-                            <Input
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') void handleSaveRename(p.id)
-                                if (e.key === 'Escape') setEditingId(null)
-                              }}
-                              className="h-6 text-xs w-48"
-                              autoFocus
-                            />
-                            <IconButton
-                              label="Save"
-                              onClick={() => void handleSaveRename(p.id)}
-                              className="h-5 w-5 text-primary"
-                            >
-                              <CopiedIcon className="h-3 w-3" />
-                            </IconButton>
-                            <IconButton
-                              label="Cancel"
-                              onClick={() => setEditingId(null)}
-                              className="h-5 w-5 text-muted"
-                            >
-                              <CloseIcon className="h-3 w-3" />
-                            </IconButton>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="font-semibold text-xs text-text truncate max-w-[200px]">
-                              {p.name}
-                            </span>
-                            <IconButton
-                              label="Rename project"
-                              onClick={() => handleStartRename(p.id, p.name)}
-                              className="h-4 w-4 text-muted hover:text-text shrink-0"
-                            >
-                              <EditIcon className="h-2.5 w-2.5" />
-                            </IconButton>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Presets and variables count */}
-                      <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-muted">
-                        {p.presetCount ? (
-                          <Badge kind="neutral" className="text-[9px] py-0 px-1.5">
-                            {p.presetCount} {p.presetCount === 1 ? 'preset' : 'presets'}
-                          </Badge>
-                        ) : null}
-                        {p.variableCount ? (
-                          <Badge kind="neutral" className="text-[9px] py-0 px-1.5">
-                            {p.variableCount} {p.variableCount === 1 ? 'var' : 'vars'}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* Connected URLs/Ports chips for this workspace */}
-                    <div className="flex flex-wrap items-center gap-1">
-                      {pOrigins.map((orig) => {
-                        const chip = formatOriginChip(orig)
-                        const isUnlinking = busyId === `unlink-${orig}`
-                        const canRemove = pOrigins.length > 1 && orig !== p.originUrl
-
-                        return (
-                          <span
-                            key={orig}
-                            title={chip.full}
-                            className="inline-flex items-center gap-1 rounded bg-surface-hover px-1.5 py-0.5 font-mono text-[10px] text-muted border border-border/80"
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-border/80 bg-surface/30 hover:bg-surface/60 hover:border-border transition-colors shadow-sm"
+                >
+                  {/* Left: Folder Icon & Name + Ports */}
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <FolderIcon className="h-5 w-5 text-muted shrink-0" />
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void handleSaveRename(p.id)
+                              if (e.key === 'Escape') setEditingId(null)
+                            }}
+                            className="h-7 text-xs w-48 rounded-lg"
+                            autoFocus
+                          />
+                          <IconButton
+                            label="Save"
+                            onClick={() => void handleSaveRename(p.id)}
+                            className="h-6 w-6 text-primary hover:bg-primary/10"
                           >
-                            <span>{chip.label}</span>
-                            {canRemove ? (
-                              <button
-                                type="button"
-                                onClick={() => void handleDisconnectOrigin(orig, false)}
-                                disabled={busyId !== null}
-                                title={`Disconnect ${chip.label}`}
-                                className="text-muted/60 hover:text-rose-500 ml-0.5"
-                              >
-                                {isUnlinking ? (
-                                  <Spinner className="h-2.5 w-2.5" />
-                                ) : (
-                                  <CloseIcon className="h-2 w-2" />
-                                )}
-                              </button>
-                            ) : null}
+                            <CopiedIcon className="h-3.5 w-3.5" />
+                          </IconButton>
+                          <IconButton
+                            label="Cancel"
+                            onClick={() => setEditingId(null)}
+                            className="h-6 w-6 text-muted hover:bg-surface"
+                          >
+                            <CloseIcon className="h-3.5 w-3.5" />
+                          </IconButton>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 min-w-0 group">
+                          <span className="font-bold text-sm text-text truncate max-w-[220px]">
+                            {p.name}
                           </span>
-                        )
-                      })}
-                    </div>
-
-                    {/* Action buttons footer */}
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
-                      <Button
-                        variant="primary"
-                        onClick={() => void handleSwitchToProject(p)}
-                        disabled={busyId !== null}
-                        title={`Switch this Swagger tab to the "${p.name}" workspace`}
-                        className="h-6 px-2.5 text-[11px] flex items-center gap-1.5 font-medium"
-                      >
-                        {busyId === `switch-${p.id}` ? (
-                          <Spinner className="h-3 w-3" />
-                        ) : (
-                          <SwapIcon className="h-3.5 w-3.5" />
-                        )}
-                        <span>Switch to This Project</span>
-                      </Button>
-
-                      <Button
-                        variant="secondary"
-                        onClick={() => void handleCopyData(p)}
-                        disabled={busyId !== null}
-                        title={`Copy presets and variables from "${p.name}" into current workspace`}
-                        className="h-6 px-2 text-[11px] flex items-center gap-1 text-muted hover:text-text"
-                      >
-                        {busyId === `copy-${p.id}` ? (
-                          <Spinner className="h-3 w-3" />
-                        ) : (
-                          <CopyIcon className="h-3 w-3" />
-                        )}
-                        <span>Copy Data</span>
-                      </Button>
+                          <IconButton
+                            label="Rename workspace"
+                            onClick={() => handleStartRename(p.id, p.name)}
+                            className="h-3.5 w-3.5 text-muted/60 opacity-0 group-hover:opacity-100 hover:text-text shrink-0 transition-opacity"
+                          >
+                            <EditIcon className="h-2.5 w-2.5" />
+                          </IconButton>
+                        </div>
+                      )}
+                      {/* Port list */}
+                      <div className="flex items-center gap-2 text-xs font-mono text-muted">
+                        {pOrigins.map((orig) => {
+                          const chip = formatOriginChip(orig)
+                          return <span key={orig}>{chip.label}</span>
+                        })}
+                      </div>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* Right: Switch & Copy buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      onClick={() => void handleSwitchToProject(p)}
+                      disabled={busyId !== null}
+                      title={`Switch this Swagger tab to "${p.name}"`}
+                      className="h-8 px-3.5 text-xs flex items-center gap-2 rounded-xl border border-border/80 bg-surface/70 hover:bg-surface hover:border-border font-semibold text-text shadow-sm transition-colors"
+                    >
+                      {busyId === `switch-${p.id}` ? (
+                        <Spinner className="h-3 w-3" />
+                      ) : (
+                        <SwapIcon className="h-3.5 w-3.5" />
+                      )}
+                      <span>Switch</span>
+                    </Button>
+
+                    <IconButton
+                      label={`Copy data from "${p.name}"`}
+                      onClick={() => void handleCopyData(p)}
+                      disabled={busyId !== null}
+                      title={`Copy presets and variables from "${p.name}" into current workspace`}
+                      className="h-8 w-8 rounded-xl border border-border/80 bg-surface/70 hover:bg-surface hover:border-border text-muted hover:text-text flex items-center justify-center shadow-sm transition-colors"
+                    >
+                      {busyId === `copy-${p.id}` ? (
+                        <Spinner className="h-3 w-3" />
+                      ) : (
+                        <CopyIcon className="h-3.5 w-3.5" />
+                      )}
+                    </IconButton>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </Dialog>
   )

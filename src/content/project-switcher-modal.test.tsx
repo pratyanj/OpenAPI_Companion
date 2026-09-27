@@ -131,14 +131,14 @@ describe('mountProjectSwitcherModal (in-page project switcher overlay)', () => {
     const el = dialog()
     expect(el).not.toBeNull()
     expect(el?.textContent).toContain('Current App')
-    expect(el?.textContent).toContain('(this tab)')
+    expect(el?.textContent).toContain('this tab')
     expect(el?.textContent).toContain(':8009')
     expect(el?.textContent).toContain('Payment Service')
-    expect(el?.textContent).toContain('Switch to This Project')
+    expect(el?.textContent).toContain('Switch')
 
-    // Click "Switch to This Project"
+    // Click "Switch"
     const switchBtn = Array.from(shadow()?.querySelectorAll('button') ?? []).find((b) =>
-      b.textContent?.includes('Switch to This Project'),
+      b.textContent?.trim() === 'Switch',
     )
     expect(switchBtn).toBeDefined()
     await act(async () => {

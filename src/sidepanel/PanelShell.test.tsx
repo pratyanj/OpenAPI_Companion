@@ -296,6 +296,6 @@ describe('PanelShell (native side panel)', () => {
     fireEvent.click(switchBtn)
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Workspaces & Projects')).toBeInTheDocument()
+    expect(screen.getByText('Workspaces')).toBeInTheDocument()
   })
 })
