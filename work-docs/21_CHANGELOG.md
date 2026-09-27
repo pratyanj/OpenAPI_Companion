@@ -111,6 +111,38 @@ Known Issues
 
 ---
 
+# [1.2.1] - 2026-09-27
+
+## Added
+* **Workspaces & Projects Switcher Redesign**:
+  * **Modern Card-Style Workspace Modal**: Redesigned the project switcher modal into individual card components featuring primary folder icons, inline renaming (`✏️`), connected port/URL chips (`:8008`, `:8009`), and an emerald pulsing indicator (`● this tab`).
+  * **1-Click Workspace Switching**: Seamlessly move the current tab into any target workspace with a single click, automatically cleaning up old project bindings without manual unlinking.
+  * **Granular Disconnect Controls**: Disconnect non-active ports directly via subtle `✕` buttons on port chips without reloading the active page.
+  * **In-Page Swagger UI Overlay**: Mounted `#oac-project-switcher-host` in Shadow DOM on the active Swagger page for a spacious top-centered experience, replacing the cramped 400px sidepanel view.
+* **Extension Auto-Update Detection & Safe In-Place Reload**:
+  * **Background Update Monitor**: Added `chrome.runtime.onUpdateAvailable` listener to intercept Chrome Web Store updates.
+  * **Sidepanel Update Alert Banner**: Surfaced a top banner (`⚡ Update ready (v1.2.1)! [Update Now] [Dismiss]`) alerting users when an update is staged.
+  * **Safe In-Place Reload**: 1-click update via `chrome.runtime.reload()` that reloads extension background and panel without losing any local project data, history, auth tokens, or variables.
+  * **Manual Update Checker**: Added "Check for updates" button and update status card in Settings panel.
+* **First-Time Install Onboarding**:
+  * **Welcome Dialog (`OnboardingModal`)**: Friendly first-time onboarding modal introducing core capabilities (instant Swagger testing, offline-first privacy, environments, workspace sync).
+  * **Lead Capture & Skip**: Optional developer email capture for release updates, with an instant "Skip for now" action compliant with Chrome Web Store guidelines.
+* **In-Page Swagger Feedback Modal**:
+  * **Spacious Swagger Overlay (`FeedbackModal`)**: Mounted `#oac-feedback-modal-host` in Shadow DOM directly over the Swagger page with background blur, 5-star rating selector, category tabs (💡 Feature Idea, 🐛 Bug Report, 💬 General), and feedback textarea.
+  * **Background Worker CORS/CSP Proxy**: Delegated feedback submissions via `chrome.runtime.sendMessage({ type: 'SUBMIT_FEEDBACK' })` through the background service worker, completely bypassing webpage CORS and CSP restrictions.
+  * **Resilient Offline Queue**: Safely queues submissions in local storage if offline or during network dropouts, flushing automatically when reconnected.
+* **In-Page Project Variables Modal (<kbd>Alt+V</kbd>)**:
+  * **Direct Project Scope**: Streamlined modal dedicated purely to active project variables without legacy environment profile confusion.
+  * **Instant Auto-Save**: Real-time save on blur or <kbd>Enter</kbd> with reassuring `Saved ✓` visual confirmation.
+  * **Password Masking & Search**: Search filter, secret toggle, quick-add form, and one-click variable tag copying (`{{KEY}}`).
+* **Active Tab Reopen Persistence**:
+  * Automatically remembers and restores the exact active tab (Requests, Auth, Env, History, Settings, etc.) when reopening the Side Panel or Floating Sidebar.
+* **History Chronological Call Indexing**:
+  * Numbered execution calls `#1` to `#N (latest)` in the timeline.
+  * In-memory record cache for 0ms instantaneous execution switching without full-screen spinners.
+
+---
+
 # [1.2.0] - 2026-09-25
 
 ## Added

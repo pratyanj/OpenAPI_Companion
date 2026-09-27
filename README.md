@@ -2,7 +2,7 @@
 
 > **A browser extension that turns Swagger UI into a persistent, productivity-focused API testing workspace.**
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.0)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.1)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Chrome 116+](https://img.shields.io/badge/Chrome-116%2B-yellow.svg)](https://chromewebstore.google.com)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-orange.svg)](https://developer.chrome.com/docs/extensions/mv3/intro/)
@@ -53,7 +53,7 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ### For Google Chrome, Edge, Brave, Arc, Opera
 
-1. Download **`openapi-companion-1.2.0.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.0).
+1. Download **`openapi-companion-1.2.1.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.1).
 2. Unzip the file anywhere on your machine.
 3. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
 4. Enable **Developer mode** (top-right toggle).
@@ -66,10 +66,10 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 *(Available once published)* — Visit the addons.mozilla.org listing and click **Add to Firefox**.
 
 #### Option 2 — Load Release ZIP in Firefox (Testing / Unpacked)
-1. Download **`openapi-companion-1.2.0-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.0).
+1. Download **`openapi-companion-1.2.1-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.1).
 2. Open Firefox and navigate to **`about:debugging#/runtime/this-firefox`** (or menu: *Tools* → *Browser Tools* → *about:debugging*).
 3. Click **Load Temporary Add-on…**.
-4. Select the downloaded `openapi-companion-1.2.0-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
+4. Select the downloaded `openapi-companion-1.2.1-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
 5. OpenAPI Companion will appear in your toolbar and extensions list.
 
 #### Option 3 — Build from Source
@@ -78,7 +78,7 @@ npm install
 npm run build:firefox
 ```
 * Generates the unzipped Firefox extension in `dist-firefox/`.
-* Packages the AMO-ready archive in `share/openapi-companion-1.2.0-firefox.zip`.
+* Packages the AMO-ready archive in `share/openapi-companion-1.2.1-firefox.zip`.
 
 ---
 
@@ -375,15 +375,19 @@ Stop typing `test@example.com` and `12345678` by hand.
 
 ---
 
-## How Projects Work
+## How Workspaces & Projects Work
 
-OpenAPI Companion automatically identifies each unique OpenAPI project by its origin URL. This means:
+OpenAPI Companion automatically identifies each unique API by its origin URL, with smart local resilience:
 
-- `http://localhost:8000/docs` → one project
-- `https://api.staging.example.com/swagger` → separate project
-- `https://api.prod.example.com/swagger` → separate project
+- `http://localhost:8000/docs` → local workspace
+- `https://api.staging.example.com/swagger` → separate staging workspace
+- `https://api.prod.example.com/swagger` → separate production workspace
 
-Each project has **completely independent** auth tokens, request history, templates, and environments. Data never leaks between projects.
+### 🔌 Localhost Port Resilience & Workspaces Switcher
+When local backend services restart on a different port (e.g. `:8008` → `:8009` or switching between `localhost` and `127.0.0.1`), OpenAPI Companion prevents data loss:
+- **Port Change Alert**: Displays an instant banner to link the new port or copy your data over.
+- **Workspaces Modal**: Click the header project badge to open the top-centered in-page **Workspaces** modal. See all your connected ports (`:8008`, `:8009`), active tab badge (`● this tab`), and switch between workspaces in 1 click.
+- **Independent Scoping**: Each workspace maintains isolated auth tokens, request history, templates, and variables.
 
 ---
 
