@@ -18,6 +18,7 @@ export default tseslint.config(
       'node_modules',
       'playwright-report',
       'test-results',
+      'scripts/google-apps-script.js',
     ],
   },
   js.configs.recommended,

@@ -85,7 +85,8 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: 'variables.open',
     name: 'Quick Variables Editor',
-    description: 'Opens in-page environment variables modal to search, add, or edit variables with instant save',
+    description:
+      'Opens in-page environment variables modal to search, add, or edit variables with instant save',
     context: 'global',
     contextLabel: 'Global',
     defaultBinding: { key: 'v', alt: true },

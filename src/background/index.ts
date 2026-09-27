@@ -192,7 +192,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         const targetEndpoint = message.targetEndpoint as string
         const payload = message.payload
-        const isGoogleScript = typeof targetEndpoint === 'string' && targetEndpoint.includes('script.google.com')
+        const isGoogleScript =
+          typeof targetEndpoint === 'string' && targetEndpoint.includes('script.google.com')
         const headers: Record<string, string> = {
           'Content-Type': isGoogleScript ? 'text/plain;charset=utf-8' : 'application/json',
           Accept: 'application/json',

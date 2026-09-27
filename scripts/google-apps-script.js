@@ -30,76 +30,76 @@
  */
 
 // If left blank, it automatically sends to your own Google account!
-const RECIPIENT_EMAIL = "";
+const RECIPIENT_EMAIL = ''
 
 function doPost(e) {
   try {
-    const rawData = e.postData ? e.postData.contents : "{}";
-    const data = JSON.parse(rawData);
+    const rawData = e.postData ? e.postData.contents : '{}'
+    const data = JSON.parse(rawData)
 
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    const timestamp = new Date();
-    const meta = data.metadata || {};
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet()
+    const timestamp = new Date()
+    const meta = data.metadata || {}
 
     // 1. Append row to Google Sheet
     sheet.appendRow([
       timestamp,
-      data.type || "user_feedback",
-      data.email || "anonymous",
-      data.rating || "",
-      data.category || "",
-      data.message || "",
-      meta.version || "",
-      meta.browser || "",
-      meta.os || "",
-    ]);
+      data.type || 'user_feedback',
+      data.email || 'anonymous',
+      data.rating || '',
+      data.category || '',
+      data.message || '',
+      meta.version || '',
+      meta.browser || '',
+      meta.os || '',
+    ])
 
     // 2. Send instant email notification to your Gmail
-    const targetEmail = RECIPIENT_EMAIL || Session.getActiveUser().getEmail();
+    const targetEmail = RECIPIENT_EMAIL || Session.getActiveUser().getEmail()
     if (targetEmail) {
       const subject =
-        data.type === "install_lead"
-          ? "[OpenAPI Companion] 🚀 New Install Lead: " + (data.email || "No email")
-          : "[OpenAPI Companion] 💬 New Feedback (" +
-            (data.rating ? data.rating + "★ " : "") +
-            (data.category || "") +
-            ")";
+        data.type === 'install_lead'
+          ? '[OpenAPI Companion] 🚀 New Install Lead: ' + (data.email || 'No email')
+          : '[OpenAPI Companion] 💬 New Feedback (' +
+            (data.rating ? data.rating + '★ ' : '') +
+            (data.category || '') +
+            ')'
 
       const body = [
-        "New submission received for OpenAPI Companion:",
-        "",
-        "Type: " + (data.type || "user_feedback"),
-        "User Email: " + (data.email || "Not provided"),
-        "Rating: " + (data.rating ? data.rating + "/5" : "N/A"),
-        "Category: " + (data.category || "N/A"),
-        "Message:\n" + (data.message || "(No message text)"),
-        "",
-        "--- Diagnostics ---",
-        "Version: " + (meta.version || "N/A"),
-        "Browser: " + (meta.browser || "N/A"),
-        "OS: " + (meta.os || "N/A"),
-        "Time: " + timestamp.toISOString(),
-      ].join("\n");
+        'New submission received for OpenAPI Companion:',
+        '',
+        'Type: ' + (data.type || 'user_feedback'),
+        'User Email: ' + (data.email || 'Not provided'),
+        'Rating: ' + (data.rating ? data.rating + '/5' : 'N/A'),
+        'Category: ' + (data.category || 'N/A'),
+        'Message:\n' + (data.message || '(No message text)'),
+        '',
+        '--- Diagnostics ---',
+        'Version: ' + (meta.version || 'N/A'),
+        'Browser: ' + (meta.browser || 'N/A'),
+        'OS: ' + (meta.os || 'N/A'),
+        'Time: ' + timestamp.toISOString(),
+      ].join('\n')
 
       MailApp.sendEmail({
         to: targetEmail,
         subject: subject,
         body: body,
-      });
+      })
     }
 
     return ContentService.createTextOutput(
-      JSON.stringify({ ok: true, status: "success" })
-    ).setMimeType(ContentService.MimeType.JSON);
+      JSON.stringify({ ok: true, status: 'success' }),
+    ).setMimeType(ContentService.MimeType.JSON)
   } catch (err) {
     return ContentService.createTextOutput(
-      JSON.stringify({ ok: false, error: String(err) })
-    ).setMimeType(ContentService.MimeType.JSON);
+      JSON.stringify({ ok: false, error: String(err) }),
+    ).setMimeType(ContentService.MimeType.JSON)
   }
 }
 
 function doGet() {
   return ContentService.createTextOutput(
-    JSON.stringify({ status: "OpenAPI Companion Feedback Webhook is active" })
-  ).setMimeType(ContentService.MimeType.JSON);
+    JSON.stringify({ status: 'OpenAPI Companion Feedback Webhook is active' }),
+  ).setMimeType(ContentService.MimeType.JSON)
 }

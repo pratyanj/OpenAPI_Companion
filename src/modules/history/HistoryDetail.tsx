@@ -199,9 +199,7 @@ function ParamsPanel({
                 className="flex items-center justify-between py-1.5 font-mono text-[11px] gap-2"
               >
                 <span className="text-primary font-medium shrink-0">{key}</span>
-                <span className="text-text max-w-[70%] break-all text-right select-all">
-                  {val}
-                </span>
+                <span className="text-text max-w-[70%] break-all text-right select-all">{val}</span>
               </div>
             ))}
           </div>
@@ -224,9 +222,7 @@ function ParamsPanel({
                 className="flex items-center justify-between py-1.5 font-mono text-[11px] gap-2"
               >
                 <span className="text-primary font-medium shrink-0">{key}</span>
-                <span className="text-text max-w-[70%] break-all text-right select-all">
-                  {val}
-                </span>
+                <span className="text-text max-w-[70%] break-all text-right select-all">{val}</span>
               </div>
             ))}
           </div>

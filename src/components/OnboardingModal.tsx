@@ -100,7 +100,8 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
               Stay in the loop <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <p className="text-[11px] text-text-muted mt-0.5">
-              Enter your email to receive major feature announcements, Swagger tips, and fast support.
+              Enter your email to receive major feature announcements, Swagger tips, and fast
+              support.
             </p>
           </div>
 

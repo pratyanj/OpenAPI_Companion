@@ -275,7 +275,10 @@ export function QuickVariableModal({
     isSec: boolean,
   ): Promise<boolean> => {
     if (!currentEnv) return false
-    const trimmedKey = nextKey.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_')
+    const trimmedKey = nextKey
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_]/g, '_')
     if (!trimmedKey) return false
 
     const keyChanged = trimmedKey !== oldKey
@@ -502,7 +505,11 @@ export function QuickVariableModal({
                     newIsSecret ? 'text-amber-500' : 'text-muted hover:text-text'
                   }`}
                 >
-                  {newIsSecret ? <LockIcon className="h-4 w-4" /> : <UnlockIcon className="h-4 w-4" />}
+                  {newIsSecret ? (
+                    <LockIcon className="h-4 w-4" />
+                  ) : (
+                    <UnlockIcon className="h-4 w-4" />
+                  )}
                 </IconButton>
                 <Button
                   type="submit"
@@ -569,10 +576,18 @@ export function QuickVariableModal({
             {/* Helpful footer tips */}
             <div className="flex items-center justify-between text-[11px] text-muted">
               <span>
-                Tip: Use <code className="rounded bg-surface px-1 py-0.5 text-text">&#123;&#123;VARIABLE&#125;&#125;</code> in Swagger UI headers, paths, or JSON body.
+                Tip: Use{' '}
+                <code className="rounded bg-surface px-1 py-0.5 text-text">
+                  &#123;&#123;VARIABLE&#125;&#125;
+                </code>{' '}
+                in Swagger UI headers, paths, or JSON body.
               </span>
               <span>
-                Press <kbd className="rounded border border-border bg-surface px-1 py-0.5 font-mono text-[10px] text-text">Esc</kbd> to close
+                Press{' '}
+                <kbd className="rounded border border-border bg-surface px-1 py-0.5 font-mono text-[10px] text-text">
+                  Esc
+                </kbd>{' '}
+                to close
               </span>
             </div>
           </>

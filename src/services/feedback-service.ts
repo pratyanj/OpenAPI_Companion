@@ -135,7 +135,7 @@ export async function sendFeedback(
     }
 
     return ok({ savedLocally: false })
-  } catch (error) {
+  } catch {
     // If offline or network error, persist to pending feedback storage so user input is safe
     try {
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {

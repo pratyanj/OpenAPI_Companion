@@ -61,9 +61,7 @@ export function mountProjectSwitcherModal(
               currentProject.name = name
               bus.publish('PROJECT_UPDATED', { projectId: currentProject.id, name })
             }}
-            onToast={(message, kind) =>
-              bus.publish('NOTIFY', { message, kind: kind ?? 'success' })
-            }
+            onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
           />
         </StrictMode>
       ) : null,

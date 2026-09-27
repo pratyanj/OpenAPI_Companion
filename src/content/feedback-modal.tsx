@@ -28,10 +28,7 @@ export interface FeedbackModalHandle {
 }
 
 /** Inject the in-page Feedback overlay (closed). Renders nothing until opened. */
-export function mountFeedbackModal(
-  bus: EventBus,
-  doc: Document = document,
-): FeedbackModalHandle {
+export function mountFeedbackModal(bus: EventBus, doc: Document = document): FeedbackModalHandle {
   doc.getElementById(HOST_ID)?.remove() // drop any stale host
 
   const host = doc.createElement('div')
@@ -58,9 +55,7 @@ export function mountFeedbackModal(
             isOpen={open}
             initialCategory={currentCategory}
             onClose={closeModal}
-            onToast={(message, kind) =>
-              bus.publish('NOTIFY', { message, kind: kind ?? 'success' })
-            }
+            onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
           />
         </StrictMode>
       ) : null,

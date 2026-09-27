@@ -62,7 +62,9 @@ describe('FeedbackModal', () => {
     render(<FeedbackModal isOpen={true} onClose={onClose} onToast={onToast} />)
 
     const textarea = screen.getByRole('textbox', { name: 'Your message' })
-    fireEvent.change(textarea, { target: { value: 'Great extension! Please add dark mode presets.' } })
+    fireEvent.change(textarea, {
+      target: { value: 'Great extension! Please add dark mode presets.' },
+    })
 
     const submitBtn = screen.getByRole('button', { name: 'Send Feedback' })
     fireEvent.click(submitBtn)

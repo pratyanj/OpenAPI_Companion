@@ -46,9 +46,11 @@ describe('update-service', () => {
   })
 
   it('handles update_available from requestUpdateCheck', async () => {
-    mockRequestUpdateCheck.mockImplementation((cb: (status: string, details?: { version: string }) => void) => {
-      cb('update_available', { version: '1.2.5' })
-    })
+    mockRequestUpdateCheck.mockImplementation(
+      (cb: (status: string, details?: { version: string }) => void) => {
+        cb('update_available', { version: '1.2.5' })
+      },
+    )
 
     const res = await checkForUpdates()
     expect(res.status).toBe('update_available')

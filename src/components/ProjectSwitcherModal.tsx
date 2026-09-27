@@ -192,7 +192,7 @@ export function ProjectSwitcherModal({
   const activeEntry = projects.find((p) => p.id === currentProject.id)
   const isTabAliased = Boolean(
     activeEntry?.linkedOrigins?.includes(currentProject.originUrl) &&
-      activeEntry.originUrl !== currentProject.originUrl,
+    activeEntry.originUrl !== currentProject.originUrl,
   )
 
   // Origins associated with the current project
@@ -397,9 +397,7 @@ export function ProjectSwitcherModal({
           <div className="flex flex-col gap-2.5">
             {otherProjects.map((p) => {
               const isEditing = editingId === p.id
-              const pOrigins = Array.from(
-                new Set([p.originUrl, ...(p.linkedOrigins ?? [])]),
-              )
+              const pOrigins = Array.from(new Set([p.originUrl, ...(p.linkedOrigins ?? [])]))
 
               return (
                 <div

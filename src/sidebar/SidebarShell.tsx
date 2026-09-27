@@ -81,7 +81,9 @@ export function SidebarShell({
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { preference } = useTheme(theme)
 
-  const lastTabKey = project?.id ? projectKey(project.id, 'ui', 'last-tab') : settingsKey('last-tab')
+  const lastTabKey = project?.id
+    ? projectKey(project.id, 'ui', 'last-tab')
+    : settingsKey('last-tab')
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)

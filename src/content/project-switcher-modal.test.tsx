@@ -137,8 +137,8 @@ describe('mountProjectSwitcherModal (in-page project switcher overlay)', () => {
     expect(el?.textContent).toContain('Switch')
 
     // Click "Switch"
-    const switchBtn = Array.from(shadow()?.querySelectorAll('button') ?? []).find((b) =>
-      b.textContent?.trim() === 'Switch',
+    const switchBtn = Array.from(shadow()?.querySelectorAll('button') ?? []).find(
+      (b) => b.textContent?.trim() === 'Switch',
     )
     expect(switchBtn).toBeDefined()
     await act(async () => {

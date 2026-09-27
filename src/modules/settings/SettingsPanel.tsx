@@ -882,14 +882,11 @@ export function SettingsPanel({
       <Section title="Feedback & Support">
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface/30 p-3">
           <p className="text-xs text-text-muted leading-relaxed">
-            Have a feature suggestion, encountered a bug, or want to share feedback? We appreciate every message!
+            Have a feature suggestion, encountered a bug, or want to share feedback? We appreciate
+            every message!
           </p>
           <div className="flex items-center gap-2 pt-1">
-            <Button
-              variant="secondary"
-              onClick={handleOpenFeedback}
-              className="gap-1.5 self-start"
-            >
+            <Button variant="secondary" onClick={handleOpenFeedback} className="gap-1.5 self-start">
               <MessageSquareIcon className="h-3.5 w-3.5 text-primary" />
               <span>Share Feedback</span>
             </Button>

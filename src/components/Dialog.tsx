@@ -80,7 +80,8 @@ export function Dialog({
   }, [onClose])
 
   const ariaLabelText =
-    ariaLabel ?? (typeof title === 'string' ? title : typeof title === 'number' ? String(title) : undefined)
+    ariaLabel ??
+    (typeof title === 'string' ? title : typeof title === 'number' ? String(title) : undefined)
 
   return (
     <div
