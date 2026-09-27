@@ -64,6 +64,10 @@ import type {
 import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
 import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
 import type { ShortcutsModalHandle } from './shortcuts-modal'
+import type { VariablesModalHandle } from './variables-modal'
+import type { ProjectSwitcherModalHandle } from './project-switcher-modal'
+import type { FeedbackModalHandle, FeedbackModalOpenOptions } from './feedback-modal'
+import type { RemoteProjectApi } from '@/sidepanel/bridge'
 import {
   DEFAULT_SHORTCUTS,
   type ShortcutActionId,
@@ -849,6 +853,94 @@ export async function bootAgent(
     }
   }
 
+  let variablesModal: VariablesModalHandle | null = null
+  const withVariablesModal = async (): Promise<VariablesModalHandle | null> => {
+    if (variablesModal) return variablesModal
+    try {
+      const { mountVariablesModal } = await import('./variables-modal')
+      variablesModal = mountVariablesModal(environments, bus, document)
+      const modalTheme = new ThemeManager({ storage, root: variablesModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return variablesModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page variables modal overlay.`, cause)
+      return null
+    }
+  }
+
+  let projectSwitcherModal: ProjectSwitcherModalHandle | null = null
+  const withProjectSwitcherModal = async (): Promise<ProjectSwitcherModalHandle | null> => {
+    if (projectSwitcherModal) return projectSwitcherModal
+    try {
+      const { mountProjectSwitcherModal } = await import('./project-switcher-modal')
+      const localProjectApi: RemoteProjectApi = {
+        rename: (name, targetId) => {
+          const t = targetId || meta.id
+          return project.renameProject(t, name)
+        },
+        linkOrigin: async (targetId) => {
+          const res = await project.linkOriginToProject(location.origin, targetId)
+          if (res.ok) {
+            candidateProjects = undefined
+            location.reload()
+          }
+          return res
+        },
+        unlinkOrigin: async () => {
+          const res = await project.unlinkOrigin(location.origin)
+          if (res.ok) {
+            location.reload()
+          }
+          return res
+        },
+        copyData: (sourceId) => project.copyProjectData(sourceId, meta.id),
+        listAll: () => project.listAllProjects(),
+        dismissCandidates: async () => {
+          candidateProjects = undefined
+          pushState()
+          return ok(undefined)
+        },
+      }
+      projectSwitcherModal = mountProjectSwitcherModal(localProjectApi, meta, bus, document)
+      const modalTheme = new ThemeManager({ storage, root: projectSwitcherModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return projectSwitcherModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page project switcher modal overlay.`, cause)
+      return null
+    }
+  }
+
+  let feedbackModal: FeedbackModalHandle | null = null
+  const withFeedbackModal = async (): Promise<FeedbackModalHandle | null> => {
+    if (feedbackModal) return feedbackModal
+    try {
+      const { mountFeedbackModal } = await import('./feedback-modal')
+      feedbackModal = mountFeedbackModal(bus, document)
+      const modalTheme = new ThemeManager({ storage, root: feedbackModal.themeRoot, bus })
+      await modalTheme.init()
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+          void modalTheme.init()
+        }
+      })
+      return feedbackModal
+    } catch (cause) {
+      console.warn(`${LOG} could not load the in-page feedback modal overlay.`, cause)
+      return null
+    }
+  }
+
   // Capture phase so Swagger's own inputs can't swallow the shortcut.
   document.addEventListener(
     'keydown',
@@ -871,6 +963,14 @@ export async function bootAgent(
           void withShortcutsModal().then((m) => m?.toggle())
           return
         }
+      }
+
+      // 3. Quick Variables modal shortcut (Alt+V)
+      const varBinding = getShortcutBinding('variables.open')
+      if (matchesShortcut(varBinding, e)) {
+        e.preventDefault()
+        void withVariablesModal().then((m) => m?.toggle({ envId: currentEnv }))
+        return
       }
     },
     true,
@@ -1295,6 +1395,54 @@ export async function bootAgent(
         recoverable: true,
       })
     },
+    'variablesModal.open': async ([options]) => {
+      const modal = await withVariablesModal()
+      if (modal) {
+        modal.open(options as { envId?: string } | undefined)
+        return ok(undefined)
+      }
+      return err({
+        code: 'VARIABLES_MODAL_MOUNT_FAILED',
+        message: 'Could not open variables modal overlay',
+        recoverable: true,
+      })
+    },
+    'variablesModal.toggle': async ([options]) => {
+      const modal = await withVariablesModal()
+      if (modal) {
+        modal.toggle(options as { envId?: string } | undefined)
+        return ok(undefined)
+      }
+      return err({
+        code: 'VARIABLES_MODAL_MOUNT_FAILED',
+        message: 'Could not toggle variables modal overlay',
+        recoverable: true,
+      })
+    },
+    'projectSwitcher.open': async () => {
+      const modal = await withProjectSwitcherModal()
+      if (modal) {
+        modal.open()
+        return ok(undefined)
+      }
+      return err({
+        code: 'PROJECT_SWITCHER_MOUNT_FAILED',
+        message: 'Could not open project switcher modal overlay',
+        recoverable: true,
+      })
+    },
+    'feedbackModal.open': async (options) => {
+      const modal = await withFeedbackModal()
+      if (modal) {
+        modal.open(options as FeedbackModalOpenOptions | undefined)
+        return ok(undefined)
+      }
+      return err({
+        code: 'FEEDBACK_MODAL_MOUNT_FAILED',
+        message: 'Could not open feedback modal overlay',
+        recoverable: true,
+      })
+    },
     'project.rename': async ([name, targetId]) => {
       const target = typeof targetId === 'string' && targetId ? targetId : meta.id
       const res = await project.renameProject(target, name as string)
@@ -1312,9 +1460,10 @@ export async function bootAgent(
       }
       return res
     },
-    'project.unlinkOrigin': async () => {
-      const res = await project.unlinkOrigin(location.origin)
-      if (res.ok) {
+    'project.unlinkOrigin': async ([targetOrigin]) => {
+      const originToUnlink = (targetOrigin as string | undefined) || location.origin
+      const res = await project.unlinkOrigin(originToUnlink)
+      if (res.ok && originToUnlink === location.origin) {
         location.reload()
       }
       return res

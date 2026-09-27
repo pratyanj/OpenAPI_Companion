@@ -13,7 +13,8 @@ export type DialogSize = 'lg' | 'xl' | 'full'
 export type DialogAlign = 'center' | 'top'
 
 interface DialogProps {
-  title: string
+  title: ReactNode
+  ariaLabel?: string
   onClose: () => void
   children: ReactNode
   size?: DialogSize
@@ -21,6 +22,7 @@ interface DialogProps {
   /** Controls placed in the header, left of Close — for per-dialog actions. */
   actions?: ReactNode
   contentClassName?: string
+  headerClassName?: string
 }
 
 const SIZE_CLASS: Record<DialogSize, string> = {
@@ -45,12 +47,14 @@ const ALIGN_CLASS: Record<DialogAlign, string> = {
  */
 export function Dialog({
   title,
+  ariaLabel,
   onClose,
   children,
   size = 'lg',
   align = 'center',
   actions,
   contentClassName,
+  headerClassName,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -75,11 +79,14 @@ export function Dialog({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const ariaLabelText =
+    ariaLabel ?? (typeof title === 'string' ? title : typeof title === 'number' ? String(title) : undefined)
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-label={ariaLabelText}
       onClick={onClose}
       className={`fixed inset-0 z-[2147483647] flex ${ALIGN_CLASS[align]} justify-center bg-black/60 backdrop-blur-[1px] p-3 sm:p-4`}
     >
@@ -87,10 +94,19 @@ export function Dialog({
         ref={panelRef}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`flex max-h-[85vh] w-full ${SIZE_CLASS[size]} flex-col overflow-hidden rounded-xl border border-border bg-bg text-text shadow-2xl focus:outline-none`}
+        className={`flex max-h-[85vh] w-full ${SIZE_CLASS[size]} flex-col overflow-hidden rounded-2xl border border-border bg-bg text-text shadow-2xl focus:outline-none`}
       >
-        <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 bg-surface/30">
-          <strong className="shrink-0 text-sm font-semibold">{title}</strong>
+        <header
+          className={cn(
+            'flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 bg-surface/30',
+            headerClassName,
+          )}
+        >
+          {typeof title === 'string' ? (
+            <strong className="shrink-0 text-sm font-semibold">{title}</strong>
+          ) : (
+            <div className="shrink-0 flex items-center gap-2">{title}</div>
+          )}
           <div className="flex min-w-0 items-center gap-1">
             {actions}
             <IconButton label="Close" onClick={onClose}>

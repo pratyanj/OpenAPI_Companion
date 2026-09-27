@@ -227,6 +227,48 @@ describe('ProjectService', () => {
     expect(p3.value.id).not.toBe(p1.value.id)
   })
 
+  it('seamlessly re-links an origin to another project, automatically removing old project bindings', async () => {
+    const { service } = setup()
+
+    const p1 = await service.identify({
+      origin: 'http://localhost:8001',
+      openApiUrl: 'http://localhost:8001/openapi.json',
+      docType: 'swagger-ui',
+      title: 'Project 1',
+    })
+    const p2 = await service.identify({
+      origin: 'http://localhost:8002',
+      openApiUrl: 'http://localhost:8002/openapi.json',
+      docType: 'swagger-ui',
+      title: 'Project 2',
+    })
+    if (!p1.ok || !p2.ok) return
+
+    // Link 8003 to Project 1
+    await service.linkOriginToProject('http://localhost:8003', p1.value.id)
+    let meta1 = await service.getProjectMeta(p1.value.id)
+    expect(meta1.ok && meta1.value?.linkedOrigins).toContain('http://localhost:8003')
+
+    // 1-Click switch: Link 8003 directly to Project 2 (without manual unlinking)
+    await service.linkOriginToProject('http://localhost:8003', p2.value.id)
+
+    // Project 1 must no longer contain 8003
+    meta1 = await service.getProjectMeta(p1.value.id)
+    expect(meta1.ok && meta1.value?.linkedOrigins?.includes('http://localhost:8003')).toBeFalsy()
+
+    // Project 2 must now contain 8003
+    const meta2 = await service.getProjectMeta(p2.value.id)
+    expect(meta2.ok && meta2.value?.linkedOrigins).toContain('http://localhost:8003')
+
+    // Resolving 8003 resolves directly to Project 2
+    const bound = await service.identify({
+      origin: 'http://localhost:8003',
+      openApiUrl: 'http://localhost:8003/openapi.json',
+      docType: 'swagger-ui',
+    })
+    expect(bound.ok && bound.value.id).toBe(p2.value.id)
+  })
+
   it('copies project data from one project to another', async () => {
     const { service, storage } = setup()
     const p1 = await service.identify({

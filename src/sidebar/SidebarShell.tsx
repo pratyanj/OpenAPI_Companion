@@ -11,7 +11,7 @@ import {
   ThemeSystemIcon,
 } from '@/components'
 import { useEventBus, useTheme } from '@/hooks'
-import { settingsKey, type StorageService } from '@/core/storage'
+import { settingsKey, projectKey, type StorageService } from '@/core/storage'
 import type { EventBus } from '@/core/events'
 import type { ProjectMeta } from '@/core/project'
 import type { ThemeManager, ThemePreference } from '@/services'
@@ -81,8 +81,43 @@ export function SidebarShell({
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { preference } = useTheme(theme)
 
+  const lastTabKey = project?.id ? projectKey(project.id, 'ui', 'last-tab') : settingsKey('last-tab')
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    void storage.set(lastTabKey, tab)
+    void storage.set(settingsKey('last-tab'), tab)
+  }
+
+  // Restore last active tab on mount
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const res = await storage.getData<string>(lastTabKey)
+      if (cancelled) return
+      if (res.ok && res.value && TABS.some((t) => t.id === res.value)) {
+        setActiveTab(res.value)
+        return
+      }
+      const fallback = await storage.getData<string>(settingsKey('last-tab'))
+      if (cancelled) return
+      if (fallback.ok && fallback.value && TABS.some((t) => t.id === fallback.value)) {
+        setActiveTab(fallback.value)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [lastTabKey, storage])
+
   // Switching environments re-scopes the Auth/Request panels to the new env.
   useEventBus(bus, 'ENVIRONMENT_CHANGED', (payload) => setActiveEnv(payload.environmentId))
+  useEventBus(bus, 'TAB_NAVIGATE', (payload) => {
+    const tab = payload?.tab
+    if (tab && TABS.some((t) => t.id === tab)) {
+      handleTabChange(tab)
+    }
+  })
 
   // ⌘K / Ctrl+K opens the endpoint search palette (FR-PROD-001).
   useEffect(() => {
@@ -151,7 +186,7 @@ export function SidebarShell({
         </header>
 
         <nav className="border-b border-border px-2 py-2">
-          <Tabs tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
+          <Tabs tabs={TABS} activeId={activeTab} onChange={handleTabChange} />
         </nav>
 
         <div

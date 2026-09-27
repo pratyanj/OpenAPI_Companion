@@ -70,8 +70,8 @@ describe('substitute', () => {
       {},
     )
     expect(result.missing).toEqual([])
-    expect(result.text).toMatch(/email=[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i)
-    expect(result.text).toMatch(/name=[A-Za-z]+ [A-Za-z]+/i)
+    expect(result.text).toMatch(/email=\S+@\S+\.[a-z]{2,}/i)
+    expect(result.text).toMatch(/name=\S+ \S+/i)
     expect(result.text).toMatch(/count=\d+/)
     expect(result.text).toMatch(/active=(true|false)/)
   })

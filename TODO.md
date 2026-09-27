@@ -1,4 +1,32 @@
-## 🚀 Next Version Sprint (v1.2.0 Action Items & Feature Roadmap)
+## 🚀 Release v1.2.1 Action Items & Completed Features (2026-09-27)
+
+- [x] **1. 🗂️ Workspaces & Projects Switcher Redesign**
+  - Modern card-style Workspaces modal (`#oac-project-switcher-host` in Shadow DOM overlay over Swagger UI).
+  - Distinct workspace cards with folder icon, inline rename `✏️`, connected port/URL chips (`:8008`, `:8009`), active indicator (`● this tab`).
+  - Seamless 1-click workspace switching (`⇄ Switch`) with auto-cleanup of previous bindings.
+  - Granular secondary port disconnection (`✕`) without full tab reload.
+- [x] **2. ⚡ In-App Auto-Update Detection & Safe In-Place Reload**
+  - Listens to `chrome.runtime.onUpdateAvailable` in background service worker.
+  - Live top Update Banner in sidepanel (`⚡ Update ready (v1.2.1)! [Update Now]`).
+  - Safe in-place reload via `chrome.runtime.reload()` preserving all local storage, projects, history, and variables.
+  - Manual "Check for updates" in Settings tab.
+- [x] **3. 🌟 First-Time Install Onboarding (`OnboardingModal`)**
+  - First-time user welcome flow explaining core extension capabilities.
+  - Lead capture with optional email and instant "Skip for now" action compliant with Chrome Web Store guidelines.
+- [x] **4. 💬 In-Page Swagger Feedback Modal (`FeedbackModal`)**
+  - Top-centered Shadow DOM modal overlay on native Swagger page with background blur.
+  - Interactive 5-star rating, category tabs (💡 Feature Idea, 🐛 Bug Report, 💬 General), and feedback textarea.
+  - Background Service Worker proxy (`SUBMIT_FEEDBACK`) bypassing webpage CORS/CSP restrictions for webhook delivery.
+  - Offline queue in `chrome.storage.local` with automatic retry on reconnection.
+- [x] **5. ⌨️ In-Page Project Variables Modal (<kbd>Alt+V</kbd>)**
+  - Dedicated project-scoped variables dialog with search filter, quick add, password masking, and instant auto-save on blur/<kbd>Enter</kbd>.
+- [x] **6. 🔄 Active Tab Reopen Persistence**
+  - Restores the exact active tab when reopening the Side Panel or Floating Sidebar instead of resetting to dashboard.
+- [x] **7. ⏱️ History Chronological Call Indexing (`#1` to `#N`)**
+  - Sequentially numbered execution calls `#1` to `#N (latest)` in timeline.
+  - In-memory record cache for 0ms instantaneous execution switching without full-screen spinners.
+
+## 🚀 Prior Sprint (v1.2.0 Action Items & Feature Roadmap)
 
 - [x] **1. 🔌 Localhost & Port Resilience / Project Switcher & Host Aliasing (with Custom Project Naming)**
   - **Problem**: When a backend restarts on a different port (e.g. `8008` -> `8009` because 8008 was in use), or when switching between `localhost:8008`, `127.0.0.1:8008`, and local network IP `192.168.x.x:8008`, all project data (saved presets, request templates, project variables, workflow suites, headers, and history) appears lost because project IDs are derived strictly from `origin + openApiUrl`.

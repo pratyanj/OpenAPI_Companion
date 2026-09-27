@@ -76,4 +76,43 @@ describe('SidebarShell', () => {
     expect(screen.getByText('localhost:8000')).toBeInTheDocument()
     expect(screen.getByText('Connecting to the page…')).toBeInTheDocument()
   })
+
+  it('restores last active tab from storage on mount', async () => {
+    const { storage, bus, theme } = await setup()
+    const project = {
+      id: 'project_abc12345',
+      name: 'localhost:8000',
+      originUrl: 'https://localhost:8000',
+      openApiUrl: 'https://localhost:8000/openapi.json',
+      docType: 'swagger-ui',
+      createdAt: 0,
+      lastActiveEnvId: 'default',
+    }
+    // Seed storage with 'auth' tab
+    await storage.set('projects/project_abc12345/ui/last-tab', 'auth')
+
+    render(<SidebarShell project={project} theme={theme} bus={bus} storage={storage} />)
+
+    expect(await screen.findByText('Authentication')).toBeInTheDocument()
+  })
+
+  it('persists tab to storage when changed', async () => {
+    const { storage, bus, theme } = await setup()
+    const project = {
+      id: 'project_abc12345',
+      name: 'localhost:8000',
+      originUrl: 'https://localhost:8000',
+      openApiUrl: 'https://localhost:8000/openapi.json',
+      docType: 'swagger-ui',
+      createdAt: 0,
+      lastActiveEnvId: 'default',
+    }
+    render(<SidebarShell project={project} theme={theme} bus={bus} storage={storage} />)
+
+    fireEvent.click(screen.getByRole('tab', { name: /Auth/ }))
+    expect(screen.getByText('Authentication')).toBeInTheDocument()
+
+    const saved = await storage.getData<string>('projects/project_abc12345/ui/last-tab')
+    expect(saved.ok && saved.value).toBe('auth')
+  })
 })

@@ -13,7 +13,17 @@ import {
   EyeIcon,
   KeyboardIcon,
   LockIcon,
+  MessageSquareIcon,
+  FeedbackModal,
+  Spinner,
+  RegenerateIcon,
 } from '@/components'
+import {
+  getPendingUpdate,
+  checkForUpdates,
+  applyUpdateAndReload,
+  type PendingUpdate,
+} from '@/services/update-service'
 import type { SettingsApi } from './settings-service'
 import type { ImportExportApi } from './import-export-service'
 import type {
@@ -35,6 +45,7 @@ interface SettingsPanelProps {
   projectId?: string
   bus: EventBus
   onOpenShortcutsModal?: () => void
+  onOpenFeedbackModal?: (options?: { initialCategory?: 'feature' | 'bug' | 'general' }) => void
 }
 
 const THEMES: ThemePreference[] = ['light', 'dark', 'system']
@@ -72,10 +83,22 @@ export function SettingsPanel({
   projectId,
   bus,
   onOpenShortcutsModal,
+  onOpenFeedbackModal,
 }: SettingsPanelProps) {
   const { preference } = useTheme(theme)
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [metrics, setMetrics] = useState<StorageMetrics | null>(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+
+  const handleOpenFeedback = () => {
+    if (onOpenFeedbackModal) {
+      onOpenFeedbackModal()
+    } else {
+      setIsFeedbackOpen(true)
+    }
+  }
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null)
   type ConfirmTarget = 'project' | 'all' | { type: 'single'; projectId: string; name?: string }
   const [confirm, setConfirm] = useState<ConfirmTarget | null>(null)
   const [importText, setImportText] = useState('')
@@ -118,6 +141,7 @@ export function SettingsPanel({
     void settings.getPreferences().then(setPrefs)
     void loadMetrics()
     void io.getPreImportSnapshot?.().then((snap) => setHasRestorePoint(snap ?? null))
+    void getPendingUpdate().then(setPendingUpdate)
   }, [settings, loadMetrics, io])
 
   const setPref = async <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
@@ -855,6 +879,24 @@ export function SettingsPanel({
         ) : null}
       </Section>
 
+      <Section title="Feedback & Support">
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface/30 p-3">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Have a feature suggestion, encountered a bug, or want to share feedback? We appreciate every message!
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="secondary"
+              onClick={handleOpenFeedback}
+              className="gap-1.5 self-start"
+            >
+              <MessageSquareIcon className="h-3.5 w-3.5 text-primary" />
+              <span>Share Feedback</span>
+            </Button>
+          </div>
+        </div>
+      </Section>
+
       <Section title="General">
         <div className="flex items-center justify-between">
           <span className="text-muted">{APP_NAME}</span>
@@ -866,6 +908,74 @@ export function SettingsPanel({
         <div className="flex items-center justify-between">
           <span className="text-muted">Build</span>
           <span className="font-mono text-text">{__BUILD_ID__}</span>
+        </div>
+
+        {pendingUpdate ? (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-emerald-500">
+                Update Ready (v{pendingUpdate.version})
+              </span>
+              <span className="text-[10px] text-text-muted">
+                Reload to apply update without losing any project data.
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => void applyUpdateAndReload()}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1"
+            >
+              Reload Now
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-muted">Updates</span>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setCheckingUpdate(true)
+              try {
+                const res = await checkForUpdates()
+                if (res.status === 'update_available' && res.version) {
+                  setPendingUpdate({ version: res.version, at: Date.now() })
+                  bus.publish('NOTIFY', {
+                    kind: 'success',
+                    message: `Update ready (v${res.version})! Click Reload to apply.`,
+                  })
+                } else if (res.status === 'no_update') {
+                  bus.publish('NOTIFY', {
+                    kind: 'success',
+                    message: `OpenAPI Companion is up to date (v${APP_VERSION}).`,
+                  })
+                } else if (res.status === 'throttled') {
+                  bus.publish('NOTIFY', {
+                    kind: 'warning',
+                    message: res.message || 'Checked recently. Please try again later.',
+                  })
+                } else {
+                  bus.publish('NOTIFY', {
+                    kind: 'warning',
+                    message:
+                      res.message ||
+                      'Running unpacked version. Use the circular reload button (⟳) in chrome://extensions to update.',
+                  })
+                }
+              } finally {
+                setCheckingUpdate(false)
+              }
+            }}
+            disabled={checkingUpdate}
+            className="gap-1.5"
+          >
+            {checkingUpdate ? (
+              <Spinner className="h-3 w-3" />
+            ) : (
+              <RegenerateIcon className="h-3 w-3" />
+            )}
+            <span>{checkingUpdate ? 'Checking...' : 'Check for updates'}</span>
+          </Button>
         </div>
       </Section>
 
@@ -890,6 +1000,12 @@ export function SettingsPanel({
           </div>
         </Dialog>
       ) : null}
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
+      />
     </div>
   )
 }

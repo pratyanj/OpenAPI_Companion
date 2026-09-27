@@ -20,10 +20,13 @@ test-results/
 *.log
 npm-debug.log*
 
-# Env
+# Env and private local credentials
 .env
 .env.*
 !.env.example
+*.local.*
+*.local
+feedback.local.json
 
 # OS / editor / IDE
 .DS_Store
