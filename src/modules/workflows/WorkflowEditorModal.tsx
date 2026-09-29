@@ -17,7 +17,14 @@ import { EndpointPicker, MethodTag } from '@/modules/request/EndpointPicker'
 import { extractPathParams, formatJsonSafe } from '@/modules/request/json-utils'
 import type { EndpointInfo } from '@/adapters'
 import type { RequestTemplate, RequestPanelService } from '@/modules/request/types'
-import type { Workflow, WorkflowInput, WorkflowStep, WorkflowFailureMode } from './types'
+import type {
+  Workflow,
+  WorkflowInput,
+  WorkflowStep,
+  WorkflowFailureMode,
+  StepExtractionRule,
+} from './types'
+import type { Assertion, AssertionType, AssertionOperator } from './assertions/types'
 
 export interface SwaggerDefaultsResult {
   exampleBody?: string
@@ -43,7 +50,7 @@ export interface WorkflowEditorModalProps {
   getSwaggerDefaultsAsync?: (endpointId: string) => Promise<SwaggerDefaultsResult | undefined>
 }
 
-type StepTab = 'body' | 'query' | 'path' | 'headers'
+type StepTab = 'body' | 'query' | 'path' | 'headers' | 'assertions' | 'extractions'
 
 interface StepParametersEditorProps {
   step: WorkflowStep
@@ -168,6 +175,52 @@ function StepParametersEditor({
     })
   }
 
+  // Assertions state & handlers
+  const assertions = step.assertions ?? []
+
+  const handleAddAssertion = (preset?: Partial<Assertion>) => {
+    const newAssertion: Assertion = {
+      id: `asrt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      type: preset?.type ?? 'status',
+      target: preset?.target,
+      operator: preset?.operator ?? 'is2xx',
+      expected: preset?.expected,
+    }
+    onChange({ assertions: [...assertions, newAssertion] })
+  }
+
+  const handleUpdateAssertion = (id: string, patch: Partial<Assertion>) => {
+    const next = assertions.map((a) => (a.id === id ? { ...a, ...patch } : a))
+    onChange({ assertions: next })
+  }
+
+  const handleRemoveAssertion = (id: string) => {
+    const next = assertions.filter((a) => a.id !== id)
+    onChange({ assertions: next })
+  }
+
+  // Extractions state & handlers
+  const extractions = step.extractions ?? []
+
+  const handleAddExtraction = () => {
+    const newExtraction: StepExtractionRule = {
+      id: `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      property: '$.id',
+      variableName: `var_${extractions.length + 1}`,
+    }
+    onChange({ extractions: [...extractions, newExtraction] })
+  }
+
+  const handleUpdateExtraction = (id: string, patch: Partial<StepExtractionRule>) => {
+    const next = extractions.map((e) => (e.id === id ? { ...e, ...patch } : e))
+    onChange({ extractions: next })
+  }
+
+  const handleRemoveExtraction = (id: string) => {
+    const next = extractions.filter((e) => e.id !== id)
+    onChange({ extractions: next })
+  }
+
   return (
     <div className="mt-3 pt-3 border-t border-border/70 space-y-3">
       {/* 1-Click Load from Saved Preset */}
@@ -256,6 +309,40 @@ function StepParametersEditor({
           {headerEntries.length > 0 && (
             <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] text-text font-mono">
               {headerEntries.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('assertions')}
+          className={`px-3 py-1.5 font-medium border-b-2 transition-colors flex items-center gap-1 ${
+            activeTab === 'assertions'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <span>Assertions</span>
+          {(step.assertions?.length ?? 0) > 0 && (
+            <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-mono font-semibold">
+              {step.assertions?.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('extractions')}
+          className={`px-3 py-1.5 font-medium border-b-2 transition-colors flex items-center gap-1 ${
+            activeTab === 'extractions'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted hover:text-text'
+          }`}
+        >
+          <span>Extractions</span>
+          {(step.extractions?.length ?? 0) > 0 && (
+            <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary font-mono font-semibold">
+              {step.extractions?.length}
             </span>
           )}
         </button>
@@ -529,6 +616,319 @@ function StepParametersEditor({
           )}
         </div>
       )}
+
+      {/* Tab Content: Assertions */}
+      {activeTab === 'assertions' && (
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] font-semibold text-text">
+              Test Assertions (Contract &amp; Response Validation)
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => handleAddAssertion({ type: 'status', operator: 'is2xx' })}
+                className="py-0.5 px-2 text-[11px]"
+                title="Assert status code is 2xx (200-299)"
+              >
+                + Status 2xx
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  handleAddAssertion({ type: 'status', operator: 'equals', expected: 200 })
+                }
+                className="py-0.5 px-2 text-[11px]"
+                title="Assert status code equals 200"
+              >
+                + 200 OK
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  handleAddAssertion({ type: 'responseTime', operator: 'lessThan', expected: 500 })
+                }
+                className="py-0.5 px-2 text-[11px]"
+                title="Assert response duration is under 500ms"
+              >
+                + &lt; 500ms
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  handleAddAssertion({
+                    type: 'jsonPath',
+                    target: '$.success',
+                    operator: 'equals',
+                    expected: 'true',
+                  })
+                }
+                className="py-0.5 px-2 text-[11px]"
+              >
+                <PlusIcon className="h-3 w-3" />
+                Custom
+              </Button>
+            </div>
+          </div>
+
+          {assertions.length === 0 ? (
+            <div className="rounded border border-dashed border-border p-4 text-center text-xs text-muted">
+              No assertions configured for this step. Click a preset above to validate status codes,
+              headers, JSON properties, or latency.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {assertions.map((a, idx) => {
+                const needsTarget = ['header', 'jsonPath', 'type', 'length'].includes(a.type)
+                const noExpected = [
+                  'is2xx',
+                  'is3xx',
+                  'is4xx',
+                  'is5xx',
+                  'isNot5xx',
+                  'exists',
+                  'notExists',
+                ].includes(a.operator)
+
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 rounded border border-border/80 bg-surface/40 p-2 text-xs flex-wrap sm:flex-nowrap"
+                  >
+                    <span className="font-mono text-[10px] text-muted w-4 shrink-0">#{idx + 1}</span>
+
+                    {/* Assertion Type */}
+                    <select
+                      value={a.type}
+                      onChange={(e) => {
+                        const nextType = e.target.value as AssertionType
+                        let defaultOp: AssertionOperator = 'equals'
+                        if (nextType === 'status') defaultOp = 'is2xx'
+                        if (nextType === 'responseTime') defaultOp = 'lessThan'
+                        handleUpdateAssertion(a.id, {
+                          type: nextType,
+                          operator: defaultOp,
+                          target:
+                            nextType === 'header'
+                              ? 'Content-Type'
+                              : nextType === 'jsonPath'
+                                ? '$.id'
+                                : undefined,
+                        })
+                      }}
+                      className="rounded border border-border bg-surface px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
+                    >
+                      <option value="status">Status Code</option>
+                      <option value="header">Header</option>
+                      <option value="jsonPath">JSON Property</option>
+                      <option value="type">Data Type</option>
+                      <option value="length">Length</option>
+                      <option value="contains">Body Contains</option>
+                      <option value="responseTime">Response Time</option>
+                    </select>
+
+                    {/* Target (Path / Header name) */}
+                    {needsTarget ? (
+                      <Input
+                        value={a.target ?? ''}
+                        onChange={(e) => handleUpdateAssertion(a.id, { target: e.target.value })}
+                        placeholder={a.type === 'header' ? 'e.g. Content-Type' : 'e.g. $.data.id'}
+                        className="w-36 text-xs font-mono"
+                      />
+                    ) : null}
+
+                    {/* Operator */}
+                    <select
+                      value={a.operator}
+                      onChange={(e) =>
+                        handleUpdateAssertion(a.id, {
+                          operator: e.target.value as AssertionOperator,
+                        })
+                      }
+                      className="rounded border border-border bg-surface px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
+                    >
+                      {a.type === 'status' && (
+                        <>
+                          <option value="is2xx">is 2xx (Success)</option>
+                          <option value="is3xx">is 3xx (Redirect)</option>
+                          <option value="is4xx">is 4xx (Client Error)</option>
+                          <option value="is5xx">is 5xx (Server Error)</option>
+                          <option value="isNot5xx">is not 5xx</option>
+                          <option value="equals">equals</option>
+                          <option value="notEquals">not equals</option>
+                        </>
+                      )}
+                      {(a.type === 'header' || a.type === 'contains') && (
+                        <>
+                          <option value="contains">contains</option>
+                          <option value="notContains">does not contain</option>
+                          <option value="equals">equals</option>
+                          <option value="notEquals">not equals</option>
+                          <option value="exists">exists</option>
+                          <option value="notExists">does not exist</option>
+                        </>
+                      )}
+                      {a.type === 'jsonPath' && (
+                        <>
+                          <option value="equals">equals</option>
+                          <option value="notEquals">not equals</option>
+                          <option value="contains">contains</option>
+                          <option value="notContains">does not contain</option>
+                          <option value="exists">exists</option>
+                          <option value="notExists">does not exist</option>
+                          <option value="greaterThan">&gt; greater than</option>
+                          <option value="lessThan">&lt; less than</option>
+                          <option value="matchesRegex">matches regex</option>
+                        </>
+                      )}
+                      {a.type === 'type' && (
+                        <>
+                          <option value="equals">is type</option>
+                        </>
+                      )}
+                      {(a.type === 'length' || a.type === 'responseTime') && (
+                        <>
+                          <option value="lessThan">&lt; less than</option>
+                          <option value="lessThanOrEqual">&le; less or equal</option>
+                          <option value="equals">equals</option>
+                          <option value="greaterThan">&gt; greater than</option>
+                          <option value="greaterThanOrEqual">&ge; greater or equal</option>
+                        </>
+                      )}
+                    </select>
+
+                    {/* Expected Value */}
+                    {!noExpected && (
+                      <Input
+                        value={a.expected !== undefined ? String(a.expected) : ''}
+                        onChange={(e) => {
+                          const raw = e.target.value
+                          let exp: unknown = raw
+                          if (
+                            a.type === 'status' ||
+                            a.type === 'length' ||
+                            a.type === 'responseTime'
+                          ) {
+                            const num = Number(raw)
+                            if (!isNaN(num) && raw.trim() !== '') exp = num
+                          }
+                          handleUpdateAssertion(a.id, { expected: exp })
+                        }}
+                        placeholder={
+                          a.type === 'status'
+                            ? 'e.g. 200'
+                            : a.type === 'responseTime'
+                              ? 'e.g. 500'
+                              : a.type === 'type'
+                                ? 'string, number, array...'
+                                : 'Expected value'
+                        }
+                        className="flex-1 text-xs font-mono"
+                      />
+                    )}
+
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAssertion(a.id)}
+                      className="p-1 text-danger/70 hover:text-danger rounded hover:bg-danger/10 shrink-0"
+                      title="Delete assertion"
+                    >
+                      <DeleteIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content: Extractions */}
+      {activeTab === 'extractions' && (
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-text">
+              Step Response Extractions (&rarr; Active Variables)
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddExtraction}
+              className="py-0.5 px-2 text-[11px] flex items-center gap-1"
+            >
+              <PlusIcon className="h-3 w-3" />
+              Add Extraction
+            </Button>
+          </div>
+
+          <p className="text-[11px] text-muted leading-relaxed">
+            Extract fields from this step&apos;s JSON response and dynamically store them into project
+            variables. Subsequent steps can reference these variables using{' '}
+            <code className="text-primary font-mono">&#123;&#123;variableName&#125;&#125;</code>.
+          </p>
+
+          {extractions.length === 0 ? (
+            <div className="rounded border border-dashed border-border p-4 text-center text-xs text-muted">
+              No extractions configured for this step. Click &ldquo;Add Extraction&rdquo; above to
+              capture tokens or IDs.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {extractions.map((e, idx) => (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-2 rounded border border-border/80 bg-surface/40 p-2 text-xs flex-wrap sm:flex-nowrap"
+                >
+                  <span className="font-mono text-[10px] text-muted w-4 shrink-0">#{idx + 1}</span>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="text-[10px] text-muted font-medium shrink-0">
+                      Property / JSONPath:
+                    </span>
+                    <Input
+                      value={e.property}
+                      onChange={(evt) =>
+                        handleUpdateExtraction(e.id, { property: evt.target.value })
+                      }
+                      placeholder="e.g. $.token or $.data.user.id"
+                      className="flex-1 text-xs font-mono"
+                    />
+                  </div>
+
+                  <span className="text-muted font-bold">&rarr;</span>
+
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="text-[10px] text-muted font-medium shrink-0">Save as:</span>
+                    <Input
+                      value={e.variableName}
+                      onChange={(evt) =>
+                        handleUpdateExtraction(e.id, {
+                          variableName: evt.target.value.replace(/[{}]/g, ''),
+                        })
+                      }
+                      placeholder="e.g. authToken"
+                      className="flex-1 text-xs font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExtraction(e.id)}
+                    className="p-1 text-danger/70 hover:text-danger rounded hover:bg-danger/10 shrink-0"
+                    title="Delete extraction"
+                  >
+                    <DeleteIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -586,6 +986,8 @@ export function WorkflowEditorModal({
         pathParams: s.pathParams ? { ...s.pathParams } : {},
         queryParams: s.queryParams ? { ...s.queryParams } : {},
         headerParams: s.headerParams ? { ...s.headerParams } : {},
+        assertions: s.assertions ? [...s.assertions] : [],
+        extractions: s.extractions ? [...s.extractions] : [],
       }))
       setSteps(initialSteps)
       // Auto-expand all steps when opened for editing
@@ -624,6 +1026,8 @@ export function WorkflowEditorModal({
       pathParams: initialPath,
       queryParams: defs?.query ? { ...defs.query } : {},
       headerParams: {},
+      assertions: [{ id: `asrt_${Date.now()}_1`, type: 'status', operator: 'is2xx' }],
+      extractions: [],
     }
     setSteps((prev) => [...prev, newStep])
     setExpandedSteps((prev) => ({ ...prev, [newStep.id]: true }))
@@ -776,7 +1180,7 @@ export function WorkflowEditorModal({
 
           <div>
             <label className="block text-xs font-semibold text-text mb-1.5">Failure Mode</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setMode('stop-on-failure')}
@@ -788,7 +1192,7 @@ export function WorkflowEditorModal({
               >
                 <span className="font-semibold text-xs">Stop on failure</span>
                 <span className="text-[11px] text-muted mt-0.5">
-                  Halt scenario immediately if any step returns an error (4xx/5xx).
+                  Halt immediately if any step returns an error or fails assertions.
                 </span>
               </button>
 
@@ -804,6 +1208,21 @@ export function WorkflowEditorModal({
                 <span className="font-semibold text-xs">Continue on failure</span>
                 <span className="text-[11px] text-muted mt-0.5">
                   Execute all steps regardless of intermediate errors.
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMode('ask-on-failure')}
+                className={`flex flex-col text-left p-2.5 rounded border transition-colors ${
+                  mode === 'ask-on-failure'
+                    ? 'border-primary bg-primary/10 text-text'
+                    : 'border-border bg-surface text-muted hover:border-border-strong hover:text-text'
+                }`}
+              >
+                <span className="font-semibold text-xs">Ask on failure</span>
+                <span className="text-[11px] text-muted mt-0.5">
+                  Pause execution interactively when a step fails and ask whether to continue.
                 </span>
               </button>
             </div>

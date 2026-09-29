@@ -675,5 +675,140 @@ describe('Workflow Step Assertions', () => {
       { id: 'a2', type: 'type', target: '$.items', operator: 'equals', expected: 'array' },
     ])
   })
+
+  it('executes step-level extractions and saves variables to environment service', async () => {
+    const setVariableSpy = vi.fn().mockResolvedValue(ok(undefined))
+    const mockEnvService = {
+      getActiveId: vi.fn().mockResolvedValue('env_default'),
+      resolve: vi.fn().mockImplementation(async (text: string) => ok({ text, missing: [] })),
+      setVariable: setVariableSpy,
+    }
+
+    const executor = vi.fn().mockResolvedValue({
+      status: 201,
+      success: true,
+      responseBody: JSON.stringify({ data: { user: { id: 9942, role: 'admin' } } }),
+    })
+
+    const { service } = setup({ envService: mockEnvService, defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Step Extractions Flow',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'post /users',
+          extractions: [
+            { id: 'e1', property: '$.data.user.id', variableName: 'userId' },
+            { id: 'e2', property: '$.data.user.role', variableName: 'userRole' },
+          ],
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(setVariableSpy).toHaveBeenCalledWith('userId', '9942')
+    expect(setVariableSpy).toHaveBeenCalledWith('userRole', 'admin')
+    expect(runRes.value.results[0]?.extractedVariables).toEqual({
+      userId: '9942',
+      userRole: 'admin',
+    })
+  })
+
+  it('handles ask-on-failure mode: pauses, prompts, and continues when user chooses continue', async () => {
+    const executor = vi.fn().mockImplementation(async (payload: StepExecutionPayload) => {
+      if (payload.step.id === 'step_1') {
+        return { status: 500, success: false, error: 'Internal Server Error' }
+      }
+      return { status: 200, success: true }
+    })
+
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Ask On Failure Flow',
+      mode: 'ask-on-failure',
+      steps: [
+        { id: 'step_1', endpointId: 'post /critical' },
+        { id: 'step_2', endpointId: 'get /followup' },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const promptSpy = vi.fn().mockResolvedValue('continue')
+
+    const runRes = await service.execute(wf.value.id, {
+      onFailurePrompt: promptSpy,
+    })
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(promptSpy).toHaveBeenCalledTimes(1)
+    expect(promptSpy).toHaveBeenCalledWith(0, expect.objectContaining({ id: 'step_1' }), expect.any(String))
+    expect(runRes.value.completedSteps).toBe(2)
+    expect(runRes.value.status).toBe('failed')
+  })
+
+  it('handles ask-on-failure mode: aborts remaining steps when user chooses stop', async () => {
+    const executor = vi.fn().mockImplementation(async (payload: StepExecutionPayload) => {
+      if (payload.step.id === 'step_1') {
+        return { status: 500, success: false, error: 'Database down' }
+      }
+      return { status: 200, success: true }
+    })
+
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Ask On Failure Stop Flow',
+      mode: 'ask-on-failure',
+      steps: [
+        { id: 'step_1', endpointId: 'post /critical' },
+        { id: 'step_2', endpointId: 'get /followup' },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const promptSpy = vi.fn().mockResolvedValue('stop')
+
+    const runRes = await service.execute(wf.value.id, {
+      onFailurePrompt: promptSpy,
+    })
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(promptSpy).toHaveBeenCalledTimes(1)
+    expect(runRes.value.completedSteps).toBe(1)
+    expect(executor).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists lastRunSummary on the workflow record', async () => {
+    const executor = vi.fn().mockResolvedValue({ status: 200, success: true })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Summary Persistence Flow',
+      steps: [{ id: 'step_1', endpointId: 'get /health' }],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    await service.execute(wf.value.id)
+
+    const updated = await service.get(wf.value.id)
+    expect(updated.ok).toBe(true)
+    if (!updated.ok || !updated.value) return
+
+    expect(updated.value.lastRunSummary).toBeDefined()
+    expect(updated.value.lastRunSummary?.status).toBe('success')
+    expect(updated.value.lastRunSummary?.totalSteps).toBe(1)
+  })
 })
 

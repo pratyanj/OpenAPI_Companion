@@ -40,17 +40,17 @@
 ---
 
 ### ⚡ Phase 3: Workflow Runner Upgrades & Visual Editor
-- [ ] **3.1. Interactive Step Assertions Builder**
-  - [ ] Upgrade `WorkflowEditorModal.tsx` with dedicated "Assertions" section per step.
-  - [ ] Dropdowns for assertion target (`Status`, `Header`, `JSON Path`, `Response Time`), operators, and expected values.
-  - [ ] Add step-level response extraction rules with target variable name and JSONPath preview.
-- [ ] **3.2. Upgraded Workflow Runner Experience (`WorkflowRunnerModal.tsx`)**
-  - [ ] Real-time execution stepper with live running indicators, duration timer, and pass/fail badges.
-  - [ ] Collapsible step inspection panel showing resolved request variables, response payload, and granular assertion pass/fail checklist.
-  - [ ] Clear failure diagnostics: highlight failing assertions, mismatch details, and error response bodies.
-- [ ] **3.3. Configurable Failure Handling**
-  - [ ] Support `stop-on-failure` (default), `continue-on-failure`, and interactive `ask-on-failure` prompt.
-  - [ ] Persistent workflow execution history and run summaries.
+- [x] **3.1. Interactive Step Assertions Builder**
+  - [x] Upgrade `WorkflowEditorModal.tsx` with dedicated "Assertions" section per step.
+  - [x] Dropdowns for assertion target (`Status`, `Header`, `JSON Path`, `Data Type`, `Length`, `Response Time`), operators, expected values, and preset shortcuts (+ 2xx Status, + 200 OK, + < 500ms).
+  - [x] Add step-level response extraction rules with target variable name and JSONPath preview.
+- [x] **3.2. Upgraded Workflow Runner Experience (`WorkflowRunnerModal.tsx`)**
+  - [x] Real-time execution stepper with live running indicators, duration timer, and pass/fail badges.
+  - [x] Collapsible step inspection panel showing resolved request variables, response payload with 1-click copy, and granular assertion pass/fail checklist.
+  - [x] Clear failure diagnostics: highlight failing assertions, mismatch details, and error response bodies.
+- [x] **3.3. Configurable Failure Handling**
+  - [x] Support `stop-on-failure` (default), `continue-on-failure`, and interactive `ask-on-failure` prompt.
+  - [x] Persistent workflow execution history and run summaries on workflow records.
 
 ---
 

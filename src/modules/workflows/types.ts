@@ -1,6 +1,13 @@
 import type { Assertion, AssertionResult } from './assertions/types'
 
-export type WorkflowFailureMode = 'stop-on-failure' | 'continue-on-failure'
+export type WorkflowFailureMode = 'stop-on-failure' | 'continue-on-failure' | 'ask-on-failure'
+
+/** Step-level auto-extraction rule capturing a value from response body into a variable */
+export interface StepExtractionRule {
+  id: string
+  property: string // JSONPath (e.g. "$.id", "$.data.token") or simple property name
+  variableName: string // Target variable name to save into (e.g. "userId", "authToken")
+}
 
 // ---------------------------------------------------------------------------
 // Import / Export types — portable, no runtime metadata
@@ -16,6 +23,7 @@ export interface WorkflowExportStep {
   headerParams?: Record<string, string>
   delayMs?: number
   assertions?: Assertion[]
+  extractions?: StepExtractionRule[]
 }
 
 /** A workflow as represented in an export bundle (no `id`, `createdAt`, `lastRun*`) */
@@ -51,6 +59,7 @@ export interface WorkflowStep {
   headerParams?: Record<string, string>
   delayMs?: number
   assertions?: Assertion[]
+  extractions?: StepExtractionRule[]
 }
 
 export interface Workflow {
@@ -64,6 +73,7 @@ export interface Workflow {
   lastRunAt?: number
   lastRunStatus?: 'success' | 'failed' | 'cancelled'
   lastRunDurationMs?: number
+  lastRunSummary?: WorkflowRunSummary
 }
 
 export interface WorkflowInput {
@@ -82,6 +92,9 @@ export interface StepRunResult {
   success: boolean
   assertionResults?: AssertionResult[]
   assertionsPassed?: boolean
+  responseBody?: string
+  responseHeaders?: Record<string, string>
+  extractedVariables?: Record<string, string>
 }
 
 export interface WorkflowRunSummary {
@@ -110,6 +123,7 @@ export type StepExecutor = (
   error?: string
   success: boolean
   responseBody?: string
+  responseHeaders?: Record<string, string>
 }>
 
 import type { Result } from '@/types'
@@ -121,6 +135,11 @@ export interface WorkflowExecutionOptions {
   executor?: StepExecutor
   onStepStart?: (stepIndex: number, total: number, step: WorkflowStep) => void
   onStepProgress?: (stepIndex: number, total: number, result: StepRunResult) => void
+  onFailurePrompt?: (
+    stepIndex: number,
+    step: WorkflowStep,
+    error: string,
+  ) => Promise<'continue' | 'stop'>
 }
 
 export interface WorkflowsPanelService {
