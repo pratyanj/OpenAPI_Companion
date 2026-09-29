@@ -1,3 +1,109 @@
+# 🧪 Advanced API Testing & Contract Verification Roadmap (v1.3.0+)
+
+> Based on [OpenAPI_Companion_Advanced_API_Testing_Features.md](file:///p:/React%20native/OpenAPI_Companion/docs/OpenAPI_Companion_Advanced_API_Testing_Features.md). Extending OpenAPI Companion into an in-context **Swagger/OpenAPI testing + contract verification** workspace while reusing the core execution pipeline.
+
+---
+
+### 📦 Phase 1: Testing Foundation & Assertions Engine
+- [x] **1.1. Core Assertion Engine Primitives (`src/modules/workflows/assertions`)**
+  - [x] Define assertion schema & types (`AssertionType`: `status`, `headers`, `jsonPath`, `type`, `length`, `contains`, `responseTime`).
+  - [x] Define operators (`equals`, `notEquals`, `is2xx`, `is3xx`, `is4xx`, `is5xx`, `isNot5xx`, `contains`, `notContains`, `exists`, `greaterThan`, `lessThan`, `matchesRegex`).
+  - [x] Implement lightweight, zero-dependency JSONPath parser/extractor (`$.data.id`, `$.items[0].name`).
+  - [x] Build assertion evaluator function: `evaluateAssertions(assertions, response): AssertionResult[]`.
+  - [x] Return structured diagnostics with `expected` vs `actual`, boolean `passed`, and human-readable failure descriptions.
+- [x] **1.2. Workflow Step & Result Schema Extensions**
+  - [x] Extend `WorkflowStep` in `types.ts` with `assertions?: Assertion[]`.
+  - [x] Extend `StepRunResult` with `assertionResults?: AssertionResult[]` and `assertionsPassed?: boolean`.
+  - [x] Extend `WorkflowExportBundle` import/export schema for backward and forward compatibility.
+  - [x] Integrate assertion execution loop into `WorkflowService.execute`.
+- [x] **1.3. Comprehensive Unit Tests**
+  - [x] Test assertion evaluators against status ranges, header matches, nested JSON objects/arrays, regex patterns, and timing thresholds (**14 tests passed**).
+  - [x] Test workflow runner with passing assertions, failing assertions stopping flow, and continuing on failure (**21 tests passed, 41 total workflow tests passing**).
+
+---
+
+### ⏺️ Phase 2: API Scenario Recorder
+- [ ] **2.1. In-Page Recording Controls & State Machine**
+  - [ ] Implement Scenario Recording state machine (`idle`, `recording`, `paused`).
+  - [ ] Mount sleek floating in-page recorder bar (`#oac-scenario-recorder-bar`) in Swagger UI with Record, Pause, Stop buttons and live step counter (`● Recording: 3 steps`).
+- [ ] **2.2. Live Request & Response Capture**
+  - [ ] Hook into Swagger UI's `observeExecutions` to intercept native executions in chronological order.
+  - [ ] Capture HTTP method, resolved URL, path/query params, headers, request body, response status, and response body.
+- [ ] **2.3. Dynamic Value Detection Heuristics**
+  - [ ] Analyze JSON response properties (`id`, `uuid`, `access_token`, `token`, `key`) from step $N$ against subsequent step $N+1$ request paths, query strings, and payloads.
+  - [ ] Auto-suggest `{{variable}}` replacements and extraction bindings.
+- [ ] **2.4. In-Page Scenario Review Modal (`#oac-scenario-modal-host`)**
+  - [ ] Top-centered Shadow DOM modal to inspect captured steps, reorder via drag-and-drop, delete unwanted steps, and edit suggested variables.
+  - [ ] 1-Click "Convert to Workflow" action to persist directly into `WorkflowService`.
+
+---
+
+### ⚡ Phase 3: Workflow Runner Upgrades & Visual Editor
+- [ ] **3.1. Interactive Step Assertions Builder**
+  - [ ] Upgrade `WorkflowEditorModal.tsx` with dedicated "Assertions" section per step.
+  - [ ] Dropdowns for assertion target (`Status`, `Header`, `JSON Path`, `Response Time`), operators, and expected values.
+  - [ ] Add step-level response extraction rules with target variable name and JSONPath preview.
+- [ ] **3.2. Upgraded Workflow Runner Experience (`WorkflowRunnerModal.tsx`)**
+  - [ ] Real-time execution stepper with live running indicators, duration timer, and pass/fail badges.
+  - [ ] Collapsible step inspection panel showing resolved request variables, response payload, and granular assertion pass/fail checklist.
+  - [ ] Clear failure diagnostics: highlight failing assertions, mismatch details, and error response bodies.
+- [ ] **3.3. Configurable Failure Handling**
+  - [ ] Support `stop-on-failure` (default), `continue-on-failure`, and interactive `ask-on-failure` prompt.
+  - [ ] Persistent workflow execution history and run summaries.
+
+---
+
+### 📄 Phase 4: Pagination Tester
+- [ ] **4.1. Swagger Pagination Parameter Auto-Detection**
+  - [ ] Scan operation parameters and OpenAPI schemas for known pagination keys (`page`, `page_number`, `pageNo`, `limit`, `page_size`, `per_page`, `offset`, `cursor`, `next_cursor`, `continuation_token`).
+  - [ ] Auto-detect pagination strategy: `Page-based`, `Limit/Offset`, or `Cursor-based`.
+- [ ] **4.2. Automated Request Progression Runner**
+  - [ ] Configurable parameters: initial page/offset, page size, max pages limit (guard against infinite loops), and delay between requests.
+  - [ ] Multi-page execution loop driving the existing execution pipeline.
+  - [ ] Smart stop conditions: empty response array, repeated cursor, or fewer items than page size.
+- [ ] **4.3. Integrity Analysis & Heuristic Checks**
+  - [ ] Duplicate record detection: hash/compare record IDs across pages to flag repeated records.
+  - [ ] Page size validation: verify actual returned record count matches requested page size (except final page).
+  - [ ] Cursor progression validation: verify extracted next-cursor is correctly passed to subsequent calls.
+  - [ ] Missing record heuristics: detect potential ID sequence gaps.
+- [ ] **4.4. Tabular Pagination Report Viewer**
+  - [ ] Modal summary displaying total pages tested, total records collected, pass/warning badges, and diagnostic anomalies.
+
+---
+
+### 🔍 Phase 5: OpenAPI Spec Change Detector & Impact Analysis
+- [ ] **5.1. Spec Snapshotting & Normalization**
+  - [ ] Fetch active OpenAPI specification via `specUrl()` or `window.ui.getSystem().specSelectors.specJson()`.
+  - [ ] Canonicalize and hash endpoints, operations, parameters, request body schemas, and response schemas.
+  - [ ] Cache baseline spec snapshot in `chrome.storage.local` indexed by project ID.
+- [ ] **5.2. Specification Diff Engine**
+  - [ ] Deep diff algorithm comparing baseline snapshot with active spec on page load.
+  - [ ] Categorize changes: added/removed endpoints, modified methods, added/removed parameters, required status changes, schema modifications.
+  - [ ] Breaking-change heuristics: flag removed endpoints/methods, newly required fields, removed response fields, or changed data types as "Potentially Breaking".
+- [ ] **5.3. Local Resource Impact Analysis**
+  - [ ] Query local storage to identify affected user resources: Workflows, Saved Presets, Scenarios, and Project Variables.
+  - [ ] Map modified/removed endpoint parameters directly to saved templates and alert the developer.
+- [ ] **5.4. Spec Change Notification Banner & Diff Inspector**
+  - [ ] Unobtrusive in-page notification banner: `⚠ OpenAPI specification changed (3 changes detected) [View Changes]`.
+  - [ ] Interactive modal dialog displaying added, removed, and modified contracts alongside affected Companion resources.
+
+---
+
+### 📁 Phase 6: Multi-File Upload Assistant
+- [ ] **6.1. Schema Compatibility Scanner**
+  - [ ] Detect endpoints accepting multipart schemas:
+    - OAS 3.0: `type: string, format: binary` (single) vs `type: array, items: { type: string, format: binary }` (multiple).
+    - OAS 3.1: `contentMediaType` binary representations.
+- [ ] **6.2. Modern In-Page Dropzone & Multi-File Picker**
+  - [ ] Inject styled dropzone overlay (`#oac-file-dropzone`) over Swagger's native file inputs.
+  - [ ] Support `<input type="file" multiple>` and drag-and-drop.
+  - [ ] File list widget with file name, formatted byte size (`1.2 MB`), MIME type icon, remove (`✕`), and reorder controls.
+- [ ] **6.3. In-Memory Session Management & DOM Bridge**
+  - [ ] Keep active `File` objects strictly in memory (zero persistent bytes in `chrome.storage` to respect quota limits).
+  - [ ] Construct synthetic `DataTransfer` / `FormData` and dispatch to Swagger UI file input elements upon execution.
+
+---
+
 ## 🚀 Release v1.2.1 Action Items & Completed Features (2026-09-27)
 
 - [x] **1. 🗂️ Workspaces & Projects Switcher Redesign**

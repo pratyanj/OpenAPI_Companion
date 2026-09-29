@@ -14,6 +14,7 @@ import type {
   WorkflowExportItem,
   WorkflowImportResult,
 } from './types'
+import { evaluateAssertions } from './assertions'
 
 export interface WorkflowEnvironmentService {
   getActiveId(): Promise<string>
@@ -302,6 +303,7 @@ export class WorkflowService {
         queryParams: s.queryParams,
         headerParams: s.headerParams,
         delayMs: s.delayMs,
+        assertions: s.assertions,
       })),
     }))
 
@@ -397,6 +399,7 @@ export class WorkflowService {
           queryParams: s.queryParams,
           headerParams: s.headerParams,
           delayMs: s.delayMs,
+          assertions: s.assertions,
         })),
       })
 
@@ -535,13 +538,43 @@ export class WorkflowService {
           }
         }
 
+        let stepSuccess = execResult.success
+        let stepError = execResult.error
+        let assertionResults: import('./assertions/types').AssertionResult[] | undefined
+        let assertionsPassed: boolean | undefined
+
+        // Evaluate step assertions if defined
+        if (step.assertions && step.assertions.length > 0) {
+          assertionResults = evaluateAssertions(step.assertions, {
+            status: execResult.status,
+            body: execResult.responseBody,
+            headers: (execResult as { responseHeaders?: Record<string, string> }).responseHeaders,
+            durationMs,
+          })
+          assertionsPassed = assertionResults.every((r) => r.passed)
+          if (!assertionsPassed) {
+            stepSuccess = false
+            const failedMessages = assertionResults
+              .filter((r) => !r.passed)
+              .map((r) => r.message || `Assertion failed: ${r.type} ${r.operator}`)
+              .join('; ')
+            stepError = stepError ? `${stepError} | ${failedMessages}` : failedMessages
+          } else {
+            // When all assertions explicitly pass, consider the step successful (supports asserting expected error status e.g. 404/422)
+            stepSuccess = true
+            stepError = undefined
+          }
+        }
+
         const stepRunResult: StepRunResult = {
           stepId: step.id,
           endpointId: step.endpointId,
           status: execResult.status,
           durationMs,
-          error: execResult.error,
-          success: execResult.success,
+          error: stepError,
+          success: stepSuccess,
+          assertionResults,
+          assertionsPassed,
         }
 
         results.push(stepRunResult)
@@ -555,8 +588,8 @@ export class WorkflowService {
           endpointId: step.endpointId,
           status: execResult.status,
           durationMs,
-          error: execResult.error,
-          success: execResult.success,
+          error: stepError,
+          success: stepSuccess,
         })
 
         options?.onStepProgress?.(i, totalSteps, stepRunResult)
@@ -566,7 +599,7 @@ export class WorkflowService {
           break
         }
 
-        if (!execResult.success) {
+        if (!stepSuccess) {
           hasFailure = true
           if (workflow.mode === 'stop-on-failure') {
             break

@@ -1,3 +1,5 @@
+import type { Assertion, AssertionResult } from './assertions/types'
+
 export type WorkflowFailureMode = 'stop-on-failure' | 'continue-on-failure'
 
 // ---------------------------------------------------------------------------
@@ -13,6 +15,7 @@ export interface WorkflowExportStep {
   queryParams?: Record<string, string>
   headerParams?: Record<string, string>
   delayMs?: number
+  assertions?: Assertion[]
 }
 
 /** A workflow as represented in an export bundle (no `id`, `createdAt`, `lastRun*`) */
@@ -47,6 +50,7 @@ export interface WorkflowStep {
   queryParams?: Record<string, string>
   headerParams?: Record<string, string>
   delayMs?: number
+  assertions?: Assertion[]
 }
 
 export interface Workflow {
@@ -76,6 +80,8 @@ export interface StepRunResult {
   durationMs?: number
   error?: string
   success: boolean
+  assertionResults?: AssertionResult[]
+  assertionsPassed?: boolean
 }
 
 export interface WorkflowRunSummary {

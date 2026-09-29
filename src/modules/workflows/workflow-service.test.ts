@@ -506,3 +506,174 @@ describe('WorkflowService import / export', () => {
     expect(res.error.message).toContain('2.0')
   })
 })
+
+describe('Workflow Step Assertions', () => {
+  it('passes step and records assertion results when all assertions pass', async () => {
+    const executor = vi.fn().mockResolvedValue({
+      status: 200,
+      success: true,
+      responseBody: JSON.stringify({ success: true, user: { id: 101, name: 'Alice' } }),
+    })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Assertion Pass Flow',
+      mode: 'stop-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /user/101',
+          assertions: [
+            { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
+            { id: 'a2', type: 'jsonPath', target: '$.user.id', operator: 'equals', expected: 101 },
+          ],
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(runRes.value.status).toBe('success')
+    expect(runRes.value.completedSteps).toBe(1)
+    const stepResult = runRes.value.results[0]
+    expect(stepResult?.success).toBe(true)
+    expect(stepResult?.assertionsPassed).toBe(true)
+    expect(stepResult?.assertionResults).toHaveLength(2)
+  })
+
+  it('fails step and stops execution when an assertion fails under stop-on-failure', async () => {
+    const executor = vi.fn().mockImplementation(async (payload) => {
+      if (payload.step.id === 'step_1') {
+        return {
+          status: 200,
+          success: true,
+          responseBody: JSON.stringify({ count: 0 }),
+        }
+      }
+      return { status: 200, success: true }
+    })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Assertion Fail Stop Flow',
+      mode: 'stop-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /items',
+          assertions: [
+            { id: 'a1', type: 'jsonPath', target: '$.count', operator: 'greaterThan', expected: 0 },
+          ],
+        },
+        {
+          id: 'step_2',
+          endpointId: 'post /items/process',
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(runRes.value.status).toBe('failed')
+    expect(runRes.value.completedSteps).toBe(1)
+    expect(runRes.value.results).toHaveLength(1)
+    const step1 = runRes.value.results[0]
+    expect(step1?.success).toBe(false)
+    expect(step1?.assertionsPassed).toBe(false)
+    expect(step1?.error).toContain('Expected 0 > 0')
+    // Step 2 was never executed due to stop-on-failure
+    expect(executor).toHaveBeenCalledTimes(1)
+  })
+
+  it('continues execution when an assertion fails under continue-on-failure', async () => {
+    const executor = vi.fn().mockImplementation(async (payload) => {
+      if (payload.step.id === 'step_1') {
+        return {
+          status: 200,
+          success: true,
+          responseBody: JSON.stringify({ status: 'pending' }),
+        }
+      }
+      return { status: 200, success: true }
+    })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Assertion Continue Flow',
+      mode: 'continue-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /status',
+          assertions: [
+            { id: 'a1', type: 'jsonPath', target: '$.status', operator: 'equals', expected: 'ready' },
+          ],
+        },
+        {
+          id: 'step_2',
+          endpointId: 'post /notify',
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(runRes.value.status).toBe('failed')
+    expect(runRes.value.completedSteps).toBe(2)
+    expect(runRes.value.results).toHaveLength(2)
+    expect(runRes.value.results[0]?.success).toBe(false)
+    expect(runRes.value.results[1]?.success).toBe(true)
+    expect(executor).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves assertions across export and import', async () => {
+    const { service } = setup()
+    const wf = await service.create({
+      name: 'Export Assertions Flow',
+      mode: 'stop-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /data',
+          assertions: [
+            { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
+            { id: 'a2', type: 'type', target: '$.items', operator: 'equals', expected: 'array' },
+          ],
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const exported = await service.exportAll([wf.value.id])
+    expect(exported.ok).toBe(true)
+    if (!exported.ok) return
+    expect(exported.value.workflows[0]?.steps[0]?.assertions).toHaveLength(2)
+
+    // Delete and import back
+    await service.delete(wf.value.id)
+    const imported = await service.importAll(exported.value)
+    expect(imported.ok).toBe(true)
+
+    const list = await service.list()
+    expect(list.ok).toBe(true)
+    if (!list.ok) return
+    expect(list.value[0]?.steps[0]?.assertions).toEqual([
+      { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
+      { id: 'a2', type: 'type', target: '$.items', operator: 'equals', expected: 'array' },
+    ])
+  })
+})
+
