@@ -103,6 +103,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Configure global custom HTTP headers (e.g. X-Tenant-ID, X-Debug) automatically injected into all outgoing Swagger UI requests with dynamic variables.',
   },
+  {
+    id: 'scenarioRecorder',
+    title: 'API Scenario Recorder',
+    description:
+      'Floating toolbar over Swagger UI to record live request sequences, detect dynamic data dependencies, and convert multi-step execution flows into test workflows.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -169,6 +175,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       pinnedEndpoints: true,
       pasteCurl: true,
       globalHeaders: true,
+      scenarioRecorder: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

@@ -54,7 +54,7 @@ export interface EventPayload {
   COLLECTION_ENDPOINT_ADDED: { projectId: string; collectionId: string; endpointId: string }
   COLLECTION_ENDPOINT_REMOVED: { projectId: string; collectionId: string; endpointId: string }
 
-  // Workflows
+  // Workflows & Scenarios
   WORKFLOW_SAVED: { projectId: string; workflowId: string }
   WORKFLOW_DELETED: { projectId: string; workflowId: string }
   WORKFLOW_STARTED: { projectId: string; workflowId: string }
@@ -85,6 +85,18 @@ export interface EventPayload {
     totalSteps: number
     completedSteps: number
     durationMs: number
+  }
+  SCENARIO_RECORDING_STARTED: { projectId: string; startedAt: number; name: string }
+  SCENARIO_RECORDING_PAUSED: { projectId: string; stepCount: number }
+  SCENARIO_RECORDING_RESUMED: { projectId: string; stepCount: number }
+  SCENARIO_RECORDING_STOPPED: {
+    projectId: string
+    scenario: import('@/modules/workflows/recorder/types').Scenario
+  }
+  SCENARIO_STEP_CAPTURED: {
+    projectId: string
+    step: import('@/modules/workflows/recorder/types').RecordedStep
+    totalSteps: number
   }
 
   // Fake data / productivity

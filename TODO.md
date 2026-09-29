@@ -23,18 +23,19 @@
 ---
 
 ### ⏺️ Phase 2: API Scenario Recorder
-- [ ] **2.1. In-Page Recording Controls & State Machine**
-  - [ ] Implement Scenario Recording state machine (`idle`, `recording`, `paused`).
-  - [ ] Mount sleek floating in-page recorder bar (`#oac-scenario-recorder-bar`) in Swagger UI with Record, Pause, Stop buttons and live step counter (`● Recording: 3 steps`).
-- [ ] **2.2. Live Request & Response Capture**
-  - [ ] Hook into Swagger UI's `observeExecutions` to intercept native executions in chronological order.
-  - [ ] Capture HTTP method, resolved URL, path/query params, headers, request body, response status, and response body.
-- [ ] **2.3. Dynamic Value Detection Heuristics**
-  - [ ] Analyze JSON response properties (`id`, `uuid`, `access_token`, `token`, `key`) from step $N$ against subsequent step $N+1$ request paths, query strings, and payloads.
-  - [ ] Auto-suggest `{{variable}}` replacements and extraction bindings.
-- [ ] **2.4. In-Page Scenario Review Modal (`#oac-scenario-modal-host`)**
-  - [ ] Top-centered Shadow DOM modal to inspect captured steps, reorder via drag-and-drop, delete unwanted steps, and edit suggested variables.
-  - [ ] 1-Click "Convert to Workflow" action to persist directly into `WorkflowService`.
+- [x] **2.1. In-Page Recording Controls & State Machine**
+  - [x] Implement Scenario Recording state machine (`idle`, `recording`, `paused`) in `ScenarioRecorderService`.
+  - [x] Mount sleek floating in-page recorder bar (`#oac-scenario-bar-host`) in Swagger UI with Record, Pause, Resume, Stop buttons and live step counter (`● Recording (N)`).
+  - [x] Add configuration toggle (enable/disable) for Scenario Recorder in `ConfigPanel` and `SwaggerFeaturePreferences` with instant zero-reload DOM visibility switching.
+- [x] **2.2. Live Request & Response Capture**
+  - [x] Hook into Swagger UI's `observeExecutions` to intercept native executions in chronological order.
+  - [x] Capture HTTP method, resolved URL, path/query params, headers, request body, response status, and response body.
+- [x] **2.3. Dynamic Value Detection Heuristics**
+  - [x] Analyze JSON response properties (`id`, `uuid`, `access_token`, `token`, `key`) from step $N$ against subsequent step $N+1$ request paths, query strings, headers, and payloads.
+  - [x] Auto-suggest `{{variable}}` replacements and extraction bindings.
+- [x] **2.4. In-Page Scenario Review Modal (`#oac-scenario-modal-host`)**
+  - [x] Top-centered Shadow DOM modal (`ScenarioReviewModal`) to inspect captured steps, reorder via buttons, delete unwanted steps, and toggle suggested variables.
+  - [x] 1-Click "Convert to Workflow" action to convert and persist directly into `WorkflowService` (**1,001 tests passing**).
 
 ---
 

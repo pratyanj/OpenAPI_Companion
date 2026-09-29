@@ -54,6 +54,9 @@ import { mountSwaggerGlobalHeaders } from './swagger-global-headers'
 import { HeadersService } from '@/modules/headers'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
+import { ScenarioRecorderService } from '@/modules/workflows/recorder'
+import { mountScenarioModal } from './scenario-modal'
+import { mountSwaggerScenarioRecorder } from './swagger-scenario-recorder'
 import type { PaletteHandle } from './palette' // type-only: the module loads lazily
 import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
 import type { HistoryDetailHandle } from './history-detail'
@@ -273,6 +276,10 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-paste-curl.oac-disable-global-headers .oac-header-actions-bar {
       display: none !important;
     }
+    body.oac-disable-scenario-recorder #oac-scenario-bar-host,
+    body.oac-disable-scenario-recorder #oac-scenario-modal {
+      display: none !important;
+    }
   `
   doc.head?.appendChild(style)
 }
@@ -437,6 +444,7 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
   b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
+  b.classList.toggle('oac-disable-scenario-recorder', !features.scenarioRecorder)
 }
 
 let isBooting = false
@@ -599,6 +607,12 @@ export async function bootAgent(
     getBinding: getShortcutBinding,
   })
 
+  const scenarioRecorder = new ScenarioRecorderService({ projectId: meta.id, bus })
+  const scenarioModal = mountScenarioModal(workflows, bus, document)
+  const scenarioModalTheme = new ThemeManager({ storage, root: scenarioModal.themeRoot, bus })
+  void scenarioModalTheme.init()
+  mountSwaggerScenarioRecorder(adapter, scenarioRecorder, scenarioModal, bus, document)
+
   const syncActiveVariables = async (): Promise<void> => {
     const activeId = await environments.getActiveId()
     currentEnv = activeId
@@ -624,6 +638,9 @@ export async function bootAgent(
       }
       if (area === 'local' && Object.keys(changes).some((k) => k.includes('auth'))) {
         void syncAuthBadge()
+      }
+      if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+        void scenarioModalTheme.init()
       }
       if (
         area === 'local' &&

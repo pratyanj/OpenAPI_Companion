@@ -28,6 +28,8 @@ export interface SwaggerFeaturePreferences {
   pasteCurl: boolean
   /** Global custom HTTP debug headers injected into all outgoing requests. Default: true */
   globalHeaders: boolean
+  /** Floating scenario recorder toolbar over Swagger UI to record live API sequences and export to workflows. Default: true */
+  scenarioRecorder: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -44,6 +46,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   pinnedEndpoints: true,
   pasteCurl: true,
   globalHeaders: true,
+  scenarioRecorder: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */
