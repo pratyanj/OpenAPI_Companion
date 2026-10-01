@@ -23,13 +23,13 @@ function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
 }
 
 describe('ConfigPanel', () => {
-  it('renders all 14 swagger feature toggles with active count', async () => {
+  it('renders all 15 swagger feature toggles with active count', async () => {
     const settings = mockSettings()
     const bus = new EventBus()
     render(<ConfigPanel settings={settings} bus={bus} />)
 
     expect(await screen.findByText(/Swagger In-Page Features/i)).toBeInTheDocument()
-    expect(screen.getByText('14/14 Active')).toBeInTheDocument()
+    expect(screen.getByText('15/15 Active')).toBeInTheDocument()
 
     const mockDataCheckbox = screen.getByLabelText(
       /Toggle 1-Click Realistic Mock Data/i,
@@ -84,6 +84,11 @@ describe('ConfigPanel', () => {
       /Toggle API Scenario Recorder/i,
     ) as HTMLInputElement
     expect(scenarioCheckbox.checked).toBe(true)
+
+    const paginationCheckbox = screen.getByLabelText(
+      /Toggle Pagination Tester/i,
+    ) as HTMLInputElement
+    expect(paginationCheckbox.checked).toBe(true)
 
     expect(screen.getByText('Ctrl+Shift+V')).toBeInTheDocument()
     expect(screen.getByText('Alt+M')).toBeInTheDocument()

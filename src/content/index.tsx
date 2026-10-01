@@ -57,19 +57,41 @@ import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import { ScenarioRecorderService } from '@/modules/workflows/recorder'
 import { mountScenarioModal } from './scenario-modal'
 import { mountSwaggerScenarioRecorder } from './swagger-scenario-recorder'
-import type { PaletteHandle } from './palette' // type-only: the module loads lazily
-import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
-import type { HistoryDetailHandle } from './history-detail'
-import type {
-  ExtractionRuleModalHandle,
-  ExtractionRuleModalOpenOptions,
+import { mountPaginationModal } from './pagination-modal'
+import { mountSwaggerPaginationTester } from './swagger-pagination-tester'
+import { mountPalette, type PaletteHandle } from './palette'
+import {
+  mountPresetEditor,
+  type PresetEditorHandle,
+  type PresetEditorOpenOptions,
+} from './preset-editor'
+import { mountHistoryDetail, type HistoryDetailHandle } from './history-detail'
+import {
+  mountExtractionRuleModal,
+  type ExtractionRuleModalHandle,
+  type ExtractionRuleModalOpenOptions,
 } from './extraction-rule-modal'
-import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
-import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
-import type { ShortcutsModalHandle } from './shortcuts-modal'
-import type { VariablesModalHandle } from './variables-modal'
-import type { ProjectSwitcherModalHandle } from './project-switcher-modal'
-import type { FeedbackModalHandle, FeedbackModalOpenOptions } from './feedback-modal'
+import {
+  mountWorkflowEditor,
+  type WorkflowEditorHandle,
+  type WorkflowEditorOpenOptions,
+} from './workflow-editor'
+import {
+  mountWorkflowRunner,
+  type WorkflowRunnerHandle,
+  type WorkflowRunnerOpenOptions,
+} from './workflow-runner'
+import { mountShortcutsModal, type ShortcutsModalHandle } from './shortcuts-modal'
+import { mountVariablesModal, type VariablesModalHandle } from './variables-modal'
+import {
+  mountProjectSwitcherModal,
+  type ProjectSwitcherModalHandle,
+} from './project-switcher-modal'
+import {
+  mountFeedbackModal,
+  type FeedbackModalHandle,
+  type FeedbackModalOpenOptions,
+} from './feedback-modal'
 import type { RemoteProjectApi } from '@/sidepanel/bridge'
 import {
   DEFAULT_SHORTCUTS,
@@ -280,6 +302,10 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-scenario-recorder #oac-scenario-modal {
       display: none !important;
     }
+    body.oac-disable-pagination-tester .oac-pagination-btn,
+    body.oac-disable-pagination-tester #oac-pagination-modal-host {
+      display: none !important;
+    }
   `
   doc.head?.appendChild(style)
 }
@@ -445,6 +471,7 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
   b.classList.toggle('oac-disable-scenario-recorder', !features.scenarioRecorder)
+  b.classList.toggle('oac-disable-pagination-tester', !features.paginationTester)
 }
 
 let isBooting = false
@@ -613,6 +640,43 @@ export async function bootAgent(
   void scenarioModalTheme.init()
   mountSwaggerScenarioRecorder(adapter, scenarioRecorder, scenarioModal, bus, document)
 
+  const paginationExecutor = async (payload: {
+    endpointId: string
+    queryParams: Record<string, string>
+    headers?: Record<string, string>
+    pathParams?: Record<string, string>
+    body?: string
+    signal?: AbortSignal
+  }) => {
+    const res = await executeWorkflowStep(
+      adapter,
+      {
+        step: {
+          id: 'pagination_step',
+          endpointId: payload.endpointId,
+          name: payload.endpointId,
+        },
+        resolvedQueryParams: payload.queryParams,
+        resolvedPathParams: payload.pathParams,
+        resolvedHeaders: payload.headers,
+        resolvedBody: payload.body,
+      },
+      30000,
+      100,
+      payload.signal,
+    )
+    return {
+      status: res.status ?? (res.success ? 200 : 500),
+      responseBody: res.responseBody,
+      error: res.error,
+    }
+  }
+
+  const paginationModal = mountPaginationModal(workflows, paginationExecutor, bus, document)
+  const paginationModalTheme = new ThemeManager({ storage, root: paginationModal.themeRoot, bus })
+  void paginationModalTheme.init()
+  mountSwaggerPaginationTester(paginationModal, document)
+
   const syncActiveVariables = async (): Promise<void> => {
     const activeId = await environments.getActiveId()
     currentEnv = activeId
@@ -674,14 +738,11 @@ export async function bootAgent(
   const headersService = new HeadersService({ storage, projectId: meta.id })
   mountSwaggerGlobalHeaders(document, headersService)
 
-  // The palette is the only thing in the page that needs React, so it's loaded on
-  // FIRST USE — a static import would make every page in the browser pay ~170 kB
-  // of React up front just in case the user hits ⌘K.
+  // The palette is mounted on first use
   let palette: PaletteHandle | null = null
   const withPalette = async (): Promise<PaletteHandle | null> => {
     if (palette) return palette
     try {
-      const { mountPalette } = await import('./palette')
       palette = mountPalette(productivity)
       // Theme it from the shared preference, and re-read when the panel changes it
       // (separate contexts, so the bus doesn't cross the boundary — storage does).
@@ -694,16 +755,7 @@ export async function bootAgent(
       })
       return palette
     } catch (cause) {
-      // Reloading/rebuilding the extension ORPHANS this already-injected script:
-      // its chunk filenames are content-hashed, so the lazy import now 404s.
-      // Say so plainly instead of leaving an anonymous rejection in the console.
-      const orphaned = !chrome.runtime?.id
-      console.warn(
-        `${LOG} could not load the search palette${
-          orphaned ? ' — this tab is running an old copy of the extension.' : '.'
-        } Refresh the page (⌘⇧R) to pick up the current build.`,
-        cause,
-      )
+      console.warn(`${LOG} could not load the search palette.`, cause)
       return null
     }
   }
@@ -712,7 +764,6 @@ export async function bootAgent(
   const withPresetEditor = async (): Promise<PresetEditorHandle | null> => {
     if (presetEditor) return presetEditor
     try {
-      const { mountPresetEditor } = await import('./preset-editor')
       const requestPanelService: RequestPanelService = {
         listTemplates: () => requests.listTemplates(),
         saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
@@ -744,7 +795,6 @@ export async function bootAgent(
   const withHistoryDetail = async (): Promise<HistoryDetailHandle | null> => {
     if (historyDetail) return historyDetail
     try {
-      const { mountHistoryDetail } = await import('./history-detail')
       const historyPanelService: HistoryPanelService = {
         list: (query) => history.list(query ?? {}),
         get: (id) => history.get(id),
@@ -772,7 +822,6 @@ export async function bootAgent(
   const withExtractionRuleModal = async (): Promise<ExtractionRuleModalHandle | null> => {
     if (extractionRuleModal) return extractionRuleModal
     try {
-      const { mountExtractionRuleModal } = await import('./extraction-rule-modal')
       extractionRuleModal = mountExtractionRuleModal(
         environments,
         () => adapter.listEndpoints(),
@@ -796,7 +845,6 @@ export async function bootAgent(
   const withWorkflowEditor = async (): Promise<WorkflowEditorHandle | null> => {
     if (workflowEditor) return workflowEditor
     try {
-      const { mountWorkflowEditor } = await import('./workflow-editor')
       const requestPanelService: RequestPanelService = {
         listTemplates: () => requests.listTemplates(),
         saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
@@ -834,7 +882,6 @@ export async function bootAgent(
   const withWorkflowRunner = async (): Promise<WorkflowRunnerHandle | null> => {
     if (workflowRunner) return workflowRunner
     try {
-      const { mountWorkflowRunner } = await import('./workflow-runner')
       workflowRunner = mountWorkflowRunner(workflows, bus)
       const runnerTheme = new ThemeManager({ storage, root: workflowRunner.themeRoot, bus })
       await runnerTheme.init()
@@ -854,7 +901,6 @@ export async function bootAgent(
   const withShortcutsModal = async (): Promise<ShortcutsModalHandle | null> => {
     if (shortcutsModal) return shortcutsModal
     try {
-      const { mountShortcutsModal } = await import('./shortcuts-modal')
       shortcutsModal = mountShortcutsModal(settingsService, bus, document)
       const modalTheme = new ThemeManager({ storage, root: shortcutsModal.themeRoot, bus })
       await modalTheme.init()
@@ -874,7 +920,6 @@ export async function bootAgent(
   const withVariablesModal = async (): Promise<VariablesModalHandle | null> => {
     if (variablesModal) return variablesModal
     try {
-      const { mountVariablesModal } = await import('./variables-modal')
       variablesModal = mountVariablesModal(environments, bus, document)
       const modalTheme = new ThemeManager({ storage, root: variablesModal.themeRoot, bus })
       await modalTheme.init()
@@ -894,7 +939,6 @@ export async function bootAgent(
   const withProjectSwitcherModal = async (): Promise<ProjectSwitcherModalHandle | null> => {
     if (projectSwitcherModal) return projectSwitcherModal
     try {
-      const { mountProjectSwitcherModal } = await import('./project-switcher-modal')
       const localProjectApi: RemoteProjectApi = {
         rename: (name, targetId) => {
           const t = targetId || meta.id
@@ -942,7 +986,6 @@ export async function bootAgent(
   const withFeedbackModal = async (): Promise<FeedbackModalHandle | null> => {
     if (feedbackModal) return feedbackModal
     try {
-      const { mountFeedbackModal } = await import('./feedback-modal')
       feedbackModal = mountFeedbackModal(bus, document)
       const modalTheme = new ThemeManager({ storage, root: feedbackModal.themeRoot, bus })
       await modalTheme.init()

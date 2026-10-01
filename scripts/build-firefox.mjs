@@ -33,7 +33,7 @@ if (!existsSync(resolve(src, 'manifest.json'))) {
 rmSync(out, { recursive: true, force: true })
 cpSync(src, out, { recursive: true })
 
-// The MAIN-world content script (writes into Swagger's window.ui) can't use
+// 1. The MAIN-world content script (writes into Swagger's window.ui) can't use
 // crxjs's dynamic-import loader on Firefox: the page context is not allowed to
 // `import()` a moz-extension:// resource, so the script never runs and auth is
 // never written. Bundle it into ONE self-contained IIFE and reference it
@@ -50,11 +50,53 @@ await esbuild.build({
   logLevel: 'warning',
 })
 
+// 2. The ISOLATED-world content script.
+// crxjs's dynamic-import loader fails on Firefox (relative module imports
+// in content scripts resolve against the page origin, causing MIME-type/404 blocks).
+// Bundle it into ONE self-contained IIFE without dynamic chunk imports.
+const CONTENT_SCRIPT_FILE = 'firefox-content-script.js'
+const inlineCssPlugin = {
+  name: 'inline-css',
+  setup(build) {
+    build.onResolve({ filter: /\?inline$/ }, (args) => {
+      const cleanPath = args.path.replace(/\?inline$/, '')
+      const resolved = cleanPath.startsWith('@/')
+        ? resolve(root, 'src', cleanPath.slice(2))
+        : resolve(args.resolveDir, cleanPath)
+      return { path: resolved, namespace: 'inline-css' }
+    })
+    build.onLoad({ filter: /.*/, namespace: 'inline-css' }, (args) => {
+      const css = readFileSync(args.path, 'utf8')
+      return { contents: `export default ${JSON.stringify(css)}`, loader: 'js' }
+    })
+  },
+}
+
+await esbuild.build({
+  entryPoints: [resolve(root, 'src/content/index.tsx')],
+  bundle: true,
+  format: 'iife',
+  target: ['firefox128'],
+  alias: { '@': resolve(root, 'src') },
+  plugins: [inlineCssPlugin],
+  outfile: resolve(out, CONTENT_SCRIPT_FILE),
+  define: {
+    __BUILD_ID__: JSON.stringify(Date.now().toString(36)),
+    'process.env.NODE_ENV': '"production"',
+  },
+  legalComments: 'none',
+  logLevel: 'warning',
+})
+
 const manifest = JSON.parse(readFileSync(resolve(src, 'manifest.json'), 'utf8'))
 
-// Point the world:"MAIN" content script at the self-contained bundle.
+// Point content scripts at the self-contained bundles.
 for (const cs of manifest.content_scripts ?? []) {
-  if (cs.world === 'MAIN') cs.js = [MAIN_WORLD_FILE]
+  if (cs.world === 'MAIN') {
+    cs.js = [MAIN_WORLD_FILE]
+  } else {
+    cs.js = [CONTENT_SCRIPT_FILE]
+  }
 }
 
 // 1. Chrome-only keys.

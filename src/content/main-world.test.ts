@@ -302,4 +302,28 @@ describe('main-world execute parameter synchronization', () => {
       'patch',
     ])
   })
+
+  it('safely handles removeChild and insertBefore without throwing when child is not a child of parent', () => {
+    const parentA = document.createElement('div')
+    const parentB = document.createElement('div')
+    const child = document.createElement('span')
+    parentB.appendChild(child)
+
+    // Normally parentA.removeChild(child) would throw DOMException: The node to be removed is not a child of this node
+    expect(() => {
+      parentA.removeChild(child)
+    }).not.toThrow()
+
+    // child should be detached from parentB
+    expect(child.parentNode).toBeNull()
+
+    // insertBefore with invalid refNode
+    const newChild = document.createElement('p')
+    const externalRef = document.createElement('em')
+    expect(() => {
+      parentA.insertBefore(newChild, externalRef)
+    }).not.toThrow()
+    expect(parentA.contains(newChild)).toBe(true)
+  })
 })
+

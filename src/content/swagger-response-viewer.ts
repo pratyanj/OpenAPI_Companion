@@ -581,8 +581,9 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     }
 
     // Identify native code container to hide/show
+    const highlightWrapper = cell.querySelector<HTMLElement>('.highlight-code')
     const nativeCodeContainer =
-      cell.querySelector<HTMLElement>('.highlight-code') ||
+      highlightWrapper ||
       cell.querySelector<HTMLElement>('pre.microlight') ||
       cell.querySelector<HTMLElement>('pre')
     if (!nativeCodeContainer) return

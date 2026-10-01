@@ -109,6 +109,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Floating toolbar over Swagger UI to record live request sequences, detect dynamic data dependencies, and convert multi-step execution flows into test workflows.',
   },
+  {
+    id: 'paginationTester',
+    title: 'Pagination Tester',
+    description:
+      '1-Click automated pagination testing to validate page sizes, test multi-page progression, detect duplicate records, and inspect aggregate results.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -176,6 +182,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       pasteCurl: true,
       globalHeaders: true,
       scenarioRecorder: true,
+      paginationTester: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

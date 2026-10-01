@@ -55,20 +55,20 @@
 ---
 
 ### 📄 Phase 4: Pagination Tester
-- [ ] **4.1. Swagger Pagination Parameter Auto-Detection**
-  - [ ] Scan operation parameters and OpenAPI schemas for known pagination keys (`page`, `page_number`, `pageNo`, `limit`, `page_size`, `per_page`, `offset`, `cursor`, `next_cursor`, `continuation_token`).
-  - [ ] Auto-detect pagination strategy: `Page-based`, `Limit/Offset`, or `Cursor-based`.
-- [ ] **4.2. Automated Request Progression Runner**
-  - [ ] Configurable parameters: initial page/offset, page size, max pages limit (guard against infinite loops), and delay between requests.
-  - [ ] Multi-page execution loop driving the existing execution pipeline.
-  - [ ] Smart stop conditions: empty response array, repeated cursor, or fewer items than page size.
-- [ ] **4.3. Integrity Analysis & Heuristic Checks**
-  - [ ] Duplicate record detection: hash/compare record IDs across pages to flag repeated records.
-  - [ ] Page size validation: verify actual returned record count matches requested page size (except final page).
-  - [ ] Cursor progression validation: verify extracted next-cursor is correctly passed to subsequent calls.
-  - [ ] Missing record heuristics: detect potential ID sequence gaps.
-- [ ] **4.4. Tabular Pagination Report Viewer**
-  - [ ] Modal summary displaying total pages tested, total records collected, pass/warning badges, and diagnostic anomalies.
+- [x] **4.1. Swagger Pagination Parameter Auto-Detection (`src/modules/pagination/detector.ts`)**
+  - [x] Scan operation parameters and OpenAPI schemas for known pagination keys (`page`, `page_number`, `pageNo`, `limit`, `page_size`, `per_page`, `offset`, `cursor`, `next_cursor`, `continuation_token`).
+  - [x] Auto-detect pagination strategy: `Page-based`, `Limit/Offset`, or `Cursor-based`.
+- [x] **4.2. Automated Request Progression Runner (`src/modules/pagination/runner.ts`)**
+  - [x] Configurable parameters: initial page/offset, page size, max pages limit (guard against infinite loops), and delay between requests.
+  - [x] Multi-page execution loop driving the existing execution pipeline.
+  - [x] Smart stop conditions: empty response array, repeated cursor, or fewer items than page size.
+- [x] **4.3. Integrity Analysis & Heuristic Checks (`src/modules/pagination/integrity.ts`)**
+  - [x] Duplicate record detection: hash/compare record IDs across pages to flag repeated records.
+  - [x] Page size validation: verify actual returned record count matches requested page size (except final page).
+  - [x] Cursor progression validation: verify extracted next-cursor is correctly passed to subsequent calls.
+  - [x] Missing record heuristics: detect potential ID sequence gaps.
+- [x] **4.4. Tabular Pagination Report Viewer (`PaginationTesterModal.tsx` & `swagger-pagination-tester.ts`)**
+  - [x] Modal summary displaying total pages tested, total records collected, pass/warning badges, and diagnostic anomalies (**1,041 tests passing**).
 
 ---
 

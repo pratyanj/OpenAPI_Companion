@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ok } from '@/types'
 import { WorkflowRunnerModal } from './WorkflowRunnerModal'
 import type { Workflow, WorkflowExecutionOptions } from './types'
@@ -25,9 +25,7 @@ describe('WorkflowRunnerModal', () => {
   }
 
   it('renders runner modal, runs workflow, and shows assertion badges', async () => {
-    let capturedOptions: WorkflowExecutionOptions | undefined
     const onRun = vi.fn(async (_id: string, opts?: WorkflowExecutionOptions) => {
-      capturedOptions = opts
       opts?.onStepProgress?.(0, 1, {
         stepId: 'step_1',
         endpointId: 'post /api/orders',
@@ -36,8 +34,8 @@ describe('WorkflowRunnerModal', () => {
         success: true,
         assertionsPassed: true,
         assertionResults: [
-          { passed: true, type: 'status', operator: 'equals', expected: 201, actual: 201 },
-          { passed: true, type: 'responseTime', operator: 'lessThan', expected: 500, actual: 142 },
+          { assertionId: 'a1', passed: true, type: 'status', operator: 'equals', expected: 201, actual: 201 },
+          { assertionId: 'a2', passed: true, type: 'responseTime', operator: 'lessThan', expected: 500, actual: 142 },
         ],
         extractedVariables: { orderId: 'ord_9901' },
         responseBody: JSON.stringify({ id: 'ord_9901', status: 'created' }),
@@ -56,8 +54,8 @@ describe('WorkflowRunnerModal', () => {
             success: true,
             assertionsPassed: true,
             assertionResults: [
-              { passed: true, type: 'status', operator: 'equals', expected: 201, actual: 201 },
-              { passed: true, type: 'responseTime', operator: 'lessThan', expected: 500, actual: 142 },
+              { assertionId: 'a1', passed: true, type: 'status' as const, operator: 'equals' as const, expected: 201, actual: 201 },
+              { assertionId: 'a2', passed: true, type: 'responseTime' as const, operator: 'lessThan' as const, expected: 500, actual: 142 },
             ],
             extractedVariables: { orderId: 'ord_9901' },
             responseBody: JSON.stringify({ id: 'ord_9901', status: 'created' }),
@@ -99,11 +97,9 @@ describe('WorkflowRunnerModal', () => {
   })
 
   it('displays interactive prompt banner on step failure under ask-on-failure mode', async () => {
-    let capturedOptions: WorkflowExecutionOptions | undefined
     let promptPromise: Promise<'continue' | 'stop'> | undefined
 
     const onRun = vi.fn(async (_id: string, opts?: WorkflowExecutionOptions) => {
-      capturedOptions = opts
       // Simulate step failure and triggering prompt
       promptPromise = opts?.onFailurePrompt?.(
         0,
@@ -113,7 +109,7 @@ describe('WorkflowRunnerModal', () => {
       const action = await promptPromise
       return ok({
         workflowId: 'wf_runner_test',
-        status: (action === 'continue' ? 'failed' : 'cancelled') as const,
+        status: action === 'continue' ? ('failed' as const) : ('cancelled' as const),
         totalSteps: 1,
         completedSteps: 1,
         results: [],
