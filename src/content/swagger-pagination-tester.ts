@@ -121,11 +121,26 @@ export function mountSwaggerPaginationTester(
   function scanAndMount(root: ParentNode = doc): number {
     let mountedCount = 0
 
-    // Look for operation blocks
-    const blocks = Array.from(root.querySelectorAll('.opblock'))
+    // Collect candidate blocks from root, closest .opblock ancestor, and descendants
+    const targetEl = root instanceof Element ? root : null
+    const candidateBlocks: Element[] = []
+
+    if (targetEl?.classList.contains('opblock')) {
+      candidateBlocks.push(targetEl)
+    }
+    const closest = targetEl?.closest('.opblock')
+    if (closest) {
+      candidateBlocks.push(closest)
+    }
+    if ('querySelectorAll' in root) {
+      candidateBlocks.push(...Array.from(root.querySelectorAll('.opblock')))
+    }
+
+    const blocks = Array.from(new Set(candidateBlocks))
 
     for (const block of blocks) {
-      if (block.hasAttribute(ATTACHED_ATTR)) continue
+      // Check if button is already present and attached in the DOM
+      if (block.querySelector('.oac-pagination-btn')) continue
 
       const endpointId = endpointIdOf(block)
       if (!endpointId) continue
@@ -139,10 +154,10 @@ export function mountSwaggerPaginationTester(
         detected !== null || (method === 'GET' && params.some((p) => p.in === 'query'))
       if (!isCandidate) continue
 
-      // Look for button container: Try-it-out wrapper or Execute wrapper
+      // Look for button container: Try-it-out wrapper, Parameters container, or Summary
       const tryOutWrapper =
         block.querySelector('.try-out') ??
-        block.querySelector('.execute-wrapper') ??
+        block.querySelector('.parameters-container') ??
         block.querySelector('.opblock-summary')
 
       if (!tryOutWrapper) continue
@@ -185,13 +200,37 @@ export function mountSwaggerPaginationTester(
   // Initial scan
   scanAndMount(doc)
 
-  // Watch for newly opened or rendered operation blocks
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+  // Watch for newly opened or rendered operation blocks and React DOM reconciliations
   const observer = new MutationObserver((mutations) => {
+    let shouldScan = false
     for (const mut of mutations) {
-      if (mut.type === 'childList' && mut.addedNodes.length > 0) {
-        scanAndMount(mut.target as ParentNode)
+      if (mut.type === 'childList') {
+        for (let i = 0; i < mut.removedNodes.length; i++) {
+          const node = mut.removedNodes[i] as HTMLElement
+          if (
+            node.nodeType === 1 &&
+            (node.classList?.contains('oac-pagination-btn') ||
+              node.querySelector?.('.oac-pagination-btn'))
+          ) {
+            shouldScan = true
+            break
+          }
+        }
+        if (mut.addedNodes.length > 0) {
+          shouldScan = true
+        }
       }
+      if (shouldScan) break
     }
+
+    if (!shouldScan) return
+
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      scanAndMount(doc)
+    }, 50)
   })
 
   observer.observe(doc.body || doc.documentElement, {
@@ -202,6 +241,7 @@ export function mountSwaggerPaginationTester(
   return {
     scanAndMount,
     dispose: () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       observer.disconnect()
       doc.getElementById(STYLE_ID)?.remove()
       doc.querySelectorAll(`[${ATTACHED_ATTR}]`).forEach((el) => {
