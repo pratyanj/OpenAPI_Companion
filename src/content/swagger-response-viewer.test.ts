@@ -302,12 +302,16 @@ describe('swagger-response-viewer', () => {
     expect(expandAllBtn.style.display).toBe('')
     expect(collapseAllBtn.style.display).toBe('')
 
+    const rawView = document.querySelector<HTMLElement>('.oac-resp-raw-view')!
+
     // Click Raw
     rawBtn.click()
     expect(rawBtn.classList.contains('active')).toBe(true)
     expect(treeBtn.classList.contains('active')).toBe(false)
     expect(treeView.style.display).toBe('none')
-    expect(nativeCode.classList.contains('oac-swagger-raw-hidden')).toBe(false)
+    expect(rawView.style.display).toBe('block')
+    // Native Swagger UI element remains hidden and untouched
+    expect(nativeCode.classList.contains('oac-swagger-raw-hidden')).toBe(true)
     // Tree controls must be hidden in Raw mode
     expect(expandAllBtn.style.display).toBe('none')
     expect(collapseAllBtn.style.display).toBe('none')
@@ -316,6 +320,7 @@ describe('swagger-response-viewer', () => {
     treeBtn.click()
     expect(treeBtn.classList.contains('active')).toBe(true)
     expect(treeView.style.display).toBe('block')
+    expect(rawView.style.display).toBe('none')
     expect(nativeCode.classList.contains('oac-swagger-raw-hidden')).toBe(true)
     // Tree controls restored
     expect(expandAllBtn.style.display).toBe('')
@@ -324,7 +329,7 @@ describe('swagger-response-viewer', () => {
     handle.dispose()
   })
 
-  it('supports search, match counting, and navigation inside Raw view', () => {
+  it('supports search, match counting, and navigation inside Raw view without mutating native DOM', () => {
     const sample = JSON.stringify({
       status: 'active',
       role: 'admin',
@@ -345,14 +350,17 @@ describe('swagger-response-viewer', () => {
     const matchBadge = document.querySelector<HTMLElement>('.oac-resp-match-badge')!
     const prevBtn = document.querySelector<HTMLButtonElement>('.oac-resp-nav-btn.prev')!
     const nextBtn = document.querySelector<HTMLButtonElement>('.oac-resp-nav-btn.next')!
+    const rawView = document.querySelector<HTMLElement>('.oac-resp-raw-view')!
     const nativeCode = document.querySelector<HTMLElement>('.highlight-code')!
 
     // Search for "admin" in Raw view
     searchInput.value = 'admin'
     searchInput.dispatchEvent(new Event('input'))
 
-    const rawMarks = nativeCode.querySelectorAll('mark.oac-json-match')
+    const rawMarks = rawView.querySelectorAll('mark.oac-json-match')
     expect(rawMarks.length).toBe(2) // 1 in 'role: admin', 1 in 'Active administrator'
+    // Native Swagger DOM must remain completely untouched
+    expect(nativeCode.querySelectorAll('mark.oac-json-match').length).toBe(0)
     expect(matchBadge.textContent).toBe('1 / 2')
 
     // Navigate to next match
@@ -366,6 +374,7 @@ describe('swagger-response-viewer', () => {
     // Clear search
     const clearBtn = document.querySelector<HTMLButtonElement>('.oac-resp-search-clear')!
     clearBtn.click()
+    expect(rawView.querySelectorAll('mark.oac-json-match').length).toBe(0)
     expect(nativeCode.querySelectorAll('mark.oac-json-match').length).toBe(0)
 
     handle.dispose()

@@ -370,6 +370,30 @@ body.oac-disable-response-json-search .oac-swagger-raw-hidden {
   color: #f1f5f9;
 }
 
+.oac-resp-raw-view {
+  display: none;
+  padding: 12px 16px;
+  max-height: 520px;
+  overflow: auto;
+  font-family: 'Fira Code', 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  background: #292b2c;
+  color: #f1f5f9;
+  margin: 0 !important;
+  border-radius: 0 0 4px 4px;
+}
+
+.oac-resp-raw-view code {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
 .oac-tree-row {
   display: flex;
   align-items: baseline;
@@ -514,7 +538,9 @@ function ensureStyles(doc: Document): void {
 
 /** Extracts clean response body text from a cell. */
 export function extractRawJsonText(cell: Element): string | null {
-  const pre = cell.querySelector('pre, .microlight, .highlight-code pre, .highlight-code')
+  const pre = cell.querySelector(
+    '.highlight-code pre, .highlight-code code, .highlight-code, pre.microlight, pre:not(.oac-resp-raw-view)',
+  )
   if (!pre) return null
 
   const clone = pre.cloneNode(true) as Element
@@ -739,12 +765,19 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
     const rootNode = renderJsonNode(parsed, '', true, doc)
     treeView.appendChild(rootNode)
 
+    // --- DEDICATED RAW VIEW (zero touch on native Swagger DOM) ---
+    const rawView = doc.createElement('pre')
+    rawView.className = 'oac-resp-raw-view'
+    const rawCode = doc.createElement('code')
+    rawCode.textContent = JSON.stringify(parsed, null, 2)
+    rawView.appendChild(rawCode)
+
     // Method to dynamically update viewer when a new response arrives for the same endpoint
     ;(
       container as HTMLElement & {
         __oacUpdateResponse?: (newParsed: unknown, _newRawText: string) => void
       }
-    ).__oacUpdateResponse = (newParsed: unknown, _newRawText: string) => {
+    ).__oacUpdateResponse = (newParsed: unknown, newRawText: string) => {
       parsed = newParsed
       csvExportItem.disabled = !isCsvExportable(newParsed)
       csvExportItem.title = isCsvExportable(newParsed)
@@ -753,11 +786,15 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       treeView.innerHTML = ''
       const newRoot = renderJsonNode(newParsed, '', true, doc)
       treeView.appendChild(newRoot)
+      rawCode.textContent = typeof newParsed === 'object' && newParsed !== null
+        ? JSON.stringify(newParsed, null, 2)
+        : newRawText
       updateMatchHighlighting(searchInput.value)
     }
 
     container.appendChild(toolbar)
     container.appendChild(treeView)
+    container.appendChild(rawView)
 
     // Insert container before nativeCodeContainer
     nativeCodeContainer.parentElement?.insertBefore(container, nativeCodeContainer)
@@ -775,12 +812,12 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       }
       treeView.normalize()
 
-      const rawMarks = nativeCodeContainer!.querySelectorAll('mark.oac-json-match')
+      const rawMarks = rawView.querySelectorAll('mark.oac-json-match')
       for (const m of Array.from(rawMarks)) {
         const textNode = doc.createTextNode(m.textContent || '')
         m.replaceWith(textNode)
       }
-      nativeCodeContainer!.normalize()
+      rawView.normalize()
     }
 
     function updateMatchHighlighting(query: string): void {
@@ -836,18 +873,8 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
           }
         }
       } else {
-        // Raw view search
-        const rawTarget = nativeCodeContainer!.querySelector('pre, code') || nativeCodeContainer!
-        const walker = doc.createTreeWalker(rawTarget as Node, NodeFilter.SHOW_TEXT, {
-          acceptNode(node) {
-            if (
-              node.parentElement?.closest('button, .copy-to-clipboard, .download-contents, svg')
-            ) {
-              return NodeFilter.FILTER_REJECT
-            }
-            return NodeFilter.FILTER_ACCEPT
-          },
-        })
+        // Raw view search inside our dedicated rawCode container (never touches Swagger UI's native DOM)
+        const walker = doc.createTreeWalker(rawCode as Node, NodeFilter.SHOW_TEXT)
         const textNodes: Text[] = []
         let textNode: Node | null
         while ((textNode = walker.nextNode())) {
@@ -973,7 +1000,7 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       treeViewBtn.classList.add('active')
       rawViewBtn.classList.remove('active')
       treeView.style.display = 'block'
-      nativeCodeContainer.classList.add('oac-swagger-raw-hidden')
+      rawView.style.display = 'none'
       // Show tree controls in Tree mode
       expandAllBtn.style.display = ''
       collapseAllBtn.style.display = ''
@@ -986,7 +1013,7 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       rawViewBtn.classList.add('active')
       treeViewBtn.classList.remove('active')
       treeView.style.display = 'none'
-      nativeCodeContainer.classList.remove('oac-swagger-raw-hidden')
+      rawView.style.display = 'block'
       // Hide tree controls in Raw mode
       expandAllBtn.style.display = 'none'
       collapseAllBtn.style.display = 'none'
@@ -1143,8 +1170,6 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       containers.forEach((c) => c.remove())
       const hidden = doc.querySelectorAll('.oac-swagger-raw-hidden')
       hidden.forEach((h) => h.classList.remove('oac-swagger-raw-hidden'))
-      const marks = doc.querySelectorAll('mark.oac-json-match')
-      marks.forEach((m) => m.replaceWith(doc.createTextNode(m.textContent || '')))
       const cells = doc.querySelectorAll(`[${ATTACHED_ATTR}]`)
       cells.forEach((c) => c.removeAttribute(ATTACHED_ATTR))
     },

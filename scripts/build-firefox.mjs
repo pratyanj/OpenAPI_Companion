@@ -14,7 +14,7 @@
  * ⚠️ Runtime behaviour on Firefox is NOT verified in CI (no Firefox). See
  * FIREFOX.md for what to check and the known crxjs caveats.
  */
-import { readFileSync, writeFileSync, rmSync, cpSync, existsSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync, cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import esbuild from 'esbuild'
@@ -32,6 +32,15 @@ if (!existsSync(resolve(src, 'manifest.json'))) {
 // Fresh copy of the Chrome build.
 rmSync(out, { recursive: true, force: true })
 cpSync(src, out, { recursive: true })
+
+// Find compiled Tailwind CSS artifact produced by Vite
+const assetsDir = resolve(src, 'assets')
+const compiledCssFile = existsSync(assetsDir)
+  ? readdirSync(assetsDir).find((f) => f.startsWith('index-') && f.endsWith('.css'))
+  : null
+const compiledCss = compiledCssFile
+  ? readFileSync(resolve(assetsDir, compiledCssFile), 'utf8')
+  : ''
 
 // 1. The MAIN-world content script (writes into Swagger's window.ui) can't use
 // crxjs's dynamic-import loader on Firefox: the page context is not allowed to
@@ -66,7 +75,9 @@ const inlineCssPlugin = {
       return { path: resolved, namespace: 'inline-css' }
     })
     build.onLoad({ filter: /.*/, namespace: 'inline-css' }, (args) => {
-      const css = readFileSync(args.path, 'utf8')
+      // Use the fully compiled Tailwind CSS from Vite if injecting index.css
+      const isIndexCss = args.path.endsWith('index.css')
+      const css = isIndexCss && compiledCss ? compiledCss : readFileSync(args.path, 'utf8')
       return { contents: `export default ${JSON.stringify(css)}`, loader: 'js' }
     })
   },
@@ -83,6 +94,7 @@ await esbuild.build({
   define: {
     __BUILD_ID__: JSON.stringify(Date.now().toString(36)),
     'process.env.NODE_ENV': '"production"',
+    'process.env.VITE_FEEDBACK_ENDPOINT': '""',
   },
   legalComments: 'none',
   logLevel: 'warning',
@@ -90,14 +102,22 @@ await esbuild.build({
 
 const manifest = JSON.parse(readFileSync(resolve(src, 'manifest.json'), 'utf8'))
 
-// Point content scripts at the self-contained bundles.
-for (const cs of manifest.content_scripts ?? []) {
-  if (cs.world === 'MAIN') {
-    cs.js = [MAIN_WORLD_FILE]
-  } else {
-    cs.js = [CONTENT_SCRIPT_FILE]
-  }
-}
+// Firefox MV3 does NOT support "world": "MAIN" in manifest.content_scripts.
+// The isolated content script runs firefox-content-script.js, which injects
+// firefox-main-world.js into the page execution context via a <script> tag.
+manifest.content_scripts = [
+  {
+    matches: ['http://*/*', 'https://*/*'],
+    js: [CONTENT_SCRIPT_FILE],
+    run_at: 'document_idle',
+  },
+]
+
+manifest.web_accessible_resources = manifest.web_accessible_resources ?? []
+manifest.web_accessible_resources.push({
+  matches: ['http://*/*', 'https://*/*'],
+  resources: [MAIN_WORLD_FILE],
+})
 
 // 1. Chrome-only keys.
 delete manifest.minimum_chrome_version

@@ -28,7 +28,7 @@ export const PENDING_FEEDBACK_KEY = 'oac_pending_feedback'
  * Can be configured via VITE_FEEDBACK_ENDPOINT in .env.local or chrome.storage.local.
  */
 export const DEFAULT_FEEDBACK_ENDPOINT =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FEEDBACK_ENDPOINT) ||
+  (typeof process !== 'undefined' && process.env?.VITE_FEEDBACK_ENDPOINT) ||
   'https://formsubmit.co/ajax/your-email-placeholder'
 
 /** Gathers platform & runtime metadata for diagnostics. */

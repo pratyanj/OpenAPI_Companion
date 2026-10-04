@@ -214,78 +214,73 @@ export function PaginationTesterModal({
   return (
     <Dialog
       onClose={isRunning ? handleStop : onClose}
-      title=""
-      size="xl"
-    >
-      <div className="flex flex-col gap-4 font-sans text-xs">
-        {/* Header Title & Badges */}
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <WorkflowIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-text">Pagination Tester</h2>
-                <span
-                  className={cn(
-                    'px-2 py-0.5 rounded text-[11px] font-semibold border',
-                    methodBadgeColor(method),
-                  )}
-                >
-                  {method}
-                </span>
-                <span className="font-mono text-xs text-text-muted">{path}</span>
-              </div>
-              <p className="text-[11px] text-text-muted">
-                Execute automated multi-page requests, validate page sizes, and detect duplicate
-                records.
-              </p>
-            </div>
+      title={
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <WorkflowIcon className="w-4 h-4" />
           </div>
-
-          {/* Action Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-surface-hover rounded-lg border border-border">
-            <button
-              type="button"
-              onClick={() => setActiveTab('config')}
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-text">Pagination Tester</span>
+            <span
               className={cn(
-                'px-3 py-1 rounded text-xs font-medium transition-colors',
-                activeTab === 'config'
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text',
+                'px-1.5 py-0.5 rounded text-[10px] font-semibold border',
+                methodBadgeColor(method),
               )}
             >
-              Config
-            </button>
-            <button
-              type="button"
-              disabled={!report}
-              onClick={() => setActiveTab('results')}
-              className={cn(
-                'px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                activeTab === 'results'
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text',
-              )}
-            >
-              Report
-            </button>
-            <button
-              type="button"
-              disabled={!report}
-              onClick={() => setActiveTab('records')}
-              className={cn(
-                'px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-                activeTab === 'records'
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text',
-              )}
-            >
-              Pages ({report?.steps.length ?? 0})
-            </button>
+              {method}
+            </span>
+            <span className="font-mono text-xs text-text-muted">{path}</span>
           </div>
         </div>
+      }
+      actions={
+        <div className="flex items-center gap-1 mr-2 p-1 bg-surface-hover rounded-lg border border-border">
+          <button
+            type="button"
+            onClick={() => setActiveTab('config')}
+            className={cn(
+              'px-2.5 py-1 rounded text-xs font-medium transition-colors',
+              activeTab === 'config'
+                ? 'bg-surface text-text shadow-sm'
+                : 'text-text-muted hover:text-text',
+            )}
+          >
+            Config
+          </button>
+          <button
+            type="button"
+            disabled={!report}
+            onClick={() => setActiveTab('results')}
+            className={cn(
+              'px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+              activeTab === 'results'
+                ? 'bg-surface text-text shadow-sm'
+                : 'text-text-muted hover:text-text',
+            )}
+          >
+            Report
+          </button>
+          <button
+            type="button"
+            disabled={!report}
+            onClick={() => setActiveTab('records')}
+            className={cn(
+              'px-2.5 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+              activeTab === 'records'
+                ? 'bg-surface text-text shadow-sm'
+                : 'text-text-muted hover:text-text',
+            )}
+          >
+            Pages ({report?.steps.length ?? 0})
+          </button>
+        </div>
+      }
+      size="xl"
+    >
+      <div className="flex flex-col gap-3 font-sans text-xs">
+        <p className="text-[11px] text-text-muted -mt-1">
+          Execute automated multi-page requests, validate page sizes, and detect duplicate records.
+        </p>
 
         {/* Live Running Progress Banner */}
         {isRunning && progress && (

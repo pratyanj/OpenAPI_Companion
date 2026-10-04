@@ -60,6 +60,7 @@ import { mountSwaggerScenarioRecorder } from './swagger-scenario-recorder'
 import { mountPaginationModal } from './pagination-modal'
 import { mountSwaggerPaginationTester } from './swagger-pagination-tester'
 import { SpecService } from '@/modules/spec-detector/spec-service'
+import { normalizeOpenApiSpec } from '@/modules/spec-detector'
 import { mountSpecChangeModal } from './spec-change-modal'
 import { createSwaggerSpecDetector } from './swagger-spec-detector'
 import { mountPalette, type PaletteHandle } from './palette'
@@ -798,7 +799,6 @@ export async function bootAgent(
       if (rawSpec) {
         const diff = await specService.checkSpecForChanges(rawSpec)
         if (diff && diff.hasChanges) {
-          const { normalizeOpenApiSpec } = await import('@/modules/spec-detector')
           const currentNormalized = normalizeOpenApiSpec(rawSpec)
           specDetector?.showBanner(diff, currentNormalized)
         }
@@ -1641,7 +1641,53 @@ export async function bootAgent(
   pushState() // initial mirror for any already-open panel
 }
 
+function injectPageSafeguard(doc: Document = document): void {
+  try {
+    const script = doc.createElement('script')
+    script.textContent = `
+      if (typeof Node === 'function' && Node.prototype && !window.__oacNodeSafeguard) {
+        window.__oacNodeSafeguard = true;
+        const origRemoveChild = Node.prototype.removeChild;
+        Node.prototype.removeChild = function(child) {
+          if (child && child.parentNode !== this) {
+            if (child.parentNode) return child.parentNode.removeChild(child);
+            return child;
+          }
+          return origRemoveChild.call(this, child);
+        };
+        const origInsertBefore = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function(newNode, refNode) {
+          if (refNode && refNode.parentNode !== this) {
+            return this.appendChild(newNode);
+          }
+          return origInsertBefore.call(this, newNode, refNode);
+        };
+      }
+    `
+    ;(doc.head || doc.documentElement)?.appendChild(script)
+    script.remove()
+  } catch {
+    /* ignore */
+  }
+}
+
+function injectFirefoxMainWorld(doc: Document = document): void {
+  // If the browser already ran MAIN world (Chrome native world: "MAIN"), it sets dataset.oacMainWorld
+  if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
+  try {
+    const url = chrome.runtime.getURL('firefox-main-world.js')
+    const script = doc.createElement('script')
+    script.src = url
+    script.onload = () => script.remove()
+    ;(doc.head || doc.documentElement)?.appendChild(script)
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function boot(): Promise<void> {
+  injectPageSafeguard(document)
+  injectFirefoxMainWorld(document)
   console.info(`${LOG} content agent loaded:`, location.href)
   const bridge = new SwaggerBridge()
   const adapter = new SwaggerUiAdapter(bridge)

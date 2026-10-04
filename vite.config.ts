@@ -14,7 +14,10 @@ import manifest from './manifest.config'
 const BUILD_ID = Date.now().toString(36)
 
 export default defineConfig({
-  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+    'process.env.VITE_FEEDBACK_ENDPOINT': JSON.stringify(process.env.VITE_FEEDBACK_ENDPOINT || ''),
+  },
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
