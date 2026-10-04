@@ -115,6 +115,12 @@ const FEATURES: FeatureItem[] = [
     description:
       '1-Click automated pagination testing to validate page sizes, test multi-page progression, detect duplicate records, and inspect aggregate results.',
   },
+  {
+    id: 'specChangeDetector',
+    title: 'Spec Change Detector & Impact Analysis',
+    description:
+      'Detects OpenAPI/Swagger contract modifications, highlights breaking changes with impact warnings on workflows and presets, and provides an interactive diff review modal.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -183,6 +189,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       globalHeaders: true,
       scenarioRecorder: true,
       paginationTester: true,
+      specChangeDetector: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

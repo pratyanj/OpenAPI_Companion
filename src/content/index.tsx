@@ -59,6 +59,9 @@ import { mountScenarioModal } from './scenario-modal'
 import { mountSwaggerScenarioRecorder } from './swagger-scenario-recorder'
 import { mountPaginationModal } from './pagination-modal'
 import { mountSwaggerPaginationTester } from './swagger-pagination-tester'
+import { SpecService } from '@/modules/spec-detector/spec-service'
+import { mountSpecChangeModal } from './spec-change-modal'
+import { createSwaggerSpecDetector } from './swagger-spec-detector'
 import { mountPalette, type PaletteHandle } from './palette'
 import {
   mountPresetEditor,
@@ -306,6 +309,10 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-pagination-tester #oac-pagination-modal-host {
       display: none !important;
     }
+    body.oac-disable-spec-change-detector #oac-spec-detector-banner,
+    body.oac-disable-spec-change-detector #oac-spec-modal-host {
+      display: none !important;
+    }
   `
   doc.head?.appendChild(style)
 }
@@ -472,6 +479,7 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
   b.classList.toggle('oac-disable-scenario-recorder', !features.scenarioRecorder)
   b.classList.toggle('oac-disable-pagination-tester', !features.paginationTester)
+  b.classList.toggle('oac-disable-spec-change-detector', !features.specChangeDetector)
 }
 
 let isBooting = false
@@ -737,6 +745,68 @@ export async function bootAgent(
   mountSwaggerPasteCurl(document, productivity, { getBinding: getShortcutBinding })
   const headersService = new HeadersService({ storage, projectId: meta.id })
   mountSwaggerGlobalHeaders(document, headersService)
+
+  const specService = new SpecService({
+    storage,
+    projectId: meta.id,
+    specUrl: adapter.specUrl() || docIdentityUrl(location.href),
+    getWorkflows: async () => {
+      const res = await workflows.list()
+      return res.ok ? res.value : []
+    },
+    getPresets: async () => {
+      const res = await requests.listTemplates()
+      return res.ok ? res.value : []
+    },
+    getPinnedEndpoints: async () => {
+      const items = await productivity.getFavorites()
+      return Array.isArray(items) ? items.map((i) => i.endpointId) : []
+    },
+  })
+
+  let specDetector: ReturnType<typeof createSwaggerSpecDetector> | null = null
+  const specChangeModal = mountSpecChangeModal(
+    specService,
+    bus,
+    () => {
+      specDetector?.hideBanner()
+    },
+    document,
+  )
+  const specModalTheme = new ThemeManager({ storage, root: specChangeModal.themeRoot, bus })
+  void specModalTheme.init()
+
+  specDetector = createSwaggerSpecDetector(specChangeModal, specService, bus, document)
+
+  void (async () => {
+    try {
+      const specUrl = adapter.specUrl() || docIdentityUrl(location.href)
+      let rawSpec: unknown = null
+
+      if (typeof window !== 'undefined' && (window as any).ui?.specSelectors?.specJson) {
+        try {
+          rawSpec = (window as any).ui.specSelectors.specJson().toJS()
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!rawSpec && specUrl) {
+        rawSpec = await specService.fetchLiveSpec(specUrl)
+      }
+
+      if (rawSpec) {
+        const diff = await specService.checkSpecForChanges(rawSpec)
+        if (diff && diff.hasChanges) {
+          const { normalizeOpenApiSpec } = await import('@/modules/spec-detector')
+          const currentNormalized = normalizeOpenApiSpec(rawSpec)
+          specDetector?.showBanner(diff, currentNormalized)
+        }
+      }
+    } catch (err) {
+      console.warn(`${LOG} Spec change detector error:`, err)
+    }
+  })()
 
   // The palette is mounted on first use
   let palette: PaletteHandle | null = null

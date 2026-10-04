@@ -1,0 +1,5 @@
+export * from './types'
+export * from './normalizer'
+export * from './diff-engine'
+export * from './impact-analyzer'
+export * from './spec-service'

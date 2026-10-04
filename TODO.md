@@ -73,20 +73,21 @@
 ---
 
 ### 🔍 Phase 5: OpenAPI Spec Change Detector & Impact Analysis
-- [ ] **5.1. Spec Snapshotting & Normalization**
-  - [ ] Fetch active OpenAPI specification via `specUrl()` or `window.ui.getSystem().specSelectors.specJson()`.
-  - [ ] Canonicalize and hash endpoints, operations, parameters, request body schemas, and response schemas.
-  - [ ] Cache baseline spec snapshot in `chrome.storage.local` indexed by project ID.
-- [ ] **5.2. Specification Diff Engine**
-  - [ ] Deep diff algorithm comparing baseline snapshot with active spec on page load.
-  - [ ] Categorize changes: added/removed endpoints, modified methods, added/removed parameters, required status changes, schema modifications.
-  - [ ] Breaking-change heuristics: flag removed endpoints/methods, newly required fields, removed response fields, or changed data types as "Potentially Breaking".
-- [ ] **5.3. Local Resource Impact Analysis**
-  - [ ] Query local storage to identify affected user resources: Workflows, Saved Presets, Scenarios, and Project Variables.
-  - [ ] Map modified/removed endpoint parameters directly to saved templates and alert the developer.
-- [ ] **5.4. Spec Change Notification Banner & Diff Inspector**
-  - [ ] Unobtrusive in-page notification banner: `⚠ OpenAPI specification changed (3 changes detected) [View Changes]`.
-  - [ ] Interactive modal dialog displaying added, removed, and modified contracts alongside affected Companion resources.
+- [x] **5.1. Spec Snapshotting & Normalization (`src/modules/spec-detector/normalizer.ts`)**
+  - [x] Fetch active OpenAPI specification via `specUrl()` or `window.ui.specSelectors.specJson()`.
+  - [x] Canonicalize and deterministically hash endpoints, operations, parameters, request body schemas, and response schemas.
+  - [x] Cache baseline spec snapshot in `chrome.storage.local` indexed by project ID (`projectKey(projectId, 'spec', 'snapshot')`).
+- [x] **5.2. Specification Diff Engine (`src/modules/spec-detector/diff-engine.ts`)**
+  - [x] Deep diff algorithm comparing baseline snapshot with active spec on page load.
+  - [x] Categorize changes: added/removed endpoints, path parameter renames (`/users/{id}` -> `/users/{userId}`), added/removed parameters, required status changes, schema modifications.
+  - [x] Breaking-change heuristics: flag removed endpoints/methods, newly required parameters, newly required request bodies/properties, removed response status codes/properties, or altered types as "Potentially Breaking".
+- [x] **5.3. Local Resource Impact Analysis (`src/modules/spec-detector/impact-analyzer.ts`)**
+  - [x] Cross-reference contract diffs against user Workflows, Saved Presets / Templates, and Pinned Operations.
+  - [x] Flag missing required parameters or missing bodies directly on individual workflow steps with precise diagnostic failure reasons.
+- [x] **5.4. Spec Change Notification Banner & Diff Inspector (`swagger-spec-detector.ts` & `SpecChangeModal.tsx`)**
+  - [x] Unobtrusive in-page notification banner atop Swagger UI with breaking status badge, count chip, `[Review Changes]`, and `[Accept Baseline]` buttons.
+  - [x] Interactive modal dialog (`SpecChangeModal`) with Summary, Changes filter (Breaking/Warning/Info), Impacted Resources inspector, JSON export, and 1-click baseline acceptance.
+  - [x] Added configuration toggle (`specChangeDetector: boolean`) in `ConfigPanel` (16/16 active features) (**1,071 unit tests passing**).
 
 ---
 

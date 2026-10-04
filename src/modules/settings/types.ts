@@ -32,6 +32,8 @@ export interface SwaggerFeaturePreferences {
   scenarioRecorder: boolean
   /** 1-Click Pagination Tester to execute multi-page requests, validate page sizes, and detect duplicate records. Default: true */
   paginationTester: boolean
+  /** OpenAPI Spec Change Detector & Impact Analysis banner and review modal. Default: true */
+  specChangeDetector: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -50,6 +52,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   globalHeaders: true,
   scenarioRecorder: true,
   paginationTester: true,
+  specChangeDetector: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */
