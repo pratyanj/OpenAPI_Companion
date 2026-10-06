@@ -54,19 +54,48 @@ import { mountSwaggerGlobalHeaders } from './swagger-global-headers'
 import { HeadersService } from '@/modules/headers'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
-import type { PaletteHandle } from './palette' // type-only: the module loads lazily
-import type { PresetEditorHandle, PresetEditorOpenOptions } from './preset-editor'
-import type { HistoryDetailHandle } from './history-detail'
-import type {
-  ExtractionRuleModalHandle,
-  ExtractionRuleModalOpenOptions,
+import { ScenarioRecorderService } from '@/modules/workflows/recorder'
+import { mountScenarioModal } from './scenario-modal'
+import { mountSwaggerScenarioRecorder } from './swagger-scenario-recorder'
+import { mountPaginationModal } from './pagination-modal'
+import { mountSwaggerPaginationTester } from './swagger-pagination-tester'
+import { SpecService } from '@/modules/spec-detector/spec-service'
+import { normalizeOpenApiSpec } from '@/modules/spec-detector'
+import { mountSpecChangeModal } from './spec-change-modal'
+import { createSwaggerSpecDetector } from './swagger-spec-detector'
+import { mountPalette, type PaletteHandle } from './palette'
+import {
+  mountPresetEditor,
+  type PresetEditorHandle,
+  type PresetEditorOpenOptions,
+} from './preset-editor'
+import { mountHistoryDetail, type HistoryDetailHandle } from './history-detail'
+import {
+  mountExtractionRuleModal,
+  type ExtractionRuleModalHandle,
+  type ExtractionRuleModalOpenOptions,
 } from './extraction-rule-modal'
-import type { WorkflowEditorHandle, WorkflowEditorOpenOptions } from './workflow-editor'
-import type { WorkflowRunnerHandle, WorkflowRunnerOpenOptions } from './workflow-runner'
-import type { ShortcutsModalHandle } from './shortcuts-modal'
-import type { VariablesModalHandle } from './variables-modal'
-import type { ProjectSwitcherModalHandle } from './project-switcher-modal'
-import type { FeedbackModalHandle, FeedbackModalOpenOptions } from './feedback-modal'
+import {
+  mountWorkflowEditor,
+  type WorkflowEditorHandle,
+  type WorkflowEditorOpenOptions,
+} from './workflow-editor'
+import {
+  mountWorkflowRunner,
+  type WorkflowRunnerHandle,
+  type WorkflowRunnerOpenOptions,
+} from './workflow-runner'
+import { mountShortcutsModal, type ShortcutsModalHandle } from './shortcuts-modal'
+import { mountVariablesModal, type VariablesModalHandle } from './variables-modal'
+import {
+  mountProjectSwitcherModal,
+  type ProjectSwitcherModalHandle,
+} from './project-switcher-modal'
+import {
+  mountFeedbackModal,
+  type FeedbackModalHandle,
+  type FeedbackModalOpenOptions,
+} from './feedback-modal'
 import type { RemoteProjectApi } from '@/sidepanel/bridge'
 import {
   DEFAULT_SHORTCUTS,
@@ -273,6 +302,18 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-paste-curl.oac-disable-global-headers .oac-header-actions-bar {
       display: none !important;
     }
+    body.oac-disable-scenario-recorder #oac-scenario-bar-host,
+    body.oac-disable-scenario-recorder #oac-scenario-modal {
+      display: none !important;
+    }
+    body.oac-disable-pagination-tester .oac-pagination-btn,
+    body.oac-disable-pagination-tester #oac-pagination-modal-host {
+      display: none !important;
+    }
+    body.oac-disable-spec-change-detector #oac-spec-detector-banner,
+    body.oac-disable-spec-change-detector #oac-spec-modal-host {
+      display: none !important;
+    }
   `
   doc.head?.appendChild(style)
 }
@@ -437,6 +478,9 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-pinned-endpoints', !features.pinnedEndpoints)
   b.classList.toggle('oac-disable-paste-curl', !features.pasteCurl)
   b.classList.toggle('oac-disable-global-headers', !features.globalHeaders)
+  b.classList.toggle('oac-disable-scenario-recorder', !features.scenarioRecorder)
+  b.classList.toggle('oac-disable-pagination-tester', !features.paginationTester)
+  b.classList.toggle('oac-disable-spec-change-detector', !features.specChangeDetector)
 }
 
 let isBooting = false
@@ -599,6 +643,49 @@ export async function bootAgent(
     getBinding: getShortcutBinding,
   })
 
+  const scenarioRecorder = new ScenarioRecorderService({ projectId: meta.id, bus })
+  const scenarioModal = mountScenarioModal(workflows, bus, document)
+  const scenarioModalTheme = new ThemeManager({ storage, root: scenarioModal.themeRoot, bus })
+  void scenarioModalTheme.init()
+  mountSwaggerScenarioRecorder(adapter, scenarioRecorder, scenarioModal, bus, document)
+
+  const paginationExecutor = async (payload: {
+    endpointId: string
+    queryParams: Record<string, string>
+    headers?: Record<string, string>
+    pathParams?: Record<string, string>
+    body?: string
+    signal?: AbortSignal
+  }) => {
+    const res = await executeWorkflowStep(
+      adapter,
+      {
+        step: {
+          id: 'pagination_step',
+          endpointId: payload.endpointId,
+          name: payload.endpointId,
+        },
+        resolvedQueryParams: payload.queryParams,
+        resolvedPathParams: payload.pathParams,
+        resolvedHeaders: payload.headers,
+        resolvedBody: payload.body,
+      },
+      30000,
+      100,
+      payload.signal,
+    )
+    return {
+      status: res.status ?? (res.success ? 200 : 500),
+      responseBody: res.responseBody,
+      error: res.error,
+    }
+  }
+
+  const paginationModal = mountPaginationModal(workflows, paginationExecutor, bus, document)
+  const paginationModalTheme = new ThemeManager({ storage, root: paginationModal.themeRoot, bus })
+  void paginationModalTheme.init()
+  mountSwaggerPaginationTester(paginationModal, document)
+
   const syncActiveVariables = async (): Promise<void> => {
     const activeId = await environments.getActiveId()
     currentEnv = activeId
@@ -624,6 +711,9 @@ export async function bootAgent(
       }
       if (area === 'local' && Object.keys(changes).some((k) => k.includes('auth'))) {
         void syncAuthBadge()
+      }
+      if (area === 'local' && Object.keys(changes).some((k) => k.includes('theme'))) {
+        void scenarioModalTheme.init()
       }
       if (
         area === 'local' &&
@@ -657,14 +747,82 @@ export async function bootAgent(
   const headersService = new HeadersService({ storage, projectId: meta.id })
   mountSwaggerGlobalHeaders(document, headersService)
 
-  // The palette is the only thing in the page that needs React, so it's loaded on
-  // FIRST USE — a static import would make every page in the browser pay ~170 kB
-  // of React up front just in case the user hits ⌘K.
+  const specService = new SpecService({
+    storage,
+    projectId: meta.id,
+    specUrl: adapter.specUrl() || docIdentityUrl(location.href),
+    getWorkflows: async () => {
+      const res = await workflows.list()
+      return res.ok ? res.value : []
+    },
+    getPresets: async () => {
+      const res = await requests.listTemplates()
+      return res.ok ? res.value : []
+    },
+    getPinnedEndpoints: async () => {
+      const items = await productivity.getFavorites()
+      return Array.isArray(items) ? items.map((i) => i.endpointId) : []
+    },
+  })
+
+  let specDetector: ReturnType<typeof createSwaggerSpecDetector> | null = null
+  const specChangeModal = mountSpecChangeModal(
+    specService,
+    bus,
+    () => {
+      specDetector?.hideBanner()
+    },
+    document,
+  )
+  const specModalTheme = new ThemeManager({ storage, root: specChangeModal.themeRoot, bus })
+  void specModalTheme.init()
+
+  specDetector = createSwaggerSpecDetector(specChangeModal, specService, bus, document)
+
+  void (async () => {
+    try {
+      const specUrl = adapter.specUrl() || docIdentityUrl(location.href)
+      let rawSpec: unknown = null
+
+      interface SwaggerWindow extends Window {
+        ui?: {
+          specSelectors?: {
+            specJson?: () => { toJS?: () => unknown }
+          }
+        }
+      }
+
+      const swaggerWin =
+        typeof window !== 'undefined' ? (window as unknown as SwaggerWindow) : undefined
+      if (swaggerWin?.ui?.specSelectors?.specJson) {
+        try {
+          rawSpec = swaggerWin.ui.specSelectors.specJson()?.toJS?.()
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!rawSpec && specUrl) {
+        rawSpec = await specService.fetchLiveSpec(specUrl)
+      }
+
+      if (rawSpec) {
+        const diff = await specService.checkSpecForChanges(rawSpec)
+        if (diff && diff.hasChanges) {
+          const currentNormalized = normalizeOpenApiSpec(rawSpec)
+          specDetector?.showBanner(diff, currentNormalized)
+        }
+      }
+    } catch (err) {
+      console.warn(`${LOG} Spec change detector error:`, err)
+    }
+  })()
+
+  // The palette is mounted on first use
   let palette: PaletteHandle | null = null
   const withPalette = async (): Promise<PaletteHandle | null> => {
     if (palette) return palette
     try {
-      const { mountPalette } = await import('./palette')
       palette = mountPalette(productivity)
       // Theme it from the shared preference, and re-read when the panel changes it
       // (separate contexts, so the bus doesn't cross the boundary — storage does).
@@ -677,16 +835,7 @@ export async function bootAgent(
       })
       return palette
     } catch (cause) {
-      // Reloading/rebuilding the extension ORPHANS this already-injected script:
-      // its chunk filenames are content-hashed, so the lazy import now 404s.
-      // Say so plainly instead of leaving an anonymous rejection in the console.
-      const orphaned = !chrome.runtime?.id
-      console.warn(
-        `${LOG} could not load the search palette${
-          orphaned ? ' — this tab is running an old copy of the extension.' : '.'
-        } Refresh the page (⌘⇧R) to pick up the current build.`,
-        cause,
-      )
+      console.warn(`${LOG} could not load the search palette.`, cause)
       return null
     }
   }
@@ -695,7 +844,6 @@ export async function bootAgent(
   const withPresetEditor = async (): Promise<PresetEditorHandle | null> => {
     if (presetEditor) return presetEditor
     try {
-      const { mountPresetEditor } = await import('./preset-editor')
       const requestPanelService: RequestPanelService = {
         listTemplates: () => requests.listTemplates(),
         saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
@@ -727,7 +875,6 @@ export async function bootAgent(
   const withHistoryDetail = async (): Promise<HistoryDetailHandle | null> => {
     if (historyDetail) return historyDetail
     try {
-      const { mountHistoryDetail } = await import('./history-detail')
       const historyPanelService: HistoryPanelService = {
         list: (query) => history.list(query ?? {}),
         get: (id) => history.get(id),
@@ -755,7 +902,6 @@ export async function bootAgent(
   const withExtractionRuleModal = async (): Promise<ExtractionRuleModalHandle | null> => {
     if (extractionRuleModal) return extractionRuleModal
     try {
-      const { mountExtractionRuleModal } = await import('./extraction-rule-modal')
       extractionRuleModal = mountExtractionRuleModal(
         environments,
         () => adapter.listEndpoints(),
@@ -779,7 +925,6 @@ export async function bootAgent(
   const withWorkflowEditor = async (): Promise<WorkflowEditorHandle | null> => {
     if (workflowEditor) return workflowEditor
     try {
-      const { mountWorkflowEditor } = await import('./workflow-editor')
       const requestPanelService: RequestPanelService = {
         listTemplates: () => requests.listTemplates(),
         saveOpenAsTemplate: (name, envId) => requests.saveOpenAsTemplate(name, envId),
@@ -817,7 +962,6 @@ export async function bootAgent(
   const withWorkflowRunner = async (): Promise<WorkflowRunnerHandle | null> => {
     if (workflowRunner) return workflowRunner
     try {
-      const { mountWorkflowRunner } = await import('./workflow-runner')
       workflowRunner = mountWorkflowRunner(workflows, bus)
       const runnerTheme = new ThemeManager({ storage, root: workflowRunner.themeRoot, bus })
       await runnerTheme.init()
@@ -837,7 +981,6 @@ export async function bootAgent(
   const withShortcutsModal = async (): Promise<ShortcutsModalHandle | null> => {
     if (shortcutsModal) return shortcutsModal
     try {
-      const { mountShortcutsModal } = await import('./shortcuts-modal')
       shortcutsModal = mountShortcutsModal(settingsService, bus, document)
       const modalTheme = new ThemeManager({ storage, root: shortcutsModal.themeRoot, bus })
       await modalTheme.init()
@@ -857,7 +1000,6 @@ export async function bootAgent(
   const withVariablesModal = async (): Promise<VariablesModalHandle | null> => {
     if (variablesModal) return variablesModal
     try {
-      const { mountVariablesModal } = await import('./variables-modal')
       variablesModal = mountVariablesModal(environments, bus, document)
       const modalTheme = new ThemeManager({ storage, root: variablesModal.themeRoot, bus })
       await modalTheme.init()
@@ -877,7 +1019,6 @@ export async function bootAgent(
   const withProjectSwitcherModal = async (): Promise<ProjectSwitcherModalHandle | null> => {
     if (projectSwitcherModal) return projectSwitcherModal
     try {
-      const { mountProjectSwitcherModal } = await import('./project-switcher-modal')
       const localProjectApi: RemoteProjectApi = {
         rename: (name, targetId) => {
           const t = targetId || meta.id
@@ -925,7 +1066,6 @@ export async function bootAgent(
   const withFeedbackModal = async (): Promise<FeedbackModalHandle | null> => {
     if (feedbackModal) return feedbackModal
     try {
-      const { mountFeedbackModal } = await import('./feedback-modal')
       feedbackModal = mountFeedbackModal(bus, document)
       const modalTheme = new ThemeManager({ storage, root: feedbackModal.themeRoot, bus })
       await modalTheme.init()
@@ -1511,7 +1651,53 @@ export async function bootAgent(
   pushState() // initial mirror for any already-open panel
 }
 
+function injectPageSafeguard(doc: Document = document): void {
+  try {
+    const script = doc.createElement('script')
+    script.textContent = `
+      if (typeof Node === 'function' && Node.prototype && !window.__oacNodeSafeguard) {
+        window.__oacNodeSafeguard = true;
+        const origRemoveChild = Node.prototype.removeChild;
+        Node.prototype.removeChild = function(child) {
+          if (child && child.parentNode !== this) {
+            if (child.parentNode) return child.parentNode.removeChild(child);
+            return child;
+          }
+          return origRemoveChild.call(this, child);
+        };
+        const origInsertBefore = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function(newNode, refNode) {
+          if (refNode && refNode.parentNode !== this) {
+            return this.appendChild(newNode);
+          }
+          return origInsertBefore.call(this, newNode, refNode);
+        };
+      }
+    `
+    ;(doc.head || doc.documentElement)?.appendChild(script)
+    script.remove()
+  } catch {
+    /* ignore */
+  }
+}
+
+function injectFirefoxMainWorld(doc: Document = document): void {
+  // If the browser already ran MAIN world (Chrome native world: "MAIN"), it sets dataset.oacMainWorld
+  if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
+  try {
+    const url = chrome.runtime.getURL('firefox-main-world.js')
+    const script = doc.createElement('script')
+    script.src = url
+    script.onload = () => script.remove()
+    ;(doc.head || doc.documentElement)?.appendChild(script)
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function boot(): Promise<void> {
+  injectPageSafeguard(document)
+  injectFirefoxMainWorld(document)
   console.info(`${LOG} content agent loaded:`, location.href)
   const bridge = new SwaggerBridge()
   const adapter = new SwaggerUiAdapter(bridge)

@@ -10,8 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:prod": "vite build --mode production",
+    "build": "vite build && node scripts/build-firefox.mjs",
+    "build:prod": "vite build --mode production && node scripts/build-firefox.mjs",
     "package": "npm run build && node scripts/package.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -23,7 +23,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "build:firefox": "npm run build && node scripts/build-firefox.mjs"
+    "build:firefox": "npm run build"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

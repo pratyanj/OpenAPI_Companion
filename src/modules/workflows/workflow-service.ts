@@ -14,10 +14,12 @@ import type {
   WorkflowExportItem,
   WorkflowImportResult,
 } from './types'
+import { evaluateAssertions, extractJsonPath } from './assertions'
 
 export interface WorkflowEnvironmentService {
   getActiveId(): Promise<string>
   resolve(text: string, id: string): Promise<Result<{ text: string; missing: string[] }>>
+  setVariable?: (name: string, value: string, id?: string) => Promise<Result<void>>
   applyExtraction?: (
     endpointId: string,
     responseBody: string,
@@ -302,6 +304,8 @@ export class WorkflowService {
         queryParams: s.queryParams,
         headerParams: s.headerParams,
         delayMs: s.delayMs,
+        assertions: s.assertions,
+        extractions: s.extractions,
       })),
     }))
 
@@ -397,6 +401,8 @@ export class WorkflowService {
           queryParams: s.queryParams,
           headerParams: s.headerParams,
           delayMs: s.delayMs,
+          assertions: s.assertions,
+          extractions: s.extractions,
         })),
       })
 
@@ -526,12 +532,78 @@ export class WorkflowService {
 
         const durationMs = Math.max(0, this.now() - stepStartTime)
 
+        const extractedVariables: Record<string, string> = {}
         // Automatically trigger response auto-extraction if response body is returned
-        if (execResult.responseBody && this.environmentService?.applyExtraction) {
-          try {
-            await this.environmentService.applyExtraction(step.endpointId, execResult.responseBody)
-          } catch {
-            // Extraction failures shouldn't crash the workflow runner
+        if (execResult.responseBody) {
+          // 1. Global endpoint extraction rules
+          if (this.environmentService?.applyExtraction) {
+            try {
+              await this.environmentService.applyExtraction(
+                step.endpointId,
+                execResult.responseBody,
+              )
+            } catch {
+              // Extraction failures shouldn't crash the workflow runner
+            }
+          }
+          // 2. Step-level extractions
+          if (
+            step.extractions &&
+            step.extractions.length > 0 &&
+            this.environmentService?.setVariable
+          ) {
+            try {
+              let parsedBody: unknown = undefined
+              try {
+                parsedBody = JSON.parse(execResult.responseBody)
+              } catch {
+                // not JSON
+              }
+              if (parsedBody && typeof parsedBody === 'object') {
+                for (const rule of step.extractions) {
+                  if (!rule.variableName || !rule.property) continue
+                  const extractedVal = extractJsonPath(parsedBody, rule.property)
+                  if (extractedVal !== undefined && extractedVal !== null) {
+                    const strVal =
+                      typeof extractedVal === 'object'
+                        ? JSON.stringify(extractedVal)
+                        : String(extractedVal)
+                    await this.environmentService.setVariable(rule.variableName, strVal)
+                    extractedVariables[rule.variableName] = strVal
+                  }
+                }
+              }
+            } catch {
+              // ignore step extraction failure
+            }
+          }
+        }
+
+        let stepSuccess = execResult.success
+        let stepError = execResult.error
+        let assertionResults: import('./assertions/types').AssertionResult[] | undefined
+        let assertionsPassed: boolean | undefined
+
+        // Evaluate step assertions if defined
+        if (step.assertions && step.assertions.length > 0) {
+          assertionResults = evaluateAssertions(step.assertions, {
+            status: execResult.status,
+            body: execResult.responseBody,
+            headers: (execResult as { responseHeaders?: Record<string, string> }).responseHeaders,
+            durationMs,
+          })
+          assertionsPassed = assertionResults.every((r) => r.passed)
+          if (!assertionsPassed) {
+            stepSuccess = false
+            const failedMessages = assertionResults
+              .filter((r) => !r.passed)
+              .map((r) => r.message || `Assertion failed: ${r.type} ${r.operator}`)
+              .join('; ')
+            stepError = stepError ? `${stepError} | ${failedMessages}` : failedMessages
+          } else {
+            // When all assertions explicitly pass, consider the step successful (supports asserting expected error status e.g. 404/422)
+            stepSuccess = true
+            stepError = undefined
           }
         }
 
@@ -540,8 +612,15 @@ export class WorkflowService {
           endpointId: step.endpointId,
           status: execResult.status,
           durationMs,
-          error: execResult.error,
-          success: execResult.success,
+          error: stepError,
+          success: stepSuccess,
+          assertionResults,
+          assertionsPassed,
+          responseBody: execResult.responseBody,
+          responseHeaders: (execResult as { responseHeaders?: Record<string, string> })
+            .responseHeaders,
+          extractedVariables:
+            Object.keys(extractedVariables).length > 0 ? extractedVariables : undefined,
         }
 
         results.push(stepRunResult)
@@ -555,8 +634,8 @@ export class WorkflowService {
           endpointId: step.endpointId,
           status: execResult.status,
           durationMs,
-          error: execResult.error,
-          success: execResult.success,
+          error: stepError,
+          success: stepSuccess,
         })
 
         options?.onStepProgress?.(i, totalSteps, stepRunResult)
@@ -566,10 +645,20 @@ export class WorkflowService {
           break
         }
 
-        if (!execResult.success) {
+        if (!stepSuccess) {
           hasFailure = true
           if (workflow.mode === 'stop-on-failure') {
             break
+          } else if (workflow.mode === 'ask-on-failure') {
+            if (options?.onFailurePrompt) {
+              const action = await options.onFailurePrompt(i, step, stepError || 'Step failed')
+              if (action === 'stop') {
+                break
+              }
+            } else {
+              // Default to stop if no prompt handler is provided
+              break
+            }
           }
         }
       }
@@ -607,6 +696,7 @@ export class WorkflowService {
             lastRunAt: startedAt,
             lastRunStatus: runStatus,
             lastRunDurationMs: runDurationMs,
+            lastRunSummary: summary,
             updatedAt: this.now(),
           }
           const nextList = [...allRes.value]

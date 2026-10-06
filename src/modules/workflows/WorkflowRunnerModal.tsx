@@ -8,11 +8,19 @@ import {
   ToastErrorIcon,
   ClockIcon,
   RunIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@/components'
 import { MethodTag } from '@/modules/request/EndpointPicker'
 import type { Result } from '@/types'
 import type { EventBus } from '@/core/events'
-import type { Workflow, WorkflowRunSummary, StepRunResult, WorkflowExecutionOptions } from './types'
+import type {
+  Workflow,
+  WorkflowStep,
+  WorkflowRunSummary,
+  StepRunResult,
+  WorkflowExecutionOptions,
+} from './types'
 
 export interface WorkflowRunnerModalProps {
   isOpen: boolean
@@ -26,6 +34,13 @@ export interface WorkflowRunnerModalProps {
   environmentId?: string
   embedded?: boolean
   bus?: EventBus
+}
+
+interface FailurePromptState {
+  stepIndex: number
+  step: WorkflowStep
+  error: string
+  resolver: (action: 'continue' | 'stop') => void
 }
 
 export function WorkflowRunnerModal({
@@ -42,7 +57,23 @@ export function WorkflowRunnerModal({
   const [stepResults, setStepResults] = useState<StepRunResult[]>([])
   const [summary, setSummary] = useState<WorkflowRunSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({})
+  const [failurePrompt, setFailurePrompt] = useState<FailurePromptState | null>(null)
+  const [elapsedMs, setElapsedMs] = useState(0)
+
   const abortControllerRef = useRef<AbortController | null>(null)
+  const startTimeRef = useRef<number>(0)
+
+  // Live timer while running
+  useEffect(() => {
+    if (isRunning) {
+      startTimeRef.current = Date.now()
+      const timer = setInterval(() => {
+        setElapsedMs(Math.max(0, Date.now() - startTimeRef.current))
+      }, 80)
+      return () => clearInterval(timer)
+    }
+  }, [isRunning])
 
   // Listen for real-time step start from EventBus
   useEffect(() => {
@@ -94,10 +125,15 @@ export function WorkflowRunnerModal({
       if (payload.workflowId === workflow.id) {
         setCurrentStepIndex(-1)
         setIsRunning(false)
+        setFailurePrompt(null)
       }
     })
     return unsub
   }, [bus, workflow])
+
+  const toggleStepExpanded = (stepId: string) => {
+    setExpandedSteps((prev) => ({ ...prev, [stepId]: !prev[stepId] }))
+  }
 
   const startExecution = async () => {
     if (!workflow || isRunning) return
@@ -107,6 +143,8 @@ export function WorkflowRunnerModal({
     setStepResults([])
     setSummary(null)
     setError(null)
+    setFailurePrompt(null)
+    setElapsedMs(0)
 
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -119,6 +157,9 @@ export function WorkflowRunnerModal({
           setCurrentStepIndex(idx)
         },
         onStepProgress: (_idx, _total, result) => {
+          if (!result.success) {
+            setExpandedSteps((prev) => ({ ...prev, [result.stepId]: true }))
+          }
           setStepResults((prev) => {
             const next = [...prev]
             const existingIdx = next.findIndex((r) => r.stepId === result.stepId)
@@ -128,6 +169,19 @@ export function WorkflowRunnerModal({
               next.push(result)
             }
             return next
+          })
+        },
+        onFailurePrompt: (stepIndex, step, errMessage) => {
+          return new Promise<'continue' | 'stop'>((resolve) => {
+            setFailurePrompt({
+              stepIndex,
+              step,
+              error: errMessage,
+              resolver: (action) => {
+                setFailurePrompt(null)
+                resolve(action)
+              },
+            })
           })
         },
       })
@@ -145,6 +199,7 @@ export function WorkflowRunnerModal({
     } finally {
       setIsRunning(false)
       setCurrentStepIndex(-1)
+      setFailurePrompt(null)
       abortControllerRef.current = null
     }
   }
@@ -161,6 +216,10 @@ export function WorkflowRunnerModal({
   }, [isOpen, workflow?.id])
 
   const handleCancel = async () => {
+    if (failurePrompt) {
+      failurePrompt.resolver('stop')
+      setFailurePrompt(null)
+    }
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
@@ -216,7 +275,7 @@ export function WorkflowRunnerModal({
         isRunning ? (
           <div className="flex items-center gap-1.5 text-xs text-primary font-medium mr-1">
             <Spinner className="h-3 w-3" />
-            <span className="hidden sm:inline">Running</span>
+            <span className="hidden sm:inline">Running ({elapsedMs}ms)</span>
           </div>
         ) : null
       }
@@ -256,10 +315,14 @@ export function WorkflowRunnerModal({
               <span className="font-medium text-text">
                 {workflow.mode === 'continue-on-failure'
                   ? 'Continue on failure'
-                  : 'Stop on failure'}
+                  : workflow.mode === 'ask-on-failure'
+                    ? 'Ask on failure'
+                    : 'Stop on failure'}
               </span>
             </div>
-            {summary && <span>Total Duration: {summary.durationMs}ms</span>}
+            <span>
+              Duration: {summary ? `${summary.durationMs}ms` : isRunning ? `${elapsedMs}ms` : '0ms'}
+            </span>
           </div>
         </div>
 
@@ -267,6 +330,42 @@ export function WorkflowRunnerModal({
         {error && (
           <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger">
             {error}
+          </div>
+        )}
+
+        {/* Interactive Failure Prompt (ask-on-failure mode) */}
+        {failurePrompt && (
+          <div className="rounded-lg border border-warning/50 bg-warning/10 p-3.5 space-y-2.5 text-xs">
+            <div className="flex items-center gap-2 text-warning font-semibold">
+              <ToastErrorIcon className="h-4 w-4 shrink-0" />
+              <span>Step #{failurePrompt.stepIndex + 1} Failed — Interactive Action Required</span>
+            </div>
+            <div className="text-[11px] text-text font-mono bg-surface/70 p-2.5 rounded border border-border/80 break-all leading-relaxed">
+              {failurePrompt.error}
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-muted">
+                Choose how to proceed with the remaining steps:
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => failurePrompt.resolver('stop')}
+                  className="text-xs px-3 py-1"
+                >
+                  Stop Workflow
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => failurePrompt.resolver('continue')}
+                  className="text-xs px-3 py-1"
+                >
+                  Continue &rarr;
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -304,7 +403,7 @@ export function WorkflowRunnerModal({
           </div>
         )}
 
-        {/* Steps Timeline (flows naturally without nested scrollbar) */}
+        {/* Steps Timeline with Collapsible Inspection */}
         <div className="space-y-2">
           {workflow.steps.map((step, idx) => {
             const result =
@@ -316,11 +415,15 @@ export function WorkflowRunnerModal({
             const isCurrent = isRunning && currentStepIndex === idx
             const isPending = !result && !isCurrent
             const [method] = step.endpointId.split(' ')
+            const isExpanded = expandedSteps[step.id] ?? false
+
+            const hasAssertions = Boolean(step.assertions && step.assertions.length > 0)
+            const assertionsPassed = result?.assertionsPassed
 
             return (
               <div
                 key={step.id}
-                className={`rounded-lg border p-3 transition-colors ${
+                className={`rounded-lg border transition-colors overflow-hidden ${
                   isCurrent
                     ? 'border-primary bg-primary/5 shadow-sm'
                     : result?.success
@@ -330,7 +433,13 @@ export function WorkflowRunnerModal({
                         : 'border-border/70 bg-surface/50 opacity-75'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
+                {/* Step Card Header */}
+                <div
+                  onClick={() => result && toggleStepExpanded(step.id)}
+                  className={`p-3 flex items-center justify-between gap-2 ${
+                    result ? 'cursor-pointer hover:bg-surface/60 transition-colors' : ''
+                  }`}
+                >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <span className="font-mono text-xs font-bold text-muted w-5 shrink-0">
                       #{idx + 1}
@@ -350,7 +459,7 @@ export function WorkflowRunnerModal({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {isCurrent && (
                       <Badge kind="info">
                         <span className="flex items-center gap-1 text-[11px]">
@@ -379,7 +488,12 @@ export function WorkflowRunnerModal({
                         <span className="text-[11px] text-muted font-mono">
                           {result.durationMs}ms
                         </span>
-                        <Badge kind="success">Passed</Badge>
+                        {hasAssertions && (
+                          <Badge kind={assertionsPassed ? 'success' : 'error'}>
+                            {assertionsPassed ? 'Assertions Passed' : 'Assertions Failed'}
+                          </Badge>
+                        )}
+                        {!hasAssertions && <Badge kind="success">Passed</Badge>}
                       </div>
                     )}
 
@@ -396,12 +510,124 @@ export function WorkflowRunnerModal({
                         <Badge kind="error">Failed</Badge>
                       </div>
                     )}
+
+                    {result && (
+                      <button
+                        type="button"
+                        aria-label="Toggle step details"
+                        className="text-muted hover:text-text p-0.5"
+                      >
+                        {isExpanded ? (
+                          <ChevronDownIcon className="h-4 w-4" />
+                        ) : (
+                          <ChevronRightIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {result?.error && (
-                  <div className="mt-2 text-[11px] text-danger bg-danger/10 rounded px-2.5 py-1 font-mono break-all">
-                    {result.error}
+                {/* Collapsible Step Inspection Drawer */}
+                {result && isExpanded && (
+                  <div className="px-3 pb-3 pt-1 border-t border-border/40 space-y-2.5 text-xs bg-surface/30">
+                    {/* Error display */}
+                    {result.error && (
+                      <div className="text-[11px] text-danger bg-danger/10 border border-danger/20 rounded px-2.5 py-1.5 font-mono break-all">
+                        <strong>Error:</strong> {result.error}
+                      </div>
+                    )}
+
+                    {/* Granular Assertions Checklist */}
+                    {result.assertionResults && result.assertionResults.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-semibold text-text block">
+                          Assertions Checklist (
+                          {result.assertionResults.filter((r) => r.passed).length}/
+                          {result.assertionResults.length} Passed):
+                        </span>
+                        <div className="space-y-1">
+                          {result.assertionResults.map((a, aIdx) => (
+                            <div
+                              key={aIdx}
+                              className={`flex items-start gap-2 rounded p-2 text-xs font-mono border ${
+                                a.passed
+                                  ? 'bg-success/5 border-success/20 text-success'
+                                  : 'bg-danger/5 border-danger/20 text-danger'
+                              }`}
+                            >
+                              {a.passed ? (
+                                <ToastSuccessIcon className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              ) : (
+                                <ToastErrorIcon className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold uppercase text-[10px]">{a.type}</span>
+                                  {a.target && <span className="opacity-80">({a.target})</span>}
+                                  <span>{a.operator}</span>
+                                  {a.expected !== undefined && <span>{String(a.expected)}</span>}
+                                </div>
+                                {a.message && !a.passed && (
+                                  <div className="text-[11px] mt-0.5 opacity-90 font-sans">
+                                    {a.message}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Extracted Variables */}
+                    {result.extractedVariables &&
+                      Object.keys(result.extractedVariables).length > 0 && (
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[11px] font-semibold text-text block">
+                            Extracted Variables:
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {Object.entries(result.extractedVariables).map(([k, v]) => (
+                              <span
+                                key={k}
+                                className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-mono text-primary"
+                              >
+                                <span>&#123;&#123;{k}&#125;&#125;</span>
+                                <span className="text-muted">=</span>
+                                <span className="text-text font-semibold">{v}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Response Payload Preview */}
+                    {result.responseBody && (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-text">Response Payload:</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void navigator.clipboard.writeText(result.responseBody ?? '')
+                            }}
+                            className="text-primary hover:underline text-[10px] flex items-center gap-1 cursor-pointer"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <pre className="p-2 rounded bg-surface border border-border text-[11px] font-mono text-text max-h-48 overflow-auto whitespace-pre-wrap break-all leading-relaxed">
+                          {(() => {
+                            try {
+                              return JSON.stringify(JSON.parse(result.responseBody), null, 2)
+                            } catch {
+                              return result.responseBody
+                            }
+                          })()}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -205,7 +205,8 @@ function attachFallbackExportBar(cell: HTMLElement, doc: Document): boolean {
   bar.appendChild(csvBtn)
 
   // Insert before the highlight code container
-  const highlightCode = cell.querySelector('.highlight-code, pre')
+  const highlightCode =
+    cell.querySelector<HTMLElement>('.highlight-code') || cell.querySelector<HTMLElement>('pre')
   if (highlightCode && highlightCode.parentNode) {
     highlightCode.parentNode.insertBefore(bar, highlightCode)
   } else {

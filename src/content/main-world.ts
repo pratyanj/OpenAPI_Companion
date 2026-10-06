@@ -3,6 +3,28 @@ if (typeof document !== 'undefined' && document.documentElement) {
   document.documentElement.dataset.oacMainWorld = 'true'
 }
 
+// Guard Swagger UI's React from crashing when external DOM changes affect response nodes
+if (typeof Node === 'function' && Node.prototype) {
+  const origRemoveChild = Node.prototype.removeChild
+  Node.prototype.removeChild = function <T extends Node>(child: T): T {
+    if (child && child.parentNode !== this) {
+      if (child.parentNode) {
+        return child.parentNode.removeChild(child)
+      }
+      return child
+    }
+    return origRemoveChild.call(this, child) as T
+  }
+
+  const origInsertBefore = Node.prototype.insertBefore
+  Node.prototype.insertBefore = function <T extends Node>(newNode: T, refNode: Node | null): T {
+    if (refNode && refNode.parentNode !== this) {
+      return this.appendChild(newNode) as T
+    }
+    return origInsertBefore.call(this, newNode, refNode) as T
+  }
+}
+
 /**
  * MAIN-world content script — runs in the PAGE's JavaScript world, where
  * Swagger's system object lives (the isolated content script cannot see it).

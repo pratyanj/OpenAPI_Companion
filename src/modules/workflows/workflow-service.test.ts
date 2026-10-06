@@ -506,3 +506,318 @@ describe('WorkflowService import / export', () => {
     expect(res.error.message).toContain('2.0')
   })
 })
+
+describe('Workflow Step Assertions', () => {
+  it('passes step and records assertion results when all assertions pass', async () => {
+    const executor = vi.fn().mockResolvedValue({
+      status: 200,
+      success: true,
+      responseBody: JSON.stringify({ success: true, user: { id: 101, name: 'Alice' } }),
+    })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Assertion Pass Flow',
+      mode: 'stop-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /user/101',
+          assertions: [
+            { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
+            { id: 'a2', type: 'jsonPath', target: '$.user.id', operator: 'equals', expected: 101 },
+          ],
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(runRes.value.status).toBe('success')
+    expect(runRes.value.completedSteps).toBe(1)
+    const stepResult = runRes.value.results[0]
+    expect(stepResult?.success).toBe(true)
+    expect(stepResult?.assertionsPassed).toBe(true)
+    expect(stepResult?.assertionResults).toHaveLength(2)
+  })
+
+  it('fails step and stops execution when an assertion fails under stop-on-failure', async () => {
+    const executor = vi.fn().mockImplementation(async (payload) => {
+      if (payload.step.id === 'step_1') {
+        return {
+          status: 200,
+          success: true,
+          responseBody: JSON.stringify({ count: 0 }),
+        }
+      }
+      return { status: 200, success: true }
+    })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Assertion Fail Stop Flow',
+      mode: 'stop-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /items',
+          assertions: [
+            { id: 'a1', type: 'jsonPath', target: '$.count', operator: 'greaterThan', expected: 0 },
+          ],
+        },
+        {
+          id: 'step_2',
+          endpointId: 'post /items/process',
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(runRes.value.status).toBe('failed')
+    expect(runRes.value.completedSteps).toBe(1)
+    expect(runRes.value.results).toHaveLength(1)
+    const step1 = runRes.value.results[0]
+    expect(step1?.success).toBe(false)
+    expect(step1?.assertionsPassed).toBe(false)
+    expect(step1?.error).toContain('Expected 0 > 0')
+    // Step 2 was never executed due to stop-on-failure
+    expect(executor).toHaveBeenCalledTimes(1)
+  })
+
+  it('continues execution when an assertion fails under continue-on-failure', async () => {
+    const executor = vi.fn().mockImplementation(async (payload) => {
+      if (payload.step.id === 'step_1') {
+        return {
+          status: 200,
+          success: true,
+          responseBody: JSON.stringify({ status: 'pending' }),
+        }
+      }
+      return { status: 200, success: true }
+    })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Assertion Continue Flow',
+      mode: 'continue-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /status',
+          assertions: [
+            {
+              id: 'a1',
+              type: 'jsonPath',
+              target: '$.status',
+              operator: 'equals',
+              expected: 'ready',
+            },
+          ],
+        },
+        {
+          id: 'step_2',
+          endpointId: 'post /notify',
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(runRes.value.status).toBe('failed')
+    expect(runRes.value.completedSteps).toBe(2)
+    expect(runRes.value.results).toHaveLength(2)
+    expect(runRes.value.results[0]?.success).toBe(false)
+    expect(runRes.value.results[1]?.success).toBe(true)
+    expect(executor).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves assertions across export and import', async () => {
+    const { service } = setup()
+    const wf = await service.create({
+      name: 'Export Assertions Flow',
+      mode: 'stop-on-failure',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'get /data',
+          assertions: [
+            { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
+            { id: 'a2', type: 'type', target: '$.items', operator: 'equals', expected: 'array' },
+          ],
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const exported = await service.exportAll([wf.value.id])
+    expect(exported.ok).toBe(true)
+    if (!exported.ok) return
+    expect(exported.value.workflows[0]?.steps[0]?.assertions).toHaveLength(2)
+
+    // Delete and import back
+    await service.delete(wf.value.id)
+    const imported = await service.importAll(exported.value)
+    expect(imported.ok).toBe(true)
+
+    const list = await service.list()
+    expect(list.ok).toBe(true)
+    if (!list.ok) return
+    expect(list.value[0]?.steps[0]?.assertions).toEqual([
+      { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
+      { id: 'a2', type: 'type', target: '$.items', operator: 'equals', expected: 'array' },
+    ])
+  })
+
+  it('executes step-level extractions and saves variables to environment service', async () => {
+    const setVariableSpy = vi.fn().mockResolvedValue(ok(undefined))
+    const mockEnvService = {
+      getActiveId: vi.fn().mockResolvedValue('env_default'),
+      resolve: vi.fn().mockImplementation(async (text: string) => ok({ text, missing: [] })),
+      setVariable: setVariableSpy,
+    }
+
+    const executor = vi.fn().mockResolvedValue({
+      status: 201,
+      success: true,
+      responseBody: JSON.stringify({ data: { user: { id: 9942, role: 'admin' } } }),
+    })
+
+    const { service } = setup({ envService: mockEnvService, defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Step Extractions Flow',
+      steps: [
+        {
+          id: 'step_1',
+          endpointId: 'post /users',
+          extractions: [
+            { id: 'e1', property: '$.data.user.id', variableName: 'userId' },
+            { id: 'e2', property: '$.data.user.role', variableName: 'userRole' },
+          ],
+        },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const runRes = await service.execute(wf.value.id)
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(setVariableSpy).toHaveBeenCalledWith('userId', '9942')
+    expect(setVariableSpy).toHaveBeenCalledWith('userRole', 'admin')
+    expect(runRes.value.results[0]?.extractedVariables).toEqual({
+      userId: '9942',
+      userRole: 'admin',
+    })
+  })
+
+  it('handles ask-on-failure mode: pauses, prompts, and continues when user chooses continue', async () => {
+    const executor = vi.fn().mockImplementation(async (payload: StepExecutionPayload) => {
+      if (payload.step.id === 'step_1') {
+        return { status: 500, success: false, error: 'Internal Server Error' }
+      }
+      return { status: 200, success: true }
+    })
+
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Ask On Failure Flow',
+      mode: 'ask-on-failure',
+      steps: [
+        { id: 'step_1', endpointId: 'post /critical' },
+        { id: 'step_2', endpointId: 'get /followup' },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const promptSpy = vi.fn().mockResolvedValue('continue')
+
+    const runRes = await service.execute(wf.value.id, {
+      onFailurePrompt: promptSpy,
+    })
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(promptSpy).toHaveBeenCalledTimes(1)
+    expect(promptSpy).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({ id: 'step_1' }),
+      expect.any(String),
+    )
+    expect(runRes.value.completedSteps).toBe(2)
+    expect(runRes.value.status).toBe('failed')
+  })
+
+  it('handles ask-on-failure mode: aborts remaining steps when user chooses stop', async () => {
+    const executor = vi.fn().mockImplementation(async (payload: StepExecutionPayload) => {
+      if (payload.step.id === 'step_1') {
+        return { status: 500, success: false, error: 'Database down' }
+      }
+      return { status: 200, success: true }
+    })
+
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Ask On Failure Stop Flow',
+      mode: 'ask-on-failure',
+      steps: [
+        { id: 'step_1', endpointId: 'post /critical' },
+        { id: 'step_2', endpointId: 'get /followup' },
+      ],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    const promptSpy = vi.fn().mockResolvedValue('stop')
+
+    const runRes = await service.execute(wf.value.id, {
+      onFailurePrompt: promptSpy,
+    })
+    expect(runRes.ok).toBe(true)
+    if (!runRes.ok) return
+
+    expect(promptSpy).toHaveBeenCalledTimes(1)
+    expect(runRes.value.completedSteps).toBe(1)
+    expect(executor).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists lastRunSummary on the workflow record', async () => {
+    const executor = vi.fn().mockResolvedValue({ status: 200, success: true })
+    const { service } = setup({ defaultExecutor: executor })
+
+    const wf = await service.create({
+      name: 'Summary Persistence Flow',
+      steps: [{ id: 'step_1', endpointId: 'get /health' }],
+    })
+    expect(wf.ok).toBe(true)
+    if (!wf.ok) return
+
+    await service.execute(wf.value.id)
+
+    const updated = await service.get(wf.value.id)
+    expect(updated.ok).toBe(true)
+    if (!updated.ok || !updated.value) return
+
+    expect(updated.value.lastRunSummary).toBeDefined()
+    expect(updated.value.lastRunSummary?.status).toBe('success')
+    expect(updated.value.lastRunSummary?.totalSteps).toBe(1)
+  })
+})

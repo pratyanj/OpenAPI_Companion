@@ -2,9 +2,10 @@
 
 > **A browser extension that turns Swagger UI into a persistent, productivity-focused API testing workspace.**
 
-[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.1)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Chrome 116+](https://img.shields.io/badge/Chrome-116%2B-yellow.svg)](https://chromewebstore.google.com)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/openapi-companion/)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-orange.svg)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 
 ---
@@ -27,14 +28,14 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ## Supported Browsers
 
-| Browser | Supported | Notes |
+| Browser | Supported | Install Link |
 |---|---|---|
-| Google Chrome 116+ | ✅ | Native `chrome.sidePanel` |
-| Microsoft Edge | ✅ | Native `chrome.sidePanel` |
-| Brave | ✅ | Native `chrome.sidePanel` |
-| Arc | ✅ | Native `chrome.sidePanel` |
-| Opera | ✅ | Native `chrome.sidePanel` |
-| Mozilla Firefox (140+) | ✅ | Native `sidebar_action` |
+| **Google Chrome** (116+) | ✅ | [**Chrome Web Store**](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0) |
+| **Mozilla Firefox** (140+) | ✅ | [**Firefox Add-ons (AMO)**](https://addons.mozilla.org/en-US/firefox/addon/openapi-companion/) |
+| **Microsoft Edge** | ✅ | [**Chrome Web Store**](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0) |
+| **Brave** | ✅ | [**Chrome Web Store**](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0) |
+| **Arc** | ✅ | [**Chrome Web Store**](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0) |
+| **Opera** | ✅ | [**Chrome Web Store**](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0) |
 
 ---
 
@@ -53,7 +54,11 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ### For Google Chrome, Edge, Brave, Arc, Opera
 
-1. Download **`openapi-companion-1.2.1.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.1).
+#### Option 1 — Install via Chrome Web Store (Recommended)
+👉 **[Install OpenAPI Companion from the Chrome Web Store](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0)**
+
+#### Option 2 — Load Unpacked ZIP (Manual / Testing)
+1. Download **`openapi-companion-1.3.0.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases).
 2. Unzip the file anywhere on your machine.
 3. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
 4. Enable **Developer mode** (top-right toggle).
@@ -62,14 +67,14 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 
 ### For Mozilla Firefox
 
-#### Option 1 — Install via Mozilla Add-ons (AMO)
-*(Available once published)* — Visit the addons.mozilla.org listing and click **Add to Firefox**.
+#### Option 1 — Install via Firefox Add-ons (AMO) (Recommended)
+👉 **[Install OpenAPI Companion from Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/openapi-companion/)**
 
 #### Option 2 — Load Release ZIP in Firefox (Testing / Unpacked)
-1. Download **`openapi-companion-1.2.1-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases/tag/v1.2.1).
+1. Download **`openapi-companion-1.3.0-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases).
 2. Open Firefox and navigate to **`about:debugging#/runtime/this-firefox`** (or menu: *Tools* → *Browser Tools* → *about:debugging*).
 3. Click **Load Temporary Add-on…**.
-4. Select the downloaded `openapi-companion-1.2.1-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
+4. Select the downloaded `openapi-companion-1.3.0-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
 5. OpenAPI Companion will appear in your toolbar and extensions list.
 
 #### Option 3 — Build from Source
@@ -78,7 +83,7 @@ npm install
 npm run build:firefox
 ```
 * Generates the unzipped Firefox extension in `dist-firefox/`.
-* Packages the AMO-ready archive in `share/openapi-companion-1.2.1-firefox.zip`.
+* Packages the AMO-ready archive in `share/openapi-companion-1.3.0-firefox.zip`.
 
 ---
 
@@ -191,19 +196,27 @@ Automate complex, multi-step API journeys directly within your browser — no ex
 **What it does:**
 - Chains multiple API endpoints into sequential, automated test runs (e.g. *Register → Login → Create Item → Fetch Item → Cleanup*).
 - Built-in **Swagger Auto-Population**: One-click fill path params, query params, headers, and body schemas directly from the active Swagger DOM.
-- Supports **Execution Failure Modes**:
-  - `Stop on failure`: Halts execution immediately if any step fails (perfect for strict integration and regression tests).
-  - `Continue on failure`: Executes all steps regardless of errors (ideal for batch operations and cleanup routines).
+- **Visual Assertions Builder**:
+  - One-click presets: `+ Status 2xx`, `+ 200 OK`, `+ < 500ms`, `+ Custom Assertion`.
+  - Targets: HTTP Status code, Response Headers (case-insensitive), JSONPath expressions (`$.data.user.id`, `$.items[0]`), Data Types (`number`, `string`, `array`, `object`), Lengths, Substring/Array Containment, Regex Matching, and Response Time (ms).
+  - Full support for **Negative Testing** (asserting `Status equals 404` or `422` marks the step as a passing verification).
+- **Step-Level Dynamic Extractions**:
+  - Extract values directly within each step using JSONPath (e.g. `$.token` → `AUTH_TOKEN`) or response headers and save them into the active environment in real-time.
+- **Execution Failure Modes**:
+  - `Stop on failure`: Halts execution immediately if any step fails (strict testing).
+  - `Continue on failure`: Executes all steps regardless of errors (batch runs and cleanup routines).
+  - `Ask on failure`: Pauses execution with an interactive in-modal banner, letting you inspect the failure and choose whether to proceed or abort.
 - **Drag-and-Drop Reordering**: Smoothly rearrange step execution order with intuitive drag handles.
 - **Real-Time Runner Modal**:
-  - Live visual progress bar and step completion percentage.
-  - Streaming per-step execution status (running spinner, success checkmark, error badge).
-  - Elapsed duration metrics per step and overall workflow.
-  - Expandable response inspection with status codes, duration, and error messages.
+  - Live elapsed duration timer and step completion progress bar.
+  - Granular, expandable assertion checklist for each step (showing passed/failed badges, expected vs actual values, and diagnostic callouts).
+  - Extracted variables pill list (`{{token}} = eyJ...`).
+  - Formatted JSON response preview with 1-click **Copy Response** button.
+  - Persistent run summary history (`lastRunSummary`) saved on each workflow.
 
 #### 🔗 Variable Chaining Between Steps (Passing Step 2 Response to Step 4)
 
-A common requirement is taking dynamic data from an earlier step (such as an ID generated by a `POST` request in Step 2) and passing it into a later step (such as Step 4). OpenAPI Companion handles this seamlessly via **Environment Auto-Extraction Rules** and `{{VARIABLE_NAME}}` placeholders.
+A common requirement is taking dynamic data from an earlier step (such as an ID generated by a `POST` request in Step 2) and passing it into a later step (such as Step 4). OpenAPI Companion handles this seamlessly via **Step Extractions** or **Environment Auto-Extraction Rules** and `{{VARIABLE_NAME}}` placeholders.
 
 ```mermaid
 sequenceDiagram
@@ -222,21 +235,13 @@ sequenceDiagram
 
 **Step-by-Step Walkthrough:**
 
-1. **Create an Extraction Rule for Step 2:**
-   - In the sidebar, open the **Variables** tab and click the **⚡ Rules** sub-tab.
-   - Click **+ Add Rule** (or click the ⚡ icon on the endpoint in Swagger UI).
-   - Set **Endpoint** to Step 2 (e.g. `post /api/items`).
-   - Set **Source** to `Response Body`.
-   - Set **Property** to the JSON path of the ID:
-     - Root fields: `id` or `token`
-     - Nested objects: `data.id` or `result.item.id`
-     - Array items: `items[0].id`
-   - Set **Target Variable** to `NEW_ITEM_ID`.
-   - Click **Save Rule**.
+1. **Configure Extraction on Step 2:**
+   - In the workflow editor, select **Step 2** and open the **Extractions** tab.
+   - Click **+ Add Extraction Rule**, set property to `$.id` (or `data.id`), and target variable to `NEW_ITEM_ID`.
+   - Alternatively, use the **⚡ Rules** sub-tab under **Variables** in the side panel.
 
 2. **Reference the Variable in Step 4:**
-   - Open your workflow in the **Workflows** tab and edit **Step 4**.
-   - Use `{{NEW_ITEM_ID}}` wherever the ID is required:
+   - Edit **Step 4** and use `{{NEW_ITEM_ID}}` wherever the ID is required:
      - **In URL Path Parameters**: set parameter `id` to `{{NEW_ITEM_ID}}` (resolves to `/api/items/item_987`).
      - **In Request Body**: `{ "itemId": "{{NEW_ITEM_ID}}", "status": "active" }`.
      - **In Query Parameters**: `?itemId={{NEW_ITEM_ID}}`.
@@ -246,6 +251,78 @@ sequenceDiagram
    - Click **▶ Run Workflow**.
    - When Step 2 executes, the runner captures the ID and updates your environment in real-time.
    - When Step 4 executes, OpenAPI Companion automatically resolves `{{NEW_ITEM_ID}}` to the generated ID before dispatching the request!
+
+---
+
+### 🎥 API Scenario Recorder
+
+Record live manual testing sessions in Swagger UI and turn them into automated, reproducible Workflows in 1 click.
+
+**What it does:**
+- Mounts an in-page floating toolbar directly over Swagger UI with **Record**, **Pause**, **Resume**, and **Stop & Review** controls.
+- Intercepts live requests executed via Swagger UI's "Try it out" and "Execute" buttons.
+- Captures operation details, path/query parameters, headers, payloads, and response data in exact sequence.
+- **Smart Data Dependency Heuristics**: Automatically scans requests against prior responses to detect matching IDs, UUIDs, and tokens, auto-generating `{{variable}}` chains and extraction rules.
+- **Auto-Generated Assertions**: Generates baseline `is2xx` status and response time checks for every recorded step.
+- **Interactive Review Modal**: Inspect recorded steps, adjust synthesized variables and assertions, and click **Save to Workflows** to convert the session into a persistent, runnable workflow.
+
+---
+
+### 📑 Automated Pagination Tester
+
+Test paginated endpoints without manually clicking "Next" dozens of times.
+
+**What it does:**
+- Detects pagination parameters on Swagger operations and injects a **[Test Pagination]** button right next to **`[Try it out]` / `[Cancel]`**.
+- Supports 3 core pagination schemes:
+  - **Limit / Offset**: `offset`, `skip`, `start` combined with `limit`, `page_size`, `count`, `take`.
+  - **Page-Based**: `page`, `page_number`, `p` combined with `limit`, `page_size`, `per_page`.
+  - **Cursor-Based**: `cursor`, `next_cursor`, `continuation_token`, `starting_after`, `after`.
+- **Automated Multi-Page Runner**: Executes requests sequentially with configurable page sizes, max pages, and inter-request delays (ms).
+- **Smart Stop Triggers**: Gracefully terminates on empty array, short page (items < limit), null cursor, cyclic cursor repetition, or manual abort.
+- **Data Integrity & Anomaly Analysis**:
+  - **Duplicate Detection**: Identifies unique keys (`id`, `uuid`, `key`, `email`) and warns if records repeat across pages.
+  - **Page Size Validation**: Flags pages that deviate from the requested limit.
+  - **Cursor Tracking**: Flags stale or repeating cursors.
+  - **Sequence Gap Heuristics**: Detects sequential numeric gaps in returned items.
+- **Interactive Modal**:
+  - **Config Tab**: Fine-tune strategy, parameters, initial offsets/pages, and loop limits.
+  - **Report Tab**: Summary metrics, integrity checklist, and detailed anomaly callouts.
+  - **Pages Tab**: Expandable page-by-page JSON record browser.
+  - **Export Options**: 1-click **Copy Report (JSON)** and **Save as Workflow** to turn the pagination sequence into an automated regression test.
+
+---
+
+### 🔍 OpenAPI Spec Change Detector & Impact Analysis
+
+Protect your workflows and templates against backend contract changes and breaking updates.
+
+**What it does:**
+- Automatically snapshots the active OpenAPI / Swagger specification and computes a deterministic FNV-1a hash across all endpoints and schemas.
+- Stores baseline snapshots per project in local storage.
+- **Deep Contract Diff Engine**: Compares the live specification against stored baselines on page load:
+  - Detects added, removed, and renamed endpoints (`/users/{id}` → `/users/{userId}`).
+  - Detects added/removed query, path, and header parameters, required status changes, and type modifications.
+  - Detects request body schema alterations and newly required properties.
+  - Detects removed response status codes and schema property deletions.
+- **Heuristic Classification**: Categorizes each diff item as **`Breaking`**, **`Warning`**, or **`Info`**.
+- **Companion Resource Impact Analysis**: Correlates contract changes with your stored Workflows, Saved Presets, and Pinned Operations, flagging exact steps affected by missing required parameters or removed fields.
+- **In-Page Notification Banner**: Injects an alert atop Swagger UI showing change counts and a breaking changes badge with **[Review Changes]** and **[Accept Baseline]** buttons.
+- **Interactive Review Modal**: Filter changes by severity, search contract diffs, inspect impacted companion resources, and export change summaries to JSON.
+
+---
+
+### 🌳 Interactive Response Viewer & Exporter
+
+Upgrade Swagger UI's plain response text into a full-featured API response workbench.
+
+**What it does:**
+- Injects a compact action toolbar atop every executed response in Swagger UI.
+- **Collapsible Tree View**: Navigate deeply nested JSON structures with expandable/collapsible nodes, syntax coloring, and type badges.
+- **Raw View with In-Response Search**: Search through massive response payloads with real-time match highlighting (`<mark>`), match counts, and Next/Prev navigation.
+- **1-Click Copy**: Copy the entire response payload or selected nodes to clipboard.
+- **Export Options**: Export response data directly to formatted **JSON** or flattened **CSV** for spreadsheet analysis.
+- **Non-Invasive Architecture**: Employs an isolated view container leaving Swagger UI's native DOM elements pristine, preventing React reconciliation crashes.
 
 ---
 
@@ -349,6 +426,33 @@ Stop typing `test@example.com` and `12345678` by hand.
 1. Open the **Fake Data** tab in the side panel.
 2. Click any generator type to copy a value to your clipboard.
 3. Paste it into the relevant Swagger request field.
+
+---
+
+### 🎛️ In-Page Feature Config Panel
+
+Customize exactly how OpenAPI Companion enhances your Swagger UI page.
+
+Open the **Config** tab in the side panel to individually enable or disable all 16 in-page features with instant, zero-reload CSS/DOM toggling:
+
+| Feature Toggle | Description |
+|---|---|
+| **Spec Change Detector** | Detects contract diffs, breaking updates, and impacted resources with an in-page banner. |
+| **Pagination Tester** | Injects `[Test Pagination]` button to automate multi-page testing and detect duplicates. |
+| **API Scenario Recorder** | Injects floating in-page toolbar to record live Swagger sessions into runnable workflows. |
+| **Response Viewer** | Injects interactive Tree View, Raw text search, Copy, and CSV/JSON export toolbar. |
+| **Response Variable Saver** | Injects ⚡ icon on response cards to quickly create environment variable extraction rules. |
+| **Response Export** | Quick export buttons directly atop Swagger response bodies. |
+| **Fake Data Generator** | Injects 🎲 mock data buttons above request body textareas. |
+| **Pinned Endpoints** | Adds star buttons next to operations to pin favorites to a quick-access header tray. |
+| **Quick Presets / Templates** | Injects preset selector pills inside endpoint parameter headers. |
+| **Global Headers Injection** | Injects project-wide headers into outgoing Swagger requests. |
+| **Copy Code Snippets** | Adds 1-click cURL, Fetch, Axios, and PowerShell copy buttons to Swagger operations. |
+| **Paste cURL into Request** | Paste cURL command directly into Swagger UI to populate parameters and headers. |
+| **Raw Parameter Editor** | Edit query/path parameters in raw key-value format. |
+| **Interactive Auth Badge** | Displays active user/token status pill atop Swagger UI with quick switcher. |
+| **In-Page Command Palette** | Press `Ctrl+K` (`Cmd+K`) on the Swagger page to instantly search and jump to any endpoint. |
+| **Dark Theme Sync** | Automatically syncs Swagger UI background and fonts with your selected theme. |
 
 ---
 
@@ -535,7 +639,7 @@ The tag push triggers `.github/workflows/release.yml`, which:
 
 ## Roadmap
 
-### Current (v1.2)
+### Current (v1.3)
 - ✅ Authentication Manager + multi-user token store
 - ✅ Persistent auth across page refreshes
 - ✅ Saved requests & request templates
@@ -543,6 +647,14 @@ The tag push triggers `.github/workflows/release.yml`, which:
 - ✅ Zero-click response auto-extraction rules (⚡) & secret masking
 - ✅ Multi-Step Workflow Runner with live execution streaming
 - ✅ Inter-step data chaining & dynamic variable substitution (`{{VAR}}`)
+- ✅ Zero-Dependency Assertion Engine (Status, Headers, JSONPath, Types, Latency)
+- ✅ Visual Assertions Builder with presets & negative testing
+- ✅ Configurable Failure Handling (`stop-on-failure`, `continue-on-failure`, `ask-on-failure`)
+- ✅ API Scenario Recorder (in-page toolbar & auto dependency heuristics)
+- ✅ Automated Pagination Tester (multi-page runner, integrity checks & duplicate detection)
+- ✅ OpenAPI Spec Change Detector & Impact Analysis (breaking changes diff & local impact)
+- ✅ Interactive Response Viewer (collapsible JSON Tree, Raw search with highlighting, CSV/JSON export)
+- ✅ In-Page Feature Config Panel (16 feature toggles with zero-reload styling)
 - ✅ Workflow JSON import / export (AI agent & team sharing)
 - ✅ Collections (group related endpoints)
 - ✅ API request history with replay
@@ -553,7 +665,6 @@ The tag push triggers `.github/workflows/release.yml`, which:
 - ✅ Side panel closes on browser tab switch
 
 ### Future (Planned)
-- 🔜 Response Inspector (pretty JSON, tree view, diff)
 - 🔜 ReDoc + Scalar + RapiDoc support
 - 🔜 Auto token refresh
 - 🔜 Team collaboration & shared collections

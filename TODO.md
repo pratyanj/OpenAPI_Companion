@@ -1,3 +1,111 @@
+# 🧪 Advanced API Testing & Contract Verification Roadmap (v1.3.0+)
+
+> Based on [OpenAPI_Companion_Advanced_API_Testing_Features.md](file:///p:/React%20native/OpenAPI_Companion/docs/OpenAPI_Companion_Advanced_API_Testing_Features.md). Extending OpenAPI Companion into an in-context **Swagger/OpenAPI testing + contract verification** workspace while reusing the core execution pipeline.
+
+---
+
+### 📦 Phase 1: Testing Foundation & Assertions Engine
+- [x] **1.1. Core Assertion Engine Primitives (`src/modules/workflows/assertions`)**
+  - [x] Define assertion schema & types (`AssertionType`: `status`, `headers`, `jsonPath`, `type`, `length`, `contains`, `responseTime`).
+  - [x] Define operators (`equals`, `notEquals`, `is2xx`, `is3xx`, `is4xx`, `is5xx`, `isNot5xx`, `contains`, `notContains`, `exists`, `greaterThan`, `lessThan`, `matchesRegex`).
+  - [x] Implement lightweight, zero-dependency JSONPath parser/extractor (`$.data.id`, `$.items[0].name`).
+  - [x] Build assertion evaluator function: `evaluateAssertions(assertions, response): AssertionResult[]`.
+  - [x] Return structured diagnostics with `expected` vs `actual`, boolean `passed`, and human-readable failure descriptions.
+- [x] **1.2. Workflow Step & Result Schema Extensions**
+  - [x] Extend `WorkflowStep` in `types.ts` with `assertions?: Assertion[]`.
+  - [x] Extend `StepRunResult` with `assertionResults?: AssertionResult[]` and `assertionsPassed?: boolean`.
+  - [x] Extend `WorkflowExportBundle` import/export schema for backward and forward compatibility.
+  - [x] Integrate assertion execution loop into `WorkflowService.execute`.
+- [x] **1.3. Comprehensive Unit Tests**
+  - [x] Test assertion evaluators against status ranges, header matches, nested JSON objects/arrays, regex patterns, and timing thresholds (**14 tests passed**).
+  - [x] Test workflow runner with passing assertions, failing assertions stopping flow, and continuing on failure (**21 tests passed, 41 total workflow tests passing**).
+
+---
+
+### ⏺️ Phase 2: API Scenario Recorder
+- [x] **2.1. In-Page Recording Controls & State Machine**
+  - [x] Implement Scenario Recording state machine (`idle`, `recording`, `paused`) in `ScenarioRecorderService`.
+  - [x] Mount sleek floating in-page recorder bar (`#oac-scenario-bar-host`) in Swagger UI with Record, Pause, Resume, Stop buttons and live step counter (`● Recording (N)`).
+  - [x] Add configuration toggle (enable/disable) for Scenario Recorder in `ConfigPanel` and `SwaggerFeaturePreferences` with instant zero-reload DOM visibility switching.
+- [x] **2.2. Live Request & Response Capture**
+  - [x] Hook into Swagger UI's `observeExecutions` to intercept native executions in chronological order.
+  - [x] Capture HTTP method, resolved URL, path/query params, headers, request body, response status, and response body.
+- [x] **2.3. Dynamic Value Detection Heuristics**
+  - [x] Analyze JSON response properties (`id`, `uuid`, `access_token`, `token`, `key`) from step $N$ against subsequent step $N+1$ request paths, query strings, headers, and payloads.
+  - [x] Auto-suggest `{{variable}}` replacements and extraction bindings.
+- [x] **2.4. In-Page Scenario Review Modal (`#oac-scenario-modal-host`)**
+  - [x] Top-centered Shadow DOM modal (`ScenarioReviewModal`) to inspect captured steps, reorder via buttons, delete unwanted steps, and toggle suggested variables.
+  - [x] 1-Click "Convert to Workflow" action to convert and persist directly into `WorkflowService` (**1,001 tests passing**).
+
+---
+
+### ⚡ Phase 3: Workflow Runner Upgrades & Visual Editor
+- [x] **3.1. Interactive Step Assertions Builder**
+  - [x] Upgrade `WorkflowEditorModal.tsx` with dedicated "Assertions" section per step.
+  - [x] Dropdowns for assertion target (`Status`, `Header`, `JSON Path`, `Data Type`, `Length`, `Response Time`), operators, expected values, and preset shortcuts (+ 2xx Status, + 200 OK, + < 500ms).
+  - [x] Add step-level response extraction rules with target variable name and JSONPath preview.
+- [x] **3.2. Upgraded Workflow Runner Experience (`WorkflowRunnerModal.tsx`)**
+  - [x] Real-time execution stepper with live running indicators, duration timer, and pass/fail badges.
+  - [x] Collapsible step inspection panel showing resolved request variables, response payload with 1-click copy, and granular assertion pass/fail checklist.
+  - [x] Clear failure diagnostics: highlight failing assertions, mismatch details, and error response bodies.
+- [x] **3.3. Configurable Failure Handling**
+  - [x] Support `stop-on-failure` (default), `continue-on-failure`, and interactive `ask-on-failure` prompt.
+  - [x] Persistent workflow execution history and run summaries on workflow records.
+
+---
+
+### 📄 Phase 4: Pagination Tester
+- [x] **4.1. Swagger Pagination Parameter Auto-Detection (`src/modules/pagination/detector.ts`)**
+  - [x] Scan operation parameters and OpenAPI schemas for known pagination keys (`page`, `page_number`, `pageNo`, `limit`, `page_size`, `per_page`, `offset`, `cursor`, `next_cursor`, `continuation_token`).
+  - [x] Auto-detect pagination strategy: `Page-based`, `Limit/Offset`, or `Cursor-based`.
+- [x] **4.2. Automated Request Progression Runner (`src/modules/pagination/runner.ts`)**
+  - [x] Configurable parameters: initial page/offset, page size, max pages limit (guard against infinite loops), and delay between requests.
+  - [x] Multi-page execution loop driving the existing execution pipeline.
+  - [x] Smart stop conditions: empty response array, repeated cursor, or fewer items than page size.
+- [x] **4.3. Integrity Analysis & Heuristic Checks (`src/modules/pagination/integrity.ts`)**
+  - [x] Duplicate record detection: hash/compare record IDs across pages to flag repeated records.
+  - [x] Page size validation: verify actual returned record count matches requested page size (except final page).
+  - [x] Cursor progression validation: verify extracted next-cursor is correctly passed to subsequent calls.
+  - [x] Missing record heuristics: detect potential ID sequence gaps.
+- [x] **4.4. Tabular Pagination Report Viewer (`PaginationTesterModal.tsx` & `swagger-pagination-tester.ts`)**
+  - [x] Modal summary displaying total pages tested, total records collected, pass/warning badges, and diagnostic anomalies (**1,041 tests passing**).
+
+---
+
+### 🔍 Phase 5: OpenAPI Spec Change Detector & Impact Analysis
+- [x] **5.1. Spec Snapshotting & Normalization (`src/modules/spec-detector/normalizer.ts`)**
+  - [x] Fetch active OpenAPI specification via `specUrl()` or `window.ui.specSelectors.specJson()`.
+  - [x] Canonicalize and deterministically hash endpoints, operations, parameters, request body schemas, and response schemas.
+  - [x] Cache baseline spec snapshot in `chrome.storage.local` indexed by project ID (`projectKey(projectId, 'spec', 'snapshot')`).
+- [x] **5.2. Specification Diff Engine (`src/modules/spec-detector/diff-engine.ts`)**
+  - [x] Deep diff algorithm comparing baseline snapshot with active spec on page load.
+  - [x] Categorize changes: added/removed endpoints, path parameter renames (`/users/{id}` -> `/users/{userId}`), added/removed parameters, required status changes, schema modifications.
+  - [x] Breaking-change heuristics: flag removed endpoints/methods, newly required parameters, newly required request bodies/properties, removed response status codes/properties, or altered types as "Potentially Breaking".
+- [x] **5.3. Local Resource Impact Analysis (`src/modules/spec-detector/impact-analyzer.ts`)**
+  - [x] Cross-reference contract diffs against user Workflows, Saved Presets / Templates, and Pinned Operations.
+  - [x] Flag missing required parameters or missing bodies directly on individual workflow steps with precise diagnostic failure reasons.
+- [x] **5.4. Spec Change Notification Banner & Diff Inspector (`swagger-spec-detector.ts` & `SpecChangeModal.tsx`)**
+  - [x] Unobtrusive in-page notification banner atop Swagger UI with breaking status badge, count chip, `[Review Changes]`, and `[Accept Baseline]` buttons.
+  - [x] Interactive modal dialog (`SpecChangeModal`) with Summary, Changes filter (Breaking/Warning/Info), Impacted Resources inspector, JSON export, and 1-click baseline acceptance.
+  - [x] Added configuration toggle (`specChangeDetector: boolean`) in `ConfigPanel` (16/16 active features) (**1,071 unit tests passing**).
+
+---
+
+### 📁 Phase 6: Multi-File Upload Assistant
+- [ ] **6.1. Schema Compatibility Scanner**
+  - [ ] Detect endpoints accepting multipart schemas:
+    - OAS 3.0: `type: string, format: binary` (single) vs `type: array, items: { type: string, format: binary }` (multiple).
+    - OAS 3.1: `contentMediaType` binary representations.
+- [ ] **6.2. Modern In-Page Dropzone & Multi-File Picker**
+  - [ ] Inject styled dropzone overlay (`#oac-file-dropzone`) over Swagger's native file inputs.
+  - [ ] Support `<input type="file" multiple>` and drag-and-drop.
+  - [ ] File list widget with file name, formatted byte size (`1.2 MB`), MIME type icon, remove (`✕`), and reorder controls.
+- [ ] **6.3. In-Memory Session Management & DOM Bridge**
+  - [ ] Keep active `File` objects strictly in memory (zero persistent bytes in `chrome.storage` to respect quota limits).
+  - [ ] Construct synthetic `DataTransfer` / `FormData` and dispatch to Swagger UI file input elements upon execution.
+
+---
+
 ## 🚀 Release v1.2.1 Action Items & Completed Features (2026-09-27)
 
 - [x] **1. 🗂️ Workspaces & Projects Switcher Redesign**
