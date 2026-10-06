@@ -614,7 +614,13 @@ describe('Workflow Step Assertions', () => {
           id: 'step_1',
           endpointId: 'get /status',
           assertions: [
-            { id: 'a1', type: 'jsonPath', target: '$.status', operator: 'equals', expected: 'ready' },
+            {
+              id: 'a1',
+              type: 'jsonPath',
+              target: '$.status',
+              operator: 'equals',
+              expected: 'ready',
+            },
           ],
         },
         {
@@ -750,7 +756,11 @@ describe('Workflow Step Assertions', () => {
     if (!runRes.ok) return
 
     expect(promptSpy).toHaveBeenCalledTimes(1)
-    expect(promptSpy).toHaveBeenCalledWith(0, expect.objectContaining({ id: 'step_1' }), expect.any(String))
+    expect(promptSpy).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({ id: 'step_1' }),
+      expect.any(String),
+    )
     expect(runRes.value.completedSteps).toBe(2)
     expect(runRes.value.status).toBe('failed')
   })
@@ -811,4 +821,3 @@ describe('Workflow Step Assertions', () => {
     expect(updated.value.lastRunSummary?.totalSteps).toBe(1)
   })
 })
-

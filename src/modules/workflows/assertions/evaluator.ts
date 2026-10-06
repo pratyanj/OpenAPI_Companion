@@ -115,7 +115,9 @@ function evaluateOperator(
       const passed = actual === undefined || actual === null
       return {
         passed,
-        reason: passed ? undefined : `Expected value not to exist, but got ${JSON.stringify(actual)}`,
+        reason: passed
+          ? undefined
+          : `Expected value not to exist, but got ${JSON.stringify(actual)}`,
       }
     }
 

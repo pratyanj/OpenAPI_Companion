@@ -54,10 +54,7 @@ function isPathParamRename(path1: string, path2: string): boolean {
   return hasParamDiff
 }
 
-export function diffOpenApiSpecs(
-  oldSpec: NormalizedSpec,
-  newSpec: NormalizedSpec,
-): SpecDiffResult {
+export function diffOpenApiSpecs(oldSpec: NormalizedSpec, newSpec: NormalizedSpec): SpecDiffResult {
   const changes: SpecChangeItem[] = []
 
   const oldOps = oldSpec.operations

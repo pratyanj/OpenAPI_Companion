@@ -141,7 +141,7 @@ export class PaginationRunner {
           body: config.baseBody,
           signal,
         })
-      } catch (err: any) {
+      } catch (err: unknown) {
         const durationMs = Date.now() - callStart
         const errorStep: PaginationStepResult = {
           pageNumber: stepNumber,
@@ -150,7 +150,7 @@ export class PaginationRunner {
           durationMs,
           recordsCount: 0,
           records: [],
-          error: err?.message || 'Network request failed',
+          error: err instanceof Error ? err.message : 'Network request failed',
         }
         steps.push(errorStep)
         stoppedReason = 'error'
@@ -163,7 +163,7 @@ export class PaginationRunner {
         break
       }
 
-      const durationMs = res.durationMs ?? (Date.now() - callStart)
+      const durationMs = res.durationMs ?? Date.now() - callStart
       const { records, nextCursor } = extractRecordsFromResponse(
         res.responseBody,
         config.cursorPath,

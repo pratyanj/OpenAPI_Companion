@@ -214,7 +214,8 @@ export class ScenarioRecorderService {
 
     return {
       name: scenario.name || 'Recorded Workflow',
-      description: scenario.description || `Generated from Scenario with ${scenario.steps.length} steps`,
+      description:
+        scenario.description || `Generated from Scenario with ${scenario.steps.length} steps`,
       mode: 'stop-on-failure',
       steps: workflowSteps,
     }

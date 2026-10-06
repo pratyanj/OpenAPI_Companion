@@ -76,9 +76,7 @@ describe('PaginationTesterModal', () => {
 
     expect(screen.getByText('Total Records')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument() // 2 on page 1 + 1 on page 2
-    expect(
-      screen.getByText('No duplicate records detected across pages'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('No duplicate records detected across pages')).toBeInTheDocument()
 
     // Test Save to Workflow
     const saveBtn = screen.getByRole('button', { name: /Save to Workflow/i })

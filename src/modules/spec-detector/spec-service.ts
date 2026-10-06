@@ -1,9 +1,5 @@
 import { projectKey, type StorageService } from '@/core/storage'
-import type {
-  NormalizedSpec,
-  SpecSnapshot,
-  SpecDiffResult,
-} from './types'
+import type { NormalizedSpec, SpecSnapshot, SpecDiffResult } from './types'
 import { normalizeOpenApiSpec } from './normalizer'
 import { diffOpenApiSpecs } from './diff-engine'
 import { analyzeSpecImpact } from './impact-analyzer'
@@ -33,7 +29,11 @@ export class SpecService {
     this.storage = options.storage
     this.projectId = options.projectId
     this.specUrl = options.specUrl
-    this.fetchFn = options.fetchFn ?? (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : (undefined as any))
+    this.fetchFn =
+      options.fetchFn ??
+      (typeof fetch !== 'undefined'
+        ? fetch.bind(globalThis)
+        : () => Promise.reject(new Error('Fetch not available')))
     this.getWorkflows = options.getWorkflows
     this.getPresets = options.getPresets
     this.getPinnedEndpoints = options.getPinnedEndpoints

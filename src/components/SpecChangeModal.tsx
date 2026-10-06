@@ -307,7 +307,9 @@ export function SpecChangeModal({
             {/* List */}
             <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-1">
               {filteredChanges.length === 0 ? (
-                <div className="text-center py-8 text-text-muted">No changes match your filter.</div>
+                <div className="text-center py-8 text-text-muted">
+                  No changes match your filter.
+                </div>
               ) : (
                 filteredChanges.map((change) => {
                   const severityBadge =
@@ -428,9 +430,7 @@ export function SpecChangeModal({
                           {typeIcon}
                           <span className="font-semibold text-text">{item.name}</span>
                           {item.stepName && (
-                            <span className="text-[11px] text-text-muted">
-                              ({item.stepName})
-                            </span>
+                            <span className="text-[11px] text-text-muted">({item.stepName})</span>
                           )}
                         </div>
                         <Badge kind={item.severity === 'breaking' ? 'error' : 'warning'}>

@@ -1,9 +1,6 @@
 import type { Workflow } from '../workflows/types'
 import type { RequestTemplate } from '../request/types'
-import type {
-  SpecChangeItem,
-  ImpactedResource,
-} from './types'
+import type { SpecChangeItem, ImpactedResource } from './types'
 
 export interface AnalyzeImpactOptions {
   changes: SpecChangeItem[]
@@ -81,7 +78,11 @@ export function analyzeSpecImpact(options: AnalyzeImpactOptions): ImpactedResour
       )
 
       for (const paramChange of requiredParamChanges) {
-        const paramName = (paramChange.after as any)?.name ?? paramChange.title.split(': ').pop() ?? ''
+        const paramName =
+          ((paramChange.after as Record<string, unknown> | undefined)?.name as
+            string | undefined) ??
+          paramChange.title.split(': ').pop() ??
+          ''
         const inQuery = Boolean(step.queryParams && step.queryParams[paramName])
         const inPath = Boolean(step.pathParams && step.pathParams[paramName])
         const inHeader = Boolean(step.headerParams && step.headerParams[paramName])

@@ -17,7 +17,7 @@ describe('Pagination Extractor', () => {
     const result = extractRecordsFromResponse(raw)
     expect(result.records).toHaveLength(2)
     expect(result.rootPath).toBe('$')
-    expect(result.records[0].name).toBe('Alice')
+    expect((result.records[0] as { name: string }).name).toBe('Alice')
     expect(result.nextCursor).toBeNull()
   })
 

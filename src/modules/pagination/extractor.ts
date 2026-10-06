@@ -1,7 +1,7 @@
 import { extractJsonPath } from '../workflows/assertions/jsonpath'
 
 export interface ExtractedPaginationData {
-  records: any[]
+  records: unknown[]
   rootPath?: string
   nextCursor?: string | null
 }
@@ -66,13 +66,13 @@ export function extractRecordsFromResponse(
   }
 
   const obj = parsed as Record<string, unknown>
-  let records: any[] = []
+  let records: unknown[] = []
   let rootPath: string | undefined
 
   // 2. Check prioritized collection keys
   for (const key of COMMON_COLLECTION_KEYS) {
     if (Array.isArray(obj[key])) {
-      records = obj[key] as any[]
+      records = obj[key] as unknown[]
       rootPath = `$.${key}`
       break
     }

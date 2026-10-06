@@ -784,9 +784,19 @@ export async function bootAgent(
       const specUrl = adapter.specUrl() || docIdentityUrl(location.href)
       let rawSpec: unknown = null
 
-      if (typeof window !== 'undefined' && (window as any).ui?.specSelectors?.specJson) {
+      interface SwaggerWindow extends Window {
+        ui?: {
+          specSelectors?: {
+            specJson?: () => { toJS?: () => unknown }
+          }
+        }
+      }
+
+      const swaggerWin =
+        typeof window !== 'undefined' ? (window as unknown as SwaggerWindow) : undefined
+      if (swaggerWin?.ui?.specSelectors?.specJson) {
         try {
-          rawSpec = (window as any).ui.specSelectors.specJson().toJS()
+          rawSpec = swaggerWin.ui.specSelectors.specJson()?.toJS?.()
         } catch {
           // ignore
         }

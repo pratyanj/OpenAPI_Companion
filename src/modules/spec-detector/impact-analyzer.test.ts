@@ -98,20 +98,26 @@ describe('OpenAPI Spec Impact Analyzer', () => {
     })
 
     // Should find impact on s1 (delete /users/{id})
-    const wfStep1 = result.find((r) => r.type === 'workflow' && r.endpointId === 'delete /users/{id}')
+    const wfStep1 = result.find(
+      (r) => r.type === 'workflow' && r.endpointId === 'delete /users/{id}',
+    )
     expect(wfStep1).toBeDefined()
     expect(wfStep1?.severity).toBe('breaking')
     expect(wfStep1?.name).toBe('User & Order Flow')
     expect(wfStep1?.stepName).toBe('Clean up user')
 
     // Should find impact on preset t-1
-    const presetImpact = result.find((r) => r.type === 'preset' && r.endpointId === 'delete /users/{id}')
+    const presetImpact = result.find(
+      (r) => r.type === 'preset' && r.endpointId === 'delete /users/{id}',
+    )
     expect(presetImpact).toBeDefined()
     expect(presetImpact?.severity).toBe('breaking')
     expect(presetImpact?.name).toBe('Delete Test User')
 
     // Should find impact on pinned endpoint
-    const pinnedImpact = result.find((r) => r.type === 'favorite' && r.endpointId === 'delete /users/{id}')
+    const pinnedImpact = result.find(
+      (r) => r.type === 'favorite' && r.endpointId === 'delete /users/{id}',
+    )
     expect(pinnedImpact).toBeDefined()
     expect(pinnedImpact?.severity).toBe('warning')
   })

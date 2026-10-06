@@ -69,9 +69,7 @@ export function mountScenarioModal(
                 })
               }
             }}
-            onToast={(message, kind) =>
-              bus.publish('NOTIFY', { message, kind: kind ?? 'success' })
-            }
+            onToast={(message, kind) => bus.publish('NOTIFY', { message, kind: kind ?? 'success' })}
           />
         </StrictMode>
       ) : null,

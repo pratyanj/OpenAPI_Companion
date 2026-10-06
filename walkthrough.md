@@ -58,3 +58,43 @@ Built an in-context **API Scenario Recorder** directly inside Swagger UI, allowi
 - ESLint: **0 errors, 0 warnings**
 - Production Vite build (`npm run build`): **1,965 modules transformed, built in 11.39s**
 
+---
+
+## 🛠️ GitHub Actions CI Pipeline Verification & Quality Gate Fixes
+
+### Summary of Changes
+Executed and audited all checks in the GitHub Actions CI pipeline (`ci.yml` & `release.yml`). Fixed conditional React hooks violations, removed all disallowed explicit `any` types, applied Prettier formatting, and verified all 7 quality gates pass.
+
+### Files Modified
+1. `src/components/PaginationTesterModal.tsx`:
+   - Moved early `if (!isOpen) return null` check after all React hook and ref declarations to comply with `react-hooks/rules-of-hooks`.
+   - Replaced `catch (err: any)` with `catch (err: unknown)` and safe `err instanceof Error` checks.
+2. `src/content/index.tsx`:
+   - Safely typed `window.ui?.specSelectors?.specJson` with a typed window extension interface `SwaggerWindow`, removing all `(window as any)` casts.
+3. `src/content/swagger-spec-detector.test.ts`:
+   - Typed mock `specService` and `bus` using `Partial<SpecService>` and `Partial<EventBus>`, casting mock return to `SpecSnapshot`.
+4. `src/modules/pagination/extractor.ts` & `src/modules/pagination/types.ts`:
+   - Changed `records: any[]` to `records: unknown[]`.
+5. `src/modules/pagination/runner.ts`:
+   - Changed `catch (err: any)` to `catch (err: unknown)`.
+6. `src/modules/pagination/extractor.test.ts`:
+   - Safely typed record property assertions.
+7. `src/modules/spec-detector/impact-analyzer.ts`:
+   - Replaced `(paramChange.after as any)?.name` with safe optional chaining on `Record<string, unknown>`.
+8. `src/modules/spec-detector/normalizer.ts`:
+   - Replaced all explicit `any` occurrences with strict `Record<string, unknown>`.
+9. `src/modules/spec-detector/spec-service.ts`:
+   - Replaced fallback `(undefined as any)` with safe fallback error promise.
+10. `src/modules/spec-detector/spec-service.test.ts`:
+    - Replaced custom in-file `MemoryArea` with the canonical `createFakeArea()` from `@/tests/fake-storage`.
+11. Prettier formatting applied across 33 files.
+
+### Final Pipeline Gate Verification
+- **ESLint (`npm run lint`)**: Passed with **0 errors, 0 warnings** (down from 44 errors).
+- **Prettier Format Check (`npm run format:check`)**: Passed with **0 style issues**.
+- **TypeScript Typecheck (`npm run typecheck`)**: Passed with **0 errors**.
+- **Unit & Component Tests (`npm test` / `npm run test:coverage`)**: **123 test suites passed, 1,073 tests passed (100% green)**.
+- **Dependency Audit (`npm audit --omit=dev --audit-level=high`)**: Passed with **0 vulnerabilities**.
+- **Production Extension Build (`npm run build`)**: Passed with **1,980 modules transformed** (Chrome + Firefox release zip generated).
+- **E2E Smoke Tests (`npm run test:e2e`)**: Passed **2 / 2 tests** (Chromium extension load & service worker registration).
+

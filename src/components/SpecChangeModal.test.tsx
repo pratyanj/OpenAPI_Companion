@@ -69,12 +69,7 @@ describe('SpecChangeModal', () => {
 
   it('renders summary tab with breaking change alert and change metrics', () => {
     render(
-      <SpecChangeModal
-        diff={dummyDiff}
-        newSpec={dummySpec}
-        onAccept={vi.fn()}
-        onClose={vi.fn()}
-      />,
+      <SpecChangeModal diff={dummyDiff} newSpec={dummySpec} onAccept={vi.fn()} onClose={vi.fn()} />,
     )
 
     expect(screen.getByText(/OpenAPI Spec Change Detector/i)).toBeInTheDocument()
@@ -86,12 +81,7 @@ describe('SpecChangeModal', () => {
 
   it('switches to Changes tab and filters changes', async () => {
     render(
-      <SpecChangeModal
-        diff={dummyDiff}
-        newSpec={dummySpec}
-        onAccept={vi.fn()}
-        onClose={vi.fn()}
-      />,
+      <SpecChangeModal diff={dummyDiff} newSpec={dummySpec} onAccept={vi.fn()} onClose={vi.fn()} />,
     )
 
     const changesTab = screen.getByRole('button', { name: /Changes/i })
@@ -110,12 +100,7 @@ describe('SpecChangeModal', () => {
 
   it('switches to Impacted Resources tab and renders impacted workflows', () => {
     render(
-      <SpecChangeModal
-        diff={dummyDiff}
-        newSpec={dummySpec}
-        onAccept={vi.fn()}
-        onClose={vi.fn()}
-      />,
+      <SpecChangeModal diff={dummyDiff} newSpec={dummySpec} onAccept={vi.fn()} onClose={vi.fn()} />,
     )
 
     const impactTab = screen.getByRole('button', { name: /Impacted Resources/i })

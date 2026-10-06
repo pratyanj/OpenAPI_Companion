@@ -150,7 +150,11 @@ describe('OpenAPI Spec Diff Engine', () => {
           get: {
             parameters: [
               { name: 'q', in: 'query', schema: { type: 'string' } },
-              { name: 'sort', in: 'query', schema: { type: 'string', enum: ['asc', 'desc', 'date'] } },
+              {
+                name: 'sort',
+                in: 'query',
+                schema: { type: 'string', enum: ['asc', 'desc', 'date'] },
+              },
               { name: 'filter', in: 'query', schema: { type: 'string' } },
               { name: 'page', in: 'query', schema: { type: 'integer' } },
             ],
@@ -187,11 +191,21 @@ describe('OpenAPI Spec Diff Engine', () => {
     const diff = diffOpenApiSpecs(oldSpec, newSpec)
     expect(diff.hasBreakingChanges).toBe(true)
 
-    expect(diff.changes.some((c) => c.type === 'param_required_changed' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'enum_changed' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'param_removed' && c.severity === 'warning')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'param_type_changed' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'param_added' && c.severity === 'breaking')).toBe(true)
+    expect(
+      diff.changes.some((c) => c.type === 'param_required_changed' && c.severity === 'breaking'),
+    ).toBe(true)
+    expect(diff.changes.some((c) => c.type === 'enum_changed' && c.severity === 'breaking')).toBe(
+      true,
+    )
+    expect(diff.changes.some((c) => c.type === 'param_removed' && c.severity === 'warning')).toBe(
+      true,
+    )
+    expect(
+      diff.changes.some((c) => c.type === 'param_type_changed' && c.severity === 'breaking'),
+    ).toBe(true)
+    expect(diff.changes.some((c) => c.type === 'param_added' && c.severity === 'breaking')).toBe(
+      true,
+    )
     expect(diff.changes.some((c) => c.type === 'param_added' && c.severity === 'info')).toBe(true)
   })
 
@@ -253,10 +267,24 @@ describe('OpenAPI Spec Diff Engine', () => {
     })
 
     const diff = diffOpenApiSpecs(oldSpec, newSpec)
-    expect(diff.changes.some((c) => c.type === 'request_body_required_changed' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'request_body_property_added' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'request_body_property_added' && c.severity === 'info')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'request_body_property_removed' && c.severity === 'warning')).toBe(true)
+    expect(
+      diff.changes.some(
+        (c) => c.type === 'request_body_required_changed' && c.severity === 'breaking',
+      ),
+    ).toBe(true)
+    expect(
+      diff.changes.some(
+        (c) => c.type === 'request_body_property_added' && c.severity === 'breaking',
+      ),
+    ).toBe(true)
+    expect(
+      diff.changes.some((c) => c.type === 'request_body_property_added' && c.severity === 'info'),
+    ).toBe(true)
+    expect(
+      diff.changes.some(
+        (c) => c.type === 'request_body_property_removed' && c.severity === 'warning',
+      ),
+    ).toBe(true)
   })
 
   it('detects response changes: code removed, property removed or type altered', () => {
@@ -316,8 +344,14 @@ describe('OpenAPI Spec Diff Engine', () => {
     })
 
     const diff = diffOpenApiSpecs(oldSpec, newSpec)
-    expect(diff.changes.some((c) => c.type === 'response_status_removed' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'response_property_removed' && c.severity === 'breaking')).toBe(true)
-    expect(diff.changes.some((c) => c.type === 'response_type_changed' && c.severity === 'breaking')).toBe(true)
+    expect(
+      diff.changes.some((c) => c.type === 'response_status_removed' && c.severity === 'breaking'),
+    ).toBe(true)
+    expect(
+      diff.changes.some((c) => c.type === 'response_property_removed' && c.severity === 'breaking'),
+    ).toBe(true)
+    expect(
+      diff.changes.some((c) => c.type === 'response_type_changed' && c.severity === 'breaking'),
+    ).toBe(true)
   })
 })

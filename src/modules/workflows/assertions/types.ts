@@ -3,13 +3,7 @@
  */
 
 export type AssertionType =
-  | 'status'
-  | 'header'
-  | 'jsonPath'
-  | 'type'
-  | 'length'
-  | 'contains'
-  | 'responseTime'
+  'status' | 'header' | 'jsonPath' | 'type' | 'length' | 'contains' | 'responseTime'
 
 export type AssertionOperator =
   | 'equals'

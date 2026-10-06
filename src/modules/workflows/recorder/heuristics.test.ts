@@ -182,7 +182,9 @@ describe('Scenario Recorder Heuristics', () => {
       expect(tokenMatches[1]?.targetStepIndex).toBe(2)
 
       // User ID extracted from step 1 used in step 2
-      const idMatch = suggestions.find((s) => s.variableName.includes('id') && s.targetStepIndex === 2)
+      const idMatch = suggestions.find(
+        (s) => s.variableName.includes('id') && s.targetStepIndex === 2,
+      )
       expect(idMatch).toBeDefined()
       expect(idMatch?.extractedFromStepIndex).toBe(1)
       expect(idMatch?.originalValue).toBe('88776')

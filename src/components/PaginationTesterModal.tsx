@@ -59,8 +59,6 @@ export function PaginationTesterModal({
   const method = endpointId.split(' ')[0]?.toUpperCase() || 'GET'
   const path = endpointId.split(' ')[1] || endpointId
 
-  if (!isOpen) return null
-
   // Strategy & Parameters
   const [strategy, setStrategy] = useState<PaginationStrategy>(
     initialConfig?.strategy ?? detected?.strategy ?? 'page',
@@ -152,8 +150,9 @@ export function PaginationTesterModal({
         `Pagination test finished: ${rep.totalPages} pages tested, ${rep.totalRecords} records collected.`,
         rep.checks.duplicatesClean && rep.checks.pageSizesValid ? 'success' : 'warning',
       )
-    } catch (err: any) {
-      onToast?.(err?.message || 'Pagination test execution failed', 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Pagination test execution failed'
+      onToast?.(msg, 'error')
     } finally {
       setIsRunning(false)
       abortControllerRef.current = null
@@ -206,10 +205,13 @@ export function PaginationTesterModal({
     try {
       await onSaveToWorkflow(workflowInput)
       onToast?.('Saved pagination scenario to Workflows!', 'success')
-    } catch (err: any) {
-      onToast?.(err?.message || 'Failed to save workflow', 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save workflow'
+      onToast?.(msg, 'error')
     }
   }
+
+  if (!isOpen) return null
 
   return (
     <Dialog
@@ -776,11 +778,7 @@ export function PaginationTesterModal({
                 Stop Execution
               </Button>
             ) : (
-              <Button
-                variant="primary"
-                onClick={handleRun}
-                className="flex items-center gap-1.5"
-              >
+              <Button variant="primary" onClick={handleRun} className="flex items-center gap-1.5">
                 <PlayIcon className="w-3.5 h-3.5" />
                 <span>{report ? 'Re-run Test' : 'Run Test'}</span>
               </Button>

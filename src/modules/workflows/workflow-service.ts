@@ -538,13 +538,20 @@ export class WorkflowService {
           // 1. Global endpoint extraction rules
           if (this.environmentService?.applyExtraction) {
             try {
-              await this.environmentService.applyExtraction(step.endpointId, execResult.responseBody)
+              await this.environmentService.applyExtraction(
+                step.endpointId,
+                execResult.responseBody,
+              )
             } catch {
               // Extraction failures shouldn't crash the workflow runner
             }
           }
           // 2. Step-level extractions
-          if (step.extractions && step.extractions.length > 0 && this.environmentService?.setVariable) {
+          if (
+            step.extractions &&
+            step.extractions.length > 0 &&
+            this.environmentService?.setVariable
+          ) {
             try {
               let parsedBody: unknown = undefined
               try {
@@ -558,7 +565,9 @@ export class WorkflowService {
                   const extractedVal = extractJsonPath(parsedBody, rule.property)
                   if (extractedVal !== undefined && extractedVal !== null) {
                     const strVal =
-                      typeof extractedVal === 'object' ? JSON.stringify(extractedVal) : String(extractedVal)
+                      typeof extractedVal === 'object'
+                        ? JSON.stringify(extractedVal)
+                        : String(extractedVal)
                     await this.environmentService.setVariable(rule.variableName, strVal)
                     extractedVariables[rule.variableName] = strVal
                   }
@@ -608,7 +617,8 @@ export class WorkflowService {
           assertionResults,
           assertionsPassed,
           responseBody: execResult.responseBody,
-          responseHeaders: (execResult as { responseHeaders?: Record<string, string> }).responseHeaders,
+          responseHeaders: (execResult as { responseHeaders?: Record<string, string> })
+            .responseHeaders,
           extractedVariables:
             Object.keys(extractedVariables).length > 0 ? extractedVariables : undefined,
         }

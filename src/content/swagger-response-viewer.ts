@@ -786,9 +786,10 @@ export function mountSwaggerResponseViewer(doc: Document = document): SwaggerRes
       treeView.innerHTML = ''
       const newRoot = renderJsonNode(newParsed, '', true, doc)
       treeView.appendChild(newRoot)
-      rawCode.textContent = typeof newParsed === 'object' && newParsed !== null
-        ? JSON.stringify(newParsed, null, 2)
-        : newRawText
+      rawCode.textContent =
+        typeof newParsed === 'object' && newParsed !== null
+          ? JSON.stringify(newParsed, null, 2)
+          : newRawText
       updateMatchHighlighting(searchInput.value)
     }
 

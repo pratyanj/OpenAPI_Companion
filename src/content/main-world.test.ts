@@ -326,4 +326,3 @@ describe('main-world execute parameter synchronization', () => {
     expect(parentA.contains(newChild)).toBe(true)
   })
 })
-

@@ -40,19 +40,14 @@ export interface PaginationStepResult {
   status: number
   durationMs: number
   recordsCount: number
-  records: any[]
+  records: unknown[]
   cursorValue?: string
   rawResponse?: string
   error?: string
 }
 
 export type AnomalyType =
-  | 'duplicate'
-  | 'page_size_mismatch'
-  | 'stale_cursor'
-  | 'empty_page'
-  | 'id_gap'
-  | 'http_error'
+  'duplicate' | 'page_size_mismatch' | 'stale_cursor' | 'empty_page' | 'id_gap' | 'http_error'
 
 export type AnomalySeverity = 'error' | 'warning' | 'info'
 

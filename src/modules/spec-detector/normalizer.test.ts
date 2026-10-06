@@ -18,14 +18,10 @@ describe('OpenAPI Spec Normalizer', () => {
       info: { title: 'User Service', version: '1.2.0' },
       paths: {
         '/users/{id}': {
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
-          ],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
           get: {
             summary: 'Get user by ID',
-            parameters: [
-              { name: 'includeDetails', in: 'query', schema: { type: 'boolean' } },
-            ],
+            parameters: [{ name: 'includeDetails', in: 'query', schema: { type: 'boolean' } }],
             responses: {
               '200': {
                 description: 'User found',

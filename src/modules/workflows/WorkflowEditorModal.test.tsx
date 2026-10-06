@@ -15,12 +15,8 @@ describe('WorkflowEditorModal', () => {
         endpointId: 'post /api/v1/auth/login',
         name: 'Login Step',
         body: '{"user":"test"}',
-        assertions: [
-          { id: 'a1', type: 'status', operator: 'equals', expected: 200 },
-        ],
-        extractions: [
-          { id: 'e1', property: '$.token', variableName: 'jwtToken' },
-        ],
+        assertions: [{ id: 'a1', type: 'status', operator: 'equals', expected: 200 }],
+        extractions: [{ id: 'e1', property: '$.token', variableName: 'jwtToken' }],
       },
     ],
     createdAt: 1000,

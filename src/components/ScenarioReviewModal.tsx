@@ -13,7 +13,11 @@ import {
   DeleteIcon,
   ClockIcon,
 } from './icons'
-import type { Scenario, RecordedStep, SuggestedVariableBinding } from '@/modules/workflows/recorder/types'
+import type {
+  Scenario,
+  RecordedStep,
+  SuggestedVariableBinding,
+} from '@/modules/workflows/recorder/types'
 import { ScenarioRecorderService } from '@/modules/workflows/recorder/recorder-service'
 import { analyzeScenarioVariables } from '@/modules/workflows/recorder/heuristics'
 import type { WorkflowInput } from '@/modules/workflows/types'
@@ -50,9 +54,12 @@ function methodBadgeColor(method: string): string {
 
 function statusBadgeColor(status?: number): string {
   if (!status) return 'text-slate-400'
-  if (status >= 200 && status < 300) return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-  if (status >= 300 && status < 400) return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-  if (status >= 400 && status < 500) return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+  if (status >= 200 && status < 300)
+    return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+  if (status >= 300 && status < 400)
+    return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+  if (status >= 400 && status < 500)
+    return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
   return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
 }
 
@@ -108,9 +115,7 @@ export function ScenarioReviewModal({
   }
 
   const handleToggleBinding = (id: string) => {
-    setBindings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, enabled: !b.enabled } : b)),
-    )
+    setBindings((prev) => prev.map((b) => (b.id === id ? { ...b, enabled: !b.enabled } : b)))
   }
 
   const handleConvert = async () => {
@@ -144,10 +149,7 @@ export function ScenarioReviewModal({
     }
   }
 
-  const enabledBindingsCount = useMemo(
-    () => bindings.filter((b) => b.enabled).length,
-    [bindings],
-  )
+  const enabledBindingsCount = useMemo(() => bindings.filter((b) => b.enabled).length, [bindings])
 
   if (!isOpen) return null
 
@@ -306,9 +308,7 @@ export function ScenarioReviewModal({
                       </IconButton>
                       <IconButton
                         label="Toggle step details"
-                        onClick={() =>
-                          setExpandedStepId(isExpanded ? null : step.id)
-                        }
+                        onClick={() => setExpandedStepId(isExpanded ? null : step.id)}
                         className="h-6 w-6 ml-1"
                       >
                         {isExpanded ? (
@@ -353,7 +353,9 @@ export function ScenarioReviewModal({
 
                     {step.response?.body && (
                       <div>
-                        <span className="font-semibold text-slate-500">Response Body (sample):</span>
+                        <span className="font-semibold text-slate-500">
+                          Response Body (sample):
+                        </span>
                         <pre className="font-mono text-[11px] mt-0.5 p-1.5 rounded bg-slate-100 dark:bg-slate-800/80 max-h-28 overflow-y-auto text-slate-600 dark:text-slate-400">
                           {step.response.body.slice(0, 1000)}
                           {step.response.body.length > 1000 ? '… [truncated]' : ''}

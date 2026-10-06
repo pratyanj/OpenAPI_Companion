@@ -699,7 +699,9 @@ function StepParametersEditor({
                     key={a.id}
                     className="flex items-center gap-2 rounded border border-border/80 bg-surface/40 p-2 text-xs flex-wrap sm:flex-nowrap"
                   >
-                    <span className="font-mono text-[10px] text-muted w-4 shrink-0">#{idx + 1}</span>
+                    <span className="font-mono text-[10px] text-muted w-4 shrink-0">
+                      #{idx + 1}
+                    </span>
 
                     {/* Assertion Type */}
                     <select
@@ -867,8 +869,8 @@ function StepParametersEditor({
           </div>
 
           <p className="text-[11px] text-muted leading-relaxed">
-            Extract fields from this step&apos;s JSON response and dynamically store them into project
-            variables. Subsequent steps can reference these variables using{' '}
+            Extract fields from this step&apos;s JSON response and dynamically store them into
+            project variables. Subsequent steps can reference these variables using{' '}
             <code className="text-primary font-mono">&#123;&#123;variableName&#125;&#125;</code>.
           </p>
 

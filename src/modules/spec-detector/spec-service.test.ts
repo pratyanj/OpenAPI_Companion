@@ -1,32 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SpecService } from './spec-service'
 import { StorageService } from '@/core/storage'
+import { createFakeArea } from '@/tests/fake-storage'
 import { normalizeOpenApiSpec } from './normalizer'
 import type { Workflow } from '../workflows/types'
 import type { RequestTemplate } from '../request/types'
-
-class MemoryArea {
-  private data: Record<string, any> = {}
-  async get(keys?: string | string[] | null) {
-    if (!keys) return { ...this.data }
-    if (typeof keys === 'string') return { [keys]: this.data[keys] }
-    const res: Record<string, any> = {}
-    for (const k of keys) {
-      if (k in this.data) res[k] = this.data[k]
-    }
-    return res
-  }
-  async set(items: Record<string, any>) {
-    Object.assign(this.data, items)
-  }
-  async remove(keys: string | string[]) {
-    const arr = Array.isArray(keys) ? keys : [keys]
-    for (const k of arr) delete this.data[k]
-  }
-  async clear() {
-    this.data = {}
-  }
-}
 
 describe('SpecService', () => {
   let storage: StorageService
@@ -58,7 +36,7 @@ describe('SpecService', () => {
   }
 
   beforeEach(() => {
-    storage = new StorageService({ area: new MemoryArea() as any })
+    storage = new StorageService({ area: createFakeArea() })
   })
 
   it('stores initial baseline when no snapshot exists and returns null', async () => {
@@ -163,7 +141,7 @@ describe('SpecService', () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => specV1,
-    } as any)
+    } as unknown as Response)
 
     const service = new SpecService({
       storage,
@@ -173,7 +151,10 @@ describe('SpecService', () => {
     })
 
     const fetched = await service.fetchLiveSpec()
-    expect(mockFetch).toHaveBeenCalledWith('https://api.example.com/openapi.json', expect.any(Object))
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.example.com/openapi.json',
+      expect.any(Object),
+    )
     expect(fetched).toEqual(specV1)
   })
 })

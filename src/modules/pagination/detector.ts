@@ -37,14 +37,7 @@ const PAGE_SIZE_NAMES = [
   'take',
 ]
 
-const OFFSET_NAMES = [
-  'offset',
-  'skip',
-  'start',
-  'from',
-  'start_index',
-  'startindex',
-]
+const OFFSET_NAMES = ['offset', 'skip', 'start', 'from', 'start_index', 'startindex']
 
 const CURSOR_NAMES = [
   'cursor',

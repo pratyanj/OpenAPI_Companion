@@ -91,9 +91,7 @@ describe('mountSwaggerScenarioRecorder', () => {
     stopBtn?.click()
 
     expect(recorder.isRecording()).toBe(false)
-    expect(modal.open).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: 'test_proj' }),
-    )
+    expect(modal.open).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'test_proj' }))
 
     handle.destroy()
   })

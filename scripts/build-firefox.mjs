@@ -14,7 +14,15 @@
  * ⚠️ Runtime behaviour on Firefox is NOT verified in CI (no Firefox). See
  * FIREFOX.md for what to check and the known crxjs caveats.
  */
-import { readFileSync, writeFileSync, rmSync, cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
+import {
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+} from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import esbuild from 'esbuild'
@@ -38,9 +46,7 @@ const assetsDir = resolve(src, 'assets')
 const compiledCssFile = existsSync(assetsDir)
   ? readdirSync(assetsDir).find((f) => f.startsWith('index-') && f.endsWith('.css'))
   : null
-const compiledCss = compiledCssFile
-  ? readFileSync(resolve(assetsDir, compiledCssFile), 'utf8')
-  : ''
+const compiledCss = compiledCssFile ? readFileSync(resolve(assetsDir, compiledCssFile), 'utf8') : ''
 
 // 1. The MAIN-world content script (writes into Swagger's window.ui) can't use
 // crxjs's dynamic-import loader on Firefox: the page context is not allowed to

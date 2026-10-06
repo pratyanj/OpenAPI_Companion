@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createSwaggerSpecDetector } from './swagger-spec-detector'
 import type { SpecChangeModalHandle } from './spec-change-modal'
-import type { SpecDiffResult, NormalizedSpec } from '@/modules/spec-detector/types'
+import type { SpecDiffResult, NormalizedSpec, SpecSnapshot } from '@/modules/spec-detector/types'
+import type { SpecService } from '@/modules/spec-detector/spec-service'
+import type { EventBus } from '@/core/events'
 
 describe('swagger-spec-detector in-page banner', () => {
   let doc: Document
   let modalHandle: SpecChangeModalHandle
-  let specService: any
-  let bus: any
+  let specService: Partial<SpecService>
+  let bus: Partial<EventBus>
 
   const dummyDiff: SpecDiffResult = {
     hasChanges: true,
@@ -60,7 +62,7 @@ describe('swagger-spec-detector in-page banner', () => {
     }
 
     specService = {
-      acceptNewBaseline: vi.fn(async () => ({})),
+      acceptNewBaseline: vi.fn(async () => ({}) as SpecSnapshot),
     }
 
     bus = {
@@ -69,7 +71,12 @@ describe('swagger-spec-detector in-page banner', () => {
   })
 
   it('mounts breaking changes banner into information container', () => {
-    const detector = createSwaggerSpecDetector(modalHandle, specService, bus, doc)
+    const detector = createSwaggerSpecDetector(
+      modalHandle,
+      specService as SpecService,
+      bus as EventBus,
+      doc,
+    )
     detector.showBanner(dummyDiff, dummySpec)
 
     const banner = doc.getElementById('oac-spec-detector-banner')
@@ -80,7 +87,12 @@ describe('swagger-spec-detector in-page banner', () => {
   })
 
   it('opens review modal when Review Changes button is clicked', () => {
-    const detector = createSwaggerSpecDetector(modalHandle, specService, bus, doc)
+    const detector = createSwaggerSpecDetector(
+      modalHandle,
+      specService as SpecService,
+      bus as EventBus,
+      doc,
+    )
     detector.showBanner(dummyDiff, dummySpec)
 
     const reviewBtn = doc.getElementById('oac-spec-btn-review') as HTMLButtonElement
@@ -94,7 +106,12 @@ describe('swagger-spec-detector in-page banner', () => {
   })
 
   it('accepts baseline and removes banner when Accept Baseline button is clicked', async () => {
-    const detector = createSwaggerSpecDetector(modalHandle, specService, bus, doc)
+    const detector = createSwaggerSpecDetector(
+      modalHandle,
+      specService as SpecService,
+      bus as EventBus,
+      doc,
+    )
     detector.showBanner(dummyDiff, dummySpec)
 
     const acceptBtn = doc.getElementById('oac-spec-btn-accept') as HTMLButtonElement
@@ -109,7 +126,12 @@ describe('swagger-spec-detector in-page banner', () => {
   })
 
   it('dismisses banner and does not re-show on same hash', () => {
-    const detector = createSwaggerSpecDetector(modalHandle, specService, bus, doc)
+    const detector = createSwaggerSpecDetector(
+      modalHandle,
+      specService as SpecService,
+      bus as EventBus,
+      doc,
+    )
     detector.showBanner(dummyDiff, dummySpec)
 
     const closeBtn = doc.getElementById('oac-spec-btn-close') as HTMLButtonElement
@@ -123,7 +145,12 @@ describe('swagger-spec-detector in-page banner', () => {
   })
 
   it('does not mount banner if hasChanges is false', () => {
-    const detector = createSwaggerSpecDetector(modalHandle, specService, bus, doc)
+    const detector = createSwaggerSpecDetector(
+      modalHandle,
+      specService as SpecService,
+      bus as EventBus,
+      doc,
+    )
     detector.showBanner(
       {
         ...dummyDiff,

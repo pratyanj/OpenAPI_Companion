@@ -78,7 +78,11 @@ export function extractJsonPath(data: unknown, path: string): unknown {
         return undefined
       }
     } else {
-      if (typeof current === 'object' && current !== null && token in (current as Record<string, unknown>)) {
+      if (
+        typeof current === 'object' &&
+        current !== null &&
+        token in (current as Record<string, unknown>)
+      ) {
         current = (current as Record<string, unknown>)[token]
       } else {
         return undefined

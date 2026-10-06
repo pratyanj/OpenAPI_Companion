@@ -6,10 +6,7 @@
  * interactive PaginationTesterModal.
  */
 
-import {
-  endpointIdOf,
-  readParametersFromBlock,
-} from '@/adapters/swagger/swagger-request-dom'
+import { endpointIdOf, readParametersFromBlock } from '@/adapters/swagger/swagger-request-dom'
 import { detectPagination, type ParameterInfo } from '@/modules/pagination/detector'
 import type { PaginationModalHandle } from './pagination-modal'
 
