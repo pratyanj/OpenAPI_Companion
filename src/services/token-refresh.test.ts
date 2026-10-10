@@ -1076,4 +1076,104 @@ describe('TokenRefreshService — findLoginEndpoint and credentials-based refres
     expect(refreshed).toEqual({ ok: true, value: true })
     expect(playedEndpoint).toBe('post /auth/login')
   })
+
+  it('merges extraFields into login payload during signIn', async () => {
+    let writtenBody: string | null = null
+    let executed = false
+    const service = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          { endpointId: 'post /auth/login', method: 'post', path: '/auth/login' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () =>
+          executed
+            ? [
+                {
+                  endpointId: 'post /auth/login',
+                  method: 'post',
+                  endpoint: '/auth/login',
+                  status: 200,
+                  responseBody: JSON.stringify({ access_token: 'EXTRA_FIELDS_TOKEN_ABC' }),
+                },
+              ]
+            : [],
+        writeRequest: (_id: string, req: { body?: string }) => {
+          writtenBody = req.body ?? null
+          return ok(undefined)
+        },
+        replay: (_id: string, body?: string) => {
+          writtenBody = body ?? null
+          executed = true
+          return ok(undefined)
+        },
+      } as unknown as SwaggerAdapter,
+      auth: {
+        current: async () => ok(null),
+        applyToken: async (_env, t) => ok({ token: t }),
+      },
+      templates: {
+        listTemplates: async () => ok([]),
+        applyTemplate: async () => ok(undefined),
+      },
+      setTimeoutFn: (fn) => {
+        fn()
+        return 0
+      },
+    })
+
+    const token = await service.signIn({
+      username: 'persona_admin',
+      password: 'password123',
+      extraFields: { force_logout: true, tenant_id: 42 },
+    })
+    expect(token).toEqual({ ok: true, value: 'EXTRA_FIELDS_TOKEN_ABC' })
+    expect(writtenBody).not.toBeNull()
+    const parsed = JSON.parse(writtenBody!)
+    expect(parsed.force_logout).toBe(true)
+    expect(parsed.tenant_id).toBe(42)
+    expect(parsed.email).toBe('persona_admin')
+    expect(parsed.password).toBe('password123')
+  })
+
+  it('noticeResponses auto-captures token and authorizes when response matches login endpoint', async () => {
+    let appliedToken: string | null = null
+    const bus = new EventBus()
+    const responses = [
+      {
+        endpointId: 'post /auth/login',
+        method: 'post',
+        endpoint: '/auth/login',
+        status: 200,
+        responseBody: JSON.stringify({ token: 'AUTO_CAPTURED_TOKEN_XYZ' }),
+      },
+    ]
+    const service = new TokenRefreshService({
+      adapter: {
+        listEndpoints: () => [
+          { endpointId: 'post /auth/login', method: 'post', path: '/auth/login' },
+        ],
+        readOpenRequests: () => [],
+        readExecutedResponses: () => responses,
+      } as unknown as SwaggerAdapter,
+      auth: {
+        current: async () => ok(null),
+        applyToken: async (_env, t) => {
+          appliedToken = t
+          return ok({ token: t })
+        },
+      },
+      templates: {
+        listTemplates: async () => ok([]),
+        applyTemplate: async () => ok(undefined),
+      },
+      bus,
+    })
+
+    service.noticeResponses('default')
+
+    // Wait a tick for async applyToken
+    await new Promise((r) => setTimeout(r, 20))
+    expect(appliedToken).toBe('AUTO_CAPTURED_TOKEN_XYZ')
+  })
 })

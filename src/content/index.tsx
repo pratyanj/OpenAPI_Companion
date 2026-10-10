@@ -1419,8 +1419,12 @@ export async function bootAgent(
     'auth.refreshActivity': () => tokenRefresh.recentActivity(),
     // Add an account: log in with the given credentials, then keep the issued
     // token under `name` with those credentials attached for later refreshes.
-    'auth.addByLogin': async ([name, username, password]) => {
-      const login = { username: username as string, password: password as string }
+    'auth.addByLogin': async ([name, username, password, extraFields]) => {
+      const login = {
+        username: username as string,
+        password: password as string,
+        ...(extraFields ? { extraFields: extraFields as Record<string, string | number | boolean> } : {}),
+      }
       const signedIn = await tokenRefresh.signIn(login)
       if (!signedIn.ok) return signedIn
       return auth.addCredential(name as string, signedIn.value, currentEnv, login)

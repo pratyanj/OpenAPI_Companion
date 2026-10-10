@@ -36,6 +36,8 @@ export interface SavedLogin {
   /** Email / username for this account. */
   username: string
   password: string
+  /** Optional extra fields required by this API (e.g. force_logout: true, tenant_id, client_id) */
+  extraFields?: Record<string, string | number | boolean>
 }
 
 export interface SavedCredential {

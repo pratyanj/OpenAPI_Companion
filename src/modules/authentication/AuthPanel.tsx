@@ -45,8 +45,12 @@ export interface AuthPanelService {
   configuredLoginEndpoint?(): Promise<string | null>
   setConfiguredLoginEndpoint?(endpointId: string | null): Promise<Result<void>>
   listEndpoints?(): EndpointInfo[]
-  /** Creates a new saved credential by executing the login endpoint directly. */
-  addByLogin(name: string, username: string, password: string): Promise<Result<SavedCredential>>
+  addByLogin(
+    name: string,
+    username: string,
+    password: string,
+    extraFields?: Record<string, string | number | boolean>,
+  ): Promise<Result<SavedCredential>>
   listSaved(): Promise<Result<SavedCredential[]>>
   saveAs(name: string, environmentId: string): Promise<Result<SavedCredential>>
   activateSaved(id: string, environmentId: string): Promise<Result<void>>
@@ -123,6 +127,157 @@ function PasswordField({
   )
 }
 
+interface ExtraFieldEntry {
+  id: string
+  key: string
+  value: string
+  type: 'string' | 'boolean' | 'number'
+}
+
+function extraFieldsToRecord(
+  entries: ExtraFieldEntry[],
+): Record<string, string | number | boolean> | undefined {
+  const result: Record<string, string | number | boolean> = {}
+  let count = 0
+  for (const entry of entries) {
+    const trimmedKey = entry.key.trim()
+    if (!trimmedKey) continue
+    count++
+    if (entry.type === 'boolean') {
+      result[trimmedKey] = entry.value.toLowerCase() === 'true'
+    } else if (entry.type === 'number') {
+      const num = Number(entry.value)
+      result[trimmedKey] = Number.isNaN(num) ? entry.value : num
+    } else {
+      result[trimmedKey] = entry.value
+    }
+  }
+  return count > 0 ? result : undefined
+}
+
+function recordToExtraFields(
+  record?: Record<string, string | number | boolean>,
+): ExtraFieldEntry[] {
+  if (!record) return []
+  return Object.entries(record).map(([k, v], idx) => ({
+    id: `${Date.now()}-${idx}-${Math.random()}`,
+    key: k,
+    value: String(v),
+    type: typeof v === 'boolean' ? 'boolean' : typeof v === 'number' ? 'number' : 'string',
+  }))
+}
+
+function ExtraFieldsEditor({
+  fields,
+  onChange,
+}: {
+  fields: ExtraFieldEntry[]
+  onChange: (fields: ExtraFieldEntry[]) => void
+}) {
+  const addField = () => {
+    onChange([
+      ...fields,
+      {
+        id: `field-${Date.now()}-${Math.random()}`,
+        key: '',
+        value: '',
+        type: 'string',
+      },
+    ])
+  }
+
+  const updateField = (id: string, patch: Partial<ExtraFieldEntry>) => {
+    onChange(
+      fields.map((f) => {
+        if (f.id !== id) return f
+        const updated = { ...f, ...patch }
+        if (patch.type === 'boolean' && updated.value !== 'true' && updated.value !== 'false') {
+          updated.value = 'true'
+        }
+        return updated
+      }),
+    )
+  }
+
+  const removeField = (id: string) => {
+    onChange(fields.filter((f) => f.id !== id))
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 pt-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium text-text">Extra payload fields</span>
+        <button
+          type="button"
+          onClick={addField}
+          className="text-[10px] text-primary hover:underline font-medium"
+        >
+          + Add field
+        </button>
+      </div>
+      {fields.length === 0 ? (
+        <p className="text-[10px] text-muted leading-tight">
+          Optional custom parameters (e.g.{' '}
+          <code className="text-text font-mono">force_logout: true</code>,{' '}
+          <code className="text-text font-mono">tenant_id</code>).
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {fields.map((field) => (
+            <div key={field.id} className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={field.key}
+                onChange={(e) => updateField(field.id, { key: e.target.value })}
+                placeholder="Key (e.g. force_logout)"
+                className="w-1/3 min-w-0 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
+              />
+              <select
+                value={field.type}
+                onChange={(e) =>
+                  updateField(field.id, {
+                    type: e.target.value as 'string' | 'boolean' | 'number',
+                  })
+                }
+                className="rounded-md border border-border bg-bg px-1.5 py-1 text-xs text-text focus:border-primary focus:outline-none"
+              >
+                <option value="string">Text</option>
+                <option value="boolean">Boolean</option>
+                <option value="number">Number</option>
+              </select>
+              {field.type === 'boolean' ? (
+                <select
+                  value={field.value.toLowerCase() === 'false' ? 'false' : 'true'}
+                  onChange={(e) => updateField(field.id, { value: e.target.value })}
+                  className="flex-1 min-w-0 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
+                >
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              ) : (
+                <input
+                  type={field.type === 'number' ? 'number' : 'text'}
+                  value={field.value}
+                  onChange={(e) => updateField(field.id, { value: e.target.value })}
+                  placeholder={field.type === 'number' ? 'Value (e.g. 1)' : 'Value'}
+                  className="flex-1 min-w-0 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
+                />
+              )}
+              <IconButton
+                label="Remove field"
+                onClick={() => removeField(field.id)}
+                className="text-muted hover:text-danger shrink-0"
+              >
+                <DeleteIcon />
+              </IconButton>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const OUTCOME_CLASS: Record<RefreshLogEntry['outcome'], string> = {
   triggered: 'text-text',
   skipped: 'text-muted',
@@ -159,6 +314,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
   const [newAccount, setNewAccount] = useState({ name: '', username: '', password: '' })
+  const [newAccountExtraFields, setNewAccountExtraFields] = useState<ExtraFieldEntry[]>([])
   const [newAccountTouched, setNewAccountTouched] = useState({
     name: false,
     username: false,
@@ -167,6 +323,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   /** Which vault entry has its login form open. */
   const [editing, setEditing] = useState<string | null>(null)
   const [form, setForm] = useState<SavedLogin>(EMPTY_LOGIN)
+  const [editingExtraFields, setEditingExtraFields] = useState<ExtraFieldEntry[]>([])
   const [editingTouched, setEditingTouched] = useState({ username: false, password: false })
   const [newName, setNewName] = useState('')
   const [saveCurrentTouched, setSaveCurrentTouched] = useState(false)
@@ -231,10 +388,14 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
     const { name, username, password } = newAccount
     if (!name.trim() || !username.trim() || !password) return
     setBusy(true)
-    const result = await service.addByLogin(name.trim(), username.trim(), password)
+    const extraFields = extraFieldsToRecord(newAccountExtraFields)
+    const result = extraFields
+      ? await service.addByLogin(name.trim(), username.trim(), password, extraFields)
+      : await service.addByLogin(name.trim(), username.trim(), password)
     setBusy(false)
     if (report(result)) {
       setNewAccount({ name: '', username: '', password: '' })
+      setNewAccountExtraFields([])
       setNewAccountTouched({ name: false, username: false, password: false })
       setAdding(false)
     }
@@ -254,6 +415,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const openLoginForm = (cred: SavedCredential) => {
     setEditing(cred.id)
     setForm({ ...EMPTY_LOGIN, ...cred.login })
+    setEditingExtraFields(recordToExtraFields(cred.login?.extraFields))
     setEditingTouched({ username: false, password: false })
   }
 
@@ -262,7 +424,8 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
     // Both required — half a login can't sign anything in.
     const complete = form.username.trim() !== '' && form.password !== ''
     if (!complete) return
-    report(await service.setLogin(id, form))
+    const extraFields = extraFieldsToRecord(editingExtraFields)
+    report(await service.setLogin(id, { ...form, extraFields }))
     setEditing(null)
     setEditingTouched({ username: false, password: false })
     await load()
@@ -419,6 +582,11 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
                       <span className="truncate font-mono text-[10px] text-muted">
                         {cred.type}
                         {expired ? ' · expired' : ''}
+                        {cred.login?.extraFields && Object.keys(cred.login.extraFields).length > 0
+                          ? ` · ${Object.keys(cred.login.extraFields).length} extra field${
+                              Object.keys(cred.login.extraFields).length > 1 ? 's' : ''
+                            }`
+                          : ''}
                       </span>
                     </div>
                     {active ? (
@@ -493,6 +661,10 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
                         error={
                           editingTouched.password && !form.password ? 'Password is required.' : null
                         }
+                      />
+                      <ExtraFieldsEditor
+                        fields={editingExtraFields}
+                        onChange={setEditingExtraFields}
                       />
                       <div className="flex justify-end gap-1">
                         <Button
@@ -582,6 +754,10 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
                     : null
                 }
               />
+              <ExtraFieldsEditor
+                fields={newAccountExtraFields}
+                onChange={setNewAccountExtraFields}
+              />
             </div>
             <div className="flex justify-end gap-1.5 pt-1">
               <Button
@@ -589,6 +765,7 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
                 onClick={() => {
                   setAdding(false)
                   setNewAccount({ name: '', username: '', password: '' })
+                  setNewAccountExtraFields([])
                   setNewAccountTouched({ name: false, username: false, password: false })
                 }}
               >

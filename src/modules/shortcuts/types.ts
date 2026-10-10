@@ -40,7 +40,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     description: 'Quick search endpoints, switch tags, and jump to operations in Swagger UI',
     context: 'global',
     contextLabel: 'Global',
-    defaultBinding: { key: 'k', ctrlOrCmd: true },
+    defaultBinding: { key: 'f', ctrlOrCmd: true },
   },
   {
     id: 'mockData.generate',
@@ -80,7 +80,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     description: 'Opens the in-page Keyboard Shortcuts cheat-sheet and configuration modal',
     context: 'global',
     contextLabel: 'Global',
-    defaultBinding: { key: '/', ctrlOrCmd: true },
+    defaultBinding: { key: 'k', ctrlOrCmd: true },
   },
   {
     id: 'variables.open',

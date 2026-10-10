@@ -121,11 +121,11 @@ export function SidebarShell({
     }
   })
 
-  // ⌘K / Ctrl+K opens the endpoint search palette (FR-PROD-001).
+  // ⌘F / Ctrl+F opens the endpoint search palette (FR-PROD-001).
   useEffect(() => {
     if (!productivityService) return
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setPaletteOpen(true)
       }
@@ -174,7 +174,7 @@ export function SidebarShell({
           <strong className="text-sm">OpenAPI Companion</strong>
           <div className="flex items-center gap-1.5">
             {productivityService ? (
-              <IconButton label="Search endpoints (⌘K)" onClick={() => setPaletteOpen(true)}>
+              <IconButton label="Search endpoints (⌘F)" onClick={() => setPaletteOpen(true)}>
                 <SearchIcon />
               </IconButton>
             ) : null}

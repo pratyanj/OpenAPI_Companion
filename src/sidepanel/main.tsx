@@ -165,15 +165,28 @@ async function render(root: Root): Promise<void> {
   )
 
   // The native panel persists across tabs; if the active tab's project changes
-  // (or it becomes/stops being a Swagger page), rebuild by reloading the panel.
+  // or the page updates to a new extension build, reload the panel.
   const mountedProjectId = ctx.projectId
+  const mountedBuildId = ctx.buildId
   const maybeReload = async () => {
     const next = await fetchState()
-    if (next.context?.projectId !== mountedProjectId) location.reload()
+    if (!next.context) {
+      location.reload()
+      return
+    }
+    if (
+      next.context.projectId !== mountedProjectId ||
+      next.context.buildId !== mountedBuildId
+    ) {
+      location.reload()
+    }
   }
   chrome.tabs.onActivated.addListener(() => void maybeReload())
   chrome.tabs.onUpdated.addListener((_id, info) => {
     if (info.status === 'complete') void maybeReload()
+  })
+  chrome.runtime.onMessage.addListener((message: unknown) => {
+    if ((message as { type?: string } | null)?.type === STATE_PUSH) void maybeReload()
   })
 }
 

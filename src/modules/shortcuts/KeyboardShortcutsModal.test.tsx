@@ -148,8 +148,8 @@ describe('KeyboardShortcutsModal', () => {
       expect(screen.getByText('Press keys...')).toBeInTheDocument()
     })
 
-    // Press Ctrl+K which is already used by palette.toggle
-    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    // Press Ctrl+F which is already used by palette.toggle
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
 
     await waitFor(() => {
       expect(screen.getByText(/Shortcut Conflict Detected/)).toBeInTheDocument()
@@ -164,7 +164,7 @@ describe('KeyboardShortcutsModal', () => {
       expect(mockSettings.setPreference).toHaveBeenCalledWith(
         'shortcuts',
         expect.objectContaining({
-          'mockData.generate': { key: 'k', ctrlOrCmd: true },
+          'mockData.generate': { key: 'f', ctrlOrCmd: true },
           'palette.toggle': { key: 'm', alt: true },
         }),
       )

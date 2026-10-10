@@ -229,17 +229,23 @@ export function PanelShell({
     }
   }, [handleTabChange, lastTabKey])
 
-  // ⌘K works from the panel too, but the palette itself opens in the page.
+  // ⌘F / Ctrl+F opens the palette; ⌘K / Ctrl+K opens keyboard shortcuts manager.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey
+      if (!isCmdOrCtrl) return
+
+      if (e.key.toLowerCase() === 'f') {
         e.preventDefault()
         onOpenPalette()
+      } else if (e.key.toLowerCase() === 'k' && onOpenShortcutsModal) {
+        e.preventDefault()
+        onOpenShortcutsModal()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onOpenPalette])
+  }, [onOpenPalette, onOpenShortcutsModal])
 
   const cycleTheme = () => void theme.setPreference(NEXT_PREFERENCE[theme.getPreference()])
   const PreferenceIcon = PREFERENCE_ICON[preference]
@@ -286,11 +292,11 @@ export function PanelShell({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <IconButton label="Search endpoints (⌘K)" onClick={onOpenPalette}>
+          <IconButton label="Search endpoints (⌘F)" onClick={onOpenPalette}>
             <SearchIcon />
           </IconButton>
           {onOpenShortcutsModal ? (
-            <IconButton label="Keyboard shortcuts (?)" onClick={onOpenShortcutsModal}>
+            <IconButton label="Keyboard shortcuts (⌘K)" onClick={onOpenShortcutsModal}>
               <KeyboardIcon className="h-4 w-4" />
             </IconButton>
           ) : null}

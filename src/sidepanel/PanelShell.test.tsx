@@ -159,20 +159,26 @@ describe('PanelShell (native side panel)', () => {
   // narrow column — so the panel only asks for it, and never renders it itself.
   it('delegates the search button to the in-page palette', async () => {
     const { onOpenPalette } = await setup()
-    fireEvent.click(screen.getByRole('button', { name: 'Search endpoints (⌘K)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Search endpoints (⌘F)' }))
     expect(onOpenPalette).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog', { name: 'Search endpoints' })).not.toBeInTheDocument()
   })
 
-  it('delegates ⌘K to the in-page palette', async () => {
+  it('delegates ⌘F to the in-page palette', async () => {
     const { onOpenPalette } = await setup()
-    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    fireEvent.keyDown(window, { key: 'f', metaKey: true })
     expect(onOpenPalette).toHaveBeenCalledTimes(1)
+  })
+
+  it('delegates ⌘K to the in-page shortcuts modal', async () => {
+    const { onOpenShortcutsModal } = await setup()
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(onOpenShortcutsModal).toHaveBeenCalledTimes(1)
   })
 
   it('delegates the keyboard shortcuts button to the in-page modal', async () => {
     const { onOpenShortcutsModal } = await setup()
-    fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts (?)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts (⌘K)' }))
     expect(onOpenShortcutsModal).toHaveBeenCalledTimes(1)
   })
 

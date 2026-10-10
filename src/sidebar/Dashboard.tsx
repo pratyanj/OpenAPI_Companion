@@ -390,7 +390,7 @@ export function Dashboard({
         <Button variant="secondary" onClick={onOpenPalette}>
           <span className="flex items-center justify-center gap-1.5">
             <SearchIcon className="h-3.5 w-3.5" />
-            Search ⌘K
+            Search ⌘F
           </span>
         </Button>
         <Button variant="secondary" onClick={() => onNavigate('requests')}>

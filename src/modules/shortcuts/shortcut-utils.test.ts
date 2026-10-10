@@ -155,9 +155,13 @@ describe('shortcut-utils', () => {
   describe('findConflict', () => {
     it('detects conflict with an existing global shortcut', () => {
       const current = { ...DEFAULT_SHORTCUTS }
-      // Attempting to bind 'mockData.generate' to Ctrl+K (which is used by palette.toggle)
-      const conflict = findConflict(current, 'mockData.generate', { key: 'k', ctrlOrCmd: true })
-      expect(conflict).toBe('palette.toggle')
+      // Attempting to bind 'mockData.generate' to Ctrl+F (which is used by palette.toggle)
+      const conflictF = findConflict(current, 'mockData.generate', { key: 'f', ctrlOrCmd: true })
+      expect(conflictF).toBe('palette.toggle')
+
+      // Attempting to bind 'mockData.generate' to Ctrl+K (which is used by shortcuts.open)
+      const conflictK = findConflict(current, 'mockData.generate', { key: 'k', ctrlOrCmd: true })
+      expect(conflictK).toBe('shortcuts.open')
     })
 
     it('returns null if no conflict exists', () => {

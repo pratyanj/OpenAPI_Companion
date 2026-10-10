@@ -327,6 +327,36 @@ describe('AuthPanel', () => {
     await waitFor(() => expect(service.listSaved).toHaveBeenCalled())
   })
 
+  it('signs in with extra payload fields like force_logout: true', async () => {
+    const service = mockService({ current: vi.fn(async () => ok(authorized)) })
+    render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Add account with email/ }))
+    fireEvent.change(screen.getByLabelText('New account name'), { target: { value: 'Persona1' } })
+    fireEvent.change(screen.getByLabelText('New account email'), {
+      target: { value: 'p1@acme.io' },
+    })
+    fireEvent.change(screen.getByLabelText('New account password'), {
+      target: { value: 'p1secret' },
+    })
+
+    // Click + Add field
+    fireEvent.click(screen.getByRole('button', { name: '+ Add field' }))
+    fireEvent.change(screen.getByPlaceholderText('Key (e.g. force_logout)'), {
+      target: { value: 'force_logout' },
+    })
+    // Change type to Boolean
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'boolean' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in & save' }))
+
+    await waitFor(() =>
+      expect(service.addByLogin).toHaveBeenCalledWith('Persona1', 'p1@acme.io', 'p1secret', {
+        force_logout: true,
+      }),
+    )
+  })
+
   it('will not submit a half-filled account', async () => {
     const service = mockService({ current: vi.fn(async () => ok(authorized)) })
     render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)

@@ -30,6 +30,7 @@ export interface SavedLoginLike {
   credentialId: string
   username: string
   password: string
+  extraFields?: Record<string, string | number | boolean>
 }
 
 /** What we need from the credential vault. */
@@ -199,7 +200,11 @@ export class TokenRefreshService {
    * without touching what's currently authorized. Used both by auto-refresh and
    * by "add an account", which needs the token to store against a new name.
    */
-  async signIn(login: { username: string; password: string }): Promise<Result<string>> {
+  async signIn(login: {
+    username: string
+    password: string
+    extraFields?: Record<string, string | number | boolean>
+  }): Promise<Result<string>> {
     const endpointId = this.findLoginEndpoint()
     if (!endpointId) {
       this.note('failed', 'No sign-in endpoint found in this API')
@@ -290,6 +295,37 @@ export class TokenRefreshService {
    * and rate-limited by the cooldown so a failing login can't loop.
    */
   noticeResponses(environmentId: string): Promise<Result<boolean>> | undefined {
+    // Auto-capture fresh token on 2xx login response
+    for (const res of this.adapter.readExecutedResponses()) {
+      if (res.status >= 200 && res.status < 300 && res.responseBody) {
+        const loginEp = this.findLoginEndpoint()
+        const norm = (id: string) => id.trim().toLowerCase().replace(/\/+$/, '')
+        const isLogin =
+          (loginEp && norm(loginEp) === norm(res.endpointId)) || LOGIN_RE.test(res.endpointId)
+        if (isLogin) {
+          const sig = `login-ok:${res.endpointId}:${res.status}:${res.responseBody}`
+          if (!this.seenFailures.has(sig)) {
+            this.seenFailures.add(sig)
+            try {
+              const token = extractToken(parseJsonLoose(res.responseBody))
+              if (token) {
+                void this.auth.applyToken(environmentId, token).then((applied) => {
+                  if (applied.ok) {
+                    this.bus?.publish('NOTIFY', {
+                      kind: 'success',
+                      message: `⚡ Authorized in Swagger UI via ${res.endpointId}`,
+                    })
+                  }
+                })
+              }
+            } catch {
+              // Non-JSON or no token
+            }
+          }
+        }
+      }
+    }
+
     if (!this.enabled()) return undefined
     for (const res of this.adapter.readExecutedResponses()) {
       if (res.status !== 401 && res.status !== 403) continue
@@ -458,13 +494,24 @@ export class TokenRefreshService {
             else if (/mail|user|login|phone|account|identifier/i.test(key))
               body[key] = login.username
           }
+          if (login.extraFields) {
+            for (const [key, val] of Object.entries(login.extraFields)) {
+              body[key] = val
+            }
+          }
           return JSON.stringify(body)
         }
       } catch {
         /* not JSON — fall through to default */
       }
     }
-    return JSON.stringify({ email: login.username, password: login.password })
+    const defaultBody: Record<string, unknown> = { email: login.username, password: login.password }
+    if (login.extraFields) {
+      for (const [key, val] of Object.entries(login.extraFields)) {
+        defaultBody[key] = val
+      }
+    }
+    return JSON.stringify(defaultBody)
   }
 
   private async maybeRefresh(

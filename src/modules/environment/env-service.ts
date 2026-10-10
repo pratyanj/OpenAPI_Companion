@@ -457,8 +457,9 @@ export class EnvironmentService {
   ): Promise<Result<{ extracted: Array<{ variable: string; value: string }> }>> {
     const rulesRes = await this.listRules()
     if (!rulesRes.ok) return rulesRes
+    const norm = (id: string) => id.trim().toLowerCase().replace(/\/+$/, '')
     const matching = rulesRes.value.filter(
-      (r) => r.enabled && r.endpointId.toLowerCase() === endpointId.toLowerCase(),
+      (r) => r.enabled && norm(r.endpointId) === norm(endpointId),
     )
     if (matching.length === 0) return ok({ extracted: [] })
 

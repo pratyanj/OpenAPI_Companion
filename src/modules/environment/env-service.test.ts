@@ -312,5 +312,38 @@ describe('EnvironmentService', () => {
       expect(env.ok && env.value?.variables?.TOKEN).toBe('fresh_jwt_999')
       expect(env.ok && env.value?.secrets).toContain('TOKEN')
     })
+
+    it('matches endpoints regardless of trailing slash differences', async () => {
+      const { service } = await setup()
+      await service.saveRule({
+        endpointId: 'post /auth/login',
+        property: 'token',
+        targetVariable: 'EXTRACTED_TOKEN',
+        isSecret: false,
+        enabled: true,
+      })
+
+      // Calling with trailing slash in endpointId
+      const res1 = await service.applyExtraction('post /auth/login/', JSON.stringify({ token: 'slash_token_1' }))
+      expect(res1.ok).toBe(true)
+      if (res1.ok) {
+        expect(res1.value.extracted).toEqual([{ variable: 'EXTRACTED_TOKEN', value: 'slash_token_1' }])
+      }
+
+      // Rule saved with trailing slash matching call without trailing slash
+      await service.saveRule({
+        endpointId: 'post /api/v1/auth/tokens/',
+        property: 'access_token',
+        targetVariable: 'V1_TOKEN',
+        isSecret: false,
+        enabled: true,
+      })
+
+      const res2 = await service.applyExtraction('post /api/v1/auth/tokens', JSON.stringify({ access_token: 'v1_token_2' }))
+      expect(res2.ok).toBe(true)
+      if (res2.ok) {
+        expect(res2.value.extracted).toEqual([{ variable: 'V1_TOKEN', value: 'v1_token_2' }])
+      }
+    })
   })
 })

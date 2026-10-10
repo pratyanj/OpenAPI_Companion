@@ -98,3 +98,90 @@ Executed and audited all checks in the GitHub Actions CI pipeline (`ci.yml` & `r
 - **Production Extension Build (`npm run build`)**: Passed with **1,980 modules transformed** (Chrome + Firefox release zip generated).
 - **E2E Smoke Tests (`npm run test:e2e`)**: Passed **2 / 2 tests** (Chromium extension load & service worker registration).
 
+---
+
+## 🔐 Multi-Persona Auth, Dynamic Payload Fields, Auto-Refresh & Extraction Rules Fix (Completed)
+
+### Problem Diagnosis & Root Causes
+1. **401 Auto-Refresh and Token Injection on Replay**:
+   - `auth.current()` initially returned `null` until a token was stored, which caused `TokenRefreshService.maybeRefresh()` to skip execution.
+   - When running a saved login preset via `RequestService.applyTemplate()`, the response was replayed into Swagger UI, but fresh tokens weren't automatically captured and fed into Swagger's authorization header.
+2. **Multi-Persona Support with Mandatory Parameters (`force_logout: true`)**:
+   - Login schemas often require custom fields beyond `username` and `password` (e.g. `force_logout: true`, `tenant_id`, `role`).
+   - The Auth Vault only accepted `username` and `password`, failing logins that mandate additional parameters.
+3. **Extraction Rule Target Variable Misses**:
+   - Extraction rules compared endpoints with strict string equality (`rule.endpointId === endpointId`).
+   - Swagger DOM declared endpoints often have or omit trailing slashes (e.g. `post /auth/login/` vs `post /auth/login`), causing rules not to trigger.
+4. **Stale Extension Build Banner**:
+   - The sidepanel is an independent extension window (`chrome.sidePanel`) that previously only watched `projectId` changes across tabs, not `buildId` updates.
+
+### Summary of Changes
+
+#### 1. Dynamic Extra Payload Fields
+- **Types (`src/modules/authentication/types.ts`)**:
+  - Added optional `extraFields?: Record<string, string | number | boolean>` to `SavedLogin`.
+- **UI (`src/modules/authentication/AuthPanel.tsx`)**:
+  - Implemented `ExtraFieldsEditor` component supporting text, boolean (`true`/`false`), and number fields.
+  - Integrated `ExtraFieldsEditor` into both "+ Add account with email & password" and "Edit credentials" forms.
+  - Visual indicator on saved token badges showing extra fields count (e.g. `· 1 extra field`).
+- **Bridge & RPC (`src/content/index.tsx`, `src/sidepanel/bridge.ts`)**:
+  - Updated `auth.addByLogin` RPC to accept `extraFields` and pass them to `signIn` and vault persistence.
+- **Login Payload Builder (`src/services/token-refresh.ts`)**:
+  - Updated `buildLoginBody` and `signIn` to merge `login.extraFields` into the request JSON body during sign-in and automated token refresh.
+
+#### 2. Automatic Login Token Capture & Swagger Authorization
+- **Token Capture on Login (`src/services/token-refresh.ts`)**:
+  - Updated `noticeResponses()` to detect 2xx responses on login endpoints.
+  - Automatically parses the response JSON, extracts the bearer/auth token, and invokes `auth.applyToken()`.
+  - Dispatches success notification: `⚡ Authorized in Swagger UI via <endpointId>`.
+
+#### 3. Trailing Slash Normalization in Extraction Rules
+- **Environment Service (`src/modules/environment/env-service.ts`)**:
+  - Normalized endpoint paths in `applyExtraction()` using `.replace(/\/+$/, '')` so rules configured for `/auth/login` match responses from `/auth/login/` and vice-versa.
+
+#### 4. Auto-Reload on Extension Rebuild
+- **Sidepanel (`src/sidepanel/main.tsx`)**:
+  - Added `mountedBuildId` tracking and updated `maybeReload()` to detect `next.context.buildId !== mountedBuildId`.
+  - Added `STATE_PUSH` message listener so rebuilt content scripts trigger an automatic panel reload and eliminate stale build banners.
+
+### Verification Results
+- **Unit & Component Tests**: **123 / 123 test suites passing, 1,077 / 1,077 tests passing (100% green)**.
+- **New Unit Tests Added**:
+  - `AuthPanel.test.tsx`: Validated adding account with `force_logout: true` extra field.
+  - `token-refresh.test.ts`: Validated merging `extraFields` during `signIn` and auto-capturing tokens on login endpoint responses in `noticeResponses`.
+  - `env-service.test.ts`: Validated `applyExtraction` endpoint matching across trailing slash variants.
+- **Production Build**: `npm run build` completed cleanly with 0 TypeScript and bundling errors.
+
+---
+
+## ⌨️ Default Keyboard Shortcuts Update: Ctrl+F for Command Palette & Ctrl+K for Shortcuts Manager (Completed)
+
+### Summary of Changes
+Updated default shortcut bindings across the extension so developers have an intuitive in-page find shortcut (`Ctrl+F` / `⌘F`) for opening the Command Palette, and `Ctrl+K` / `⌘K` to open the Keyboard Shortcuts configuration cheat-sheet / manager from both the page and side panel.
+
+### Files Modified
+1. `src/modules/shortcuts/types.ts`:
+   - Updated `palette.toggle` default binding to `{ key: 'f', ctrlOrCmd: true }` (`Ctrl+F` / `⌘F`).
+   - Updated `shortcuts.open` default binding to `{ key: 'k', ctrlOrCmd: true }` (`Ctrl+K` / `⌘K`).
+2. `src/sidepanel/PanelShell.tsx`:
+   - Updated keydown listener:
+     - `Ctrl+F` / `⌘F`: opens the Command Palette via `onOpenPalette()`.
+     - `Ctrl+K` / `⌘K`: opens the Keyboard Shortcuts Manager modal via `onOpenShortcutsModal()`.
+   - Updated header action button tooltips:
+     - Search icon: `Search endpoints (⌘F)`
+     - Keyboard icon: `Keyboard shortcuts (⌘K)`
+3. `src/sidebar/SidebarShell.tsx` & `src/sidebar/Dashboard.tsx`:
+   - `SidebarShell.tsx`: updated keydown listener to trigger on `Ctrl+F` / `⌘F`, and updated search button tooltip to `Search endpoints (⌘F)`.
+   - `Dashboard.tsx`: updated Quick Action button label from `Search ⌘K` to `Search ⌘F`.
+4. `src/modules/shortcuts/shortcut-utils.test.ts`:
+   - Updated conflict detection tests to verify `palette.toggle` conflicts on `Ctrl+F` and `shortcuts.open` conflicts on `Ctrl+K`.
+5. `src/modules/shortcuts/KeyboardShortcutsModal.test.tsx`:
+   - Updated conflict simulation test to press `Ctrl+F` to trigger and verify the conflict resolution dialog with `palette.toggle`.
+6. `src/sidepanel/PanelShell.test.tsx`:
+   - Updated unit tests for button labels (`Search endpoints (⌘F)`, `Keyboard shortcuts (⌘K)`) and delegation tests for `⌘F` (palette) and `⌘K` (shortcuts modal).
+
+### Verification Results
+- **Unit & Component Tests**: **123 / 123 test suites passing, 1,078 / 1,078 tests passing (100% green)**.
+- **TypeScript Typecheck (`npm run typecheck`)**: Passed with 0 errors.
+- **Production Build (`npm run build`)**: 1,980 modules transformed, built with 0 errors (Chrome + Firefox release packages generated).
+
