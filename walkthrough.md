@@ -185,3 +185,23 @@ Updated default shortcut bindings across the extension so developers have an int
 - **TypeScript Typecheck (`npm run typecheck`)**: Passed with 0 errors.
 - **Production Build (`npm run build`)**: 1,980 modules transformed, built with 0 errors (Chrome + Firefox release packages generated).
 
+---
+
+## 🚀 Version 1.3.0 Release (Completed)
+
+### Release Highlights
+- **Multi-Persona Authentication**: Added dynamic extra payload fields (`force_logout: true`, tenant IDs, roles, etc.) with configurable type casting (string, boolean, number) in the Auth Vault.
+- **Native Automatic Token Capture**: Automatically captures bearer/auth tokens on 2xx responses from login endpoints and authorizes Swagger UI directly.
+- **Extraction Rules Fix**: Normalized endpoint matching to handle trailing slashes seamlessly (`/auth/login` vs `/auth/login/`).
+- **Dynamic Sidepanel Reloading**: Rebuilt extension bundles now push build events to reload active panels, eliminating stale build banners.
+- **Updated Default Shortcuts**:
+  - `Ctrl+F` (or `⌘F`): Opens the Command Palette endpoint search.
+  - `Ctrl+K` (or `⌘K`): Opens the Keyboard Shortcuts manager and configuration cheat-sheet.
+
+### Release Artifacts & Distribution
+- **Chrome / Edge / Brave Release Package**: [`share/openapi-companion-1.3.0.zip`](file:///p:/React%20native/OpenAPI_Companion/share/openapi-companion-1.3.0.zip) (`313 KB` with embedded `INSTALL.md`).
+- **Firefox AMO Release Package**: [`share/openapi-companion-1.3.0-firefox.zip`](file:///p:/React%20native/OpenAPI_Companion/share/openapi-companion-1.3.0-firefox.zip) (`608 KB`).
+- **Git Tag**: `v1.3.0` created and pushed to `origin` (`refs/tags/v1.3.0`).
+- **Commit**: `8bdbf22` on `main`.
+- **GitHub Release & Automated Workflow**: Tag push triggers `.github/workflows/release.yml` on GitHub Actions to publish the official release with attached distribution assets.
+

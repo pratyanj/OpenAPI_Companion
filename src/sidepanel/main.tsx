@@ -174,10 +174,7 @@ async function render(root: Root): Promise<void> {
       location.reload()
       return
     }
-    if (
-      next.context.projectId !== mountedProjectId ||
-      next.context.buildId !== mountedBuildId
-    ) {
+    if (next.context.projectId !== mountedProjectId || next.context.buildId !== mountedBuildId) {
       location.reload()
     }
   }

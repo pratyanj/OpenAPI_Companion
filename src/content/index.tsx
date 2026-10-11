@@ -1423,7 +1423,9 @@ export async function bootAgent(
       const login = {
         username: username as string,
         password: password as string,
-        ...(extraFields ? { extraFields: extraFields as Record<string, string | number | boolean> } : {}),
+        ...(extraFields
+          ? { extraFields: extraFields as Record<string, string | number | boolean> }
+          : {}),
       }
       const signedIn = await tokenRefresh.signIn(login)
       if (!signedIn.ok) return signedIn
