@@ -273,4 +273,32 @@ Created persistent, dated archives of all recent plans:
 1. [`docs/plan/2026-10-11_v1.3.0_release_and_ci_verification_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-11_v1.3.0_release_and_ci_verification_plan.md) — CI quality gate resolution, packaging, and v1.3.0 release.
 2. [`docs/plan/2026-10-11_chrome_store_policy_compliance_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-11_chrome_store_policy_compliance_plan.md) — CWS rejection keyword identification, safe phrasing alternatives, and store description.
 3. [`docs/plan/2026-10-11_agent_operational_rules_and_archiving_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-11_agent_operational_rules_and_archiving_plan.md) — Codification of environment, architecture, quality gates, and plan archiving rules.
+4. [`docs/plan/2026-10-17_settings_restore_point_undo_timeout_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-17_settings_restore_point_undo_timeout_plan.md) — Settings restore point 1-minute auto-dismiss timeout bug fix.
+
+---
+
+## ⏱️ Phase 7.1: Settings Restore Point Undo Button 1-Minute Auto-Dismiss Timeout (Completed)
+
+### Summary of Changes
+Fixed the issue where the "Undo Import" button and "Restore Point Available" alert banner remained indefinitely in the Settings tab after importing backup data. Enforced a strict 60-second (1-minute) time-to-live (`RESTORE_POINT_TTL_MS = 60_000`) at both the service layer and the UI layer:
+1. **Service Layer Expiration (`import-export-service.ts`)**:
+   - Added exported `RESTORE_POINT_TTL_MS = 60_000`.
+   - Updated `getPreImportSnapshot()` to inspect snapshot timestamp. If timestamp is missing or exceeds 60,000 ms, the snapshot is automatically deleted from storage, storage is flushed, and `null` is returned.
+   - Updated `rollbackLastImport()` to verify that an unexpired snapshot exists before executing, returning an informative error if expired.
+2. **UI Layer Timer (`SettingsPanel.tsx`)**:
+   - Added a `useEffect` hook monitoring `hasRestorePoint` that calculates `remainingMs = Math.max(0, RESTORE_POINT_TTL_MS - (Date.now() - hasRestorePoint.timestamp))` and sets an automatic dismissal timer via `setTimeout`.
+   - Updated alert banner subtitle to explicitly state: `Captured prior to last import (...). Available for 1 minute.`
+3. **Automated Test Coverage**:
+   - `import-export-service.test.ts`: Added unit test verifying that snapshot is valid within 60s, expires at 60,001ms, and returns an error on rollback.
+   - `SettingsPanel.test.tsx`: Added unit tests verifying banner rendering, successful rollback dismissal, and 60-second fake-timer auto-dismissal.
+
+### Verification Results
+All 7 mandatory CI quality gates verified locally:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **123 test files passed, 1,081 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built successfully
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
 

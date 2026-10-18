@@ -531,5 +531,23 @@
     - Scans all saved endpoint request presets (`headers`, `query`, `path`, `body`) to detect active `{{VAR}}` usage.
     - Displays `✓ Used in N presets` badge with full tooltip inspection or `unused` indicator next to each project variable (**557 tests ✓**).
 
+---
 
-
+### 🚀 Phase 7: Developer Workflow & UI Enhancements (v1.3.1+)
+- [x] **7.1. Bug Fix: Settings Restore Point Undo Button Auto-Dismiss Timeout**
+  - [x] Enforce 60-second (1-minute) max age in `import-export-service.ts` for pre-import rollback snapshots.
+  - [x] Add 60-second countdown / auto-dismiss timer in `SettingsPanel.tsx` so the "Undo Import" button disappears automatically after 1 minute.
+- [ ] **7.2. Bug Fix: Scheduled Silent Background Backup**
+  - [ ] Ensure scheduled backups save directly into target folder without displaying Save As prompt or cluttering the browser's download shelf (`chrome.downloads.erase` or silent options).
+- [ ] **7.3. Feature: Auth Tab Raw JSON User / Persona Import**
+  - [ ] Add `[Form]` vs `[Paste JSON]` mode toggle inside the "Add account" card in `AuthPanel.tsx`.
+  - [ ] Automatically extract username/email, password, extra payload fields (e.g. `force_logout: true`).
+  - [ ] Auto-derive account name from the email prefix before `@` (e.g., `admin@example.com` -> `admin`) when not explicitly provided.
+  - [ ] 1-Click "Sign in & save" directly from raw JSON or "Switch to Form" with parsed fields mapped.
+- [ ] **7.4. Feature: In-Page Swagger UI "Save Request" Button on 2xx Responses**
+  - [ ] Inject styled method-themed "Save Request" button in `.oac-response-action-bar` only when endpoint execution finishes with 2xx status.
+  - [ ] Capture executed operation parameters, query, and request body, opening the in-page Preset Editor pre-filled for 1-click saving.
+- [ ] **7.5. Feature: Bulk JSON Project Variable Import**
+  - [ ] Allow developers to paste a JSON object in Environment / Variables to bulk-import and create/update project variables without tedious manual copy-pasting.
+- [ ] **7.6. Feature: In-Page Swagger Endpoint History Button**
+  - [ ] Add a "🕒 History" button directly on Swagger UI operation blocks that opens the in-page History Detail modal filtered to that endpoint's past execution calls.

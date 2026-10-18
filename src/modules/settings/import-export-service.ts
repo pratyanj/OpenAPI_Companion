@@ -26,6 +26,9 @@ export interface ImportExportServiceOptions {
 const KNOWN_ROOTS = new Set<string>(Object.values(STORAGE_ROOTS))
 const SNAPSHOT_KEY = backupKey('last-pre-import-snapshot')
 
+/** Time-to-live for a pre-import restore point (1 minute). */
+export const RESTORE_POINT_TTL_MS = 60_000
+
 const errors = {
   invalid: (message: string): AppError => ({ code: 'IMPORT_INVALID', message, recoverable: true }),
   unsupported: (v: number): AppError => ({
@@ -400,17 +403,30 @@ export class ImportExportService implements ImportExportApi {
     return await this.storage.set(SNAPSHOT_KEY, snapshot, { immediate: true })
   }
 
-  /** Retrieve current pre-import snapshot, if any. */
+  /** Retrieve current pre-import snapshot, if any (valid for 1 minute). */
   async getPreImportSnapshot(): Promise<PreImportSnapshot | null> {
     const got = await this.storage.getData<PreImportSnapshot>(SNAPSHOT_KEY)
-    return got.ok && got.value ? got.value : null
+    if (!got.ok || !got.value) return null
+    if (
+      typeof got.value.timestamp !== 'number' ||
+      this.now() - got.value.timestamp > RESTORE_POINT_TTL_MS
+    ) {
+      await this.storage.remove(SNAPSHOT_KEY)
+      await this.storage.flush()
+      return null
+    }
+    return got.value
   }
 
   /** Roll back storage to the exact state captured prior to the last import. */
   async rollbackLastImport(): Promise<Result<ImportSummary>> {
     const snapshot = await this.getPreImportSnapshot()
     if (!snapshot || !snapshot.entries) {
-      return err(errors.invalid('No pre-import restore point found to roll back.'))
+      return err(
+        errors.invalid(
+          'No pre-import restore point found to roll back (or restore point expired).',
+        ),
+      )
     }
     let restored = 0
     for (const [key, value] of Object.entries(snapshot.entries)) {

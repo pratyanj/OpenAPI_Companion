@@ -493,4 +493,44 @@ describe('ImportExportService.applyImport', () => {
     // Snapshot is cleared after rollback
     expect(await io.getPreImportSnapshot()).toBeNull()
   })
+
+  it('expires pre-import snapshot after 1 minute (RESTORE_POINT_TTL_MS)', async () => {
+    let currentTime = 100_000
+    const area = createFakeArea()
+    const storage = new StorageService({ area, now: () => currentTime })
+    const io = new ImportExportService({ storage, now: () => currentTime })
+
+    const themeKey = settingsKey('theme')
+    await storage.set(themeKey, 'dark', { immediate: true })
+
+    const incomingBundle = JSON.stringify({
+      app: APP_NAME,
+      appVersion: '1.0.0',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: 100_000,
+      entries: {
+        [themeKey]: 'light',
+      },
+    })
+
+    const importRes = await io.applyImport(incomingBundle, 'replace')
+    expect(importRes.ok).toBe(true)
+
+    // Snapshot is valid within 60s
+    currentTime += 30_000 // +30s
+    const validSnapshot = await io.getPreImportSnapshot()
+    expect(validSnapshot).not.toBeNull()
+
+    // Advance past 60s
+    currentTime += 30_001 // total +60,001ms
+    const expiredSnapshot = await io.getPreImportSnapshot()
+    expect(expiredSnapshot).toBeNull()
+
+    // Rollback attempt after expiration fails with error
+    const rollbackRes = await io.rollbackLastImport()
+    expect(rollbackRes.ok).toBe(false)
+    if (!rollbackRes.ok) {
+      expect(rollbackRes.error.message).toContain('expired')
+    }
+  })
 })

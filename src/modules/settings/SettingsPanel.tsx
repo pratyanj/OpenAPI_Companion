@@ -25,7 +25,7 @@ import {
   type PendingUpdate,
 } from '@/services/update-service'
 import type { SettingsApi } from './settings-service'
-import type { ImportExportApi } from './import-export-service'
+import { type ImportExportApi, RESTORE_POINT_TTL_MS } from './import-export-service'
 import type {
   BackupFrequency,
   BackupScope,
@@ -143,6 +143,19 @@ export function SettingsPanel({
     void io.getPreImportSnapshot?.().then((snap) => setHasRestorePoint(snap ?? null))
     void getPendingUpdate().then(setPendingUpdate)
   }, [settings, loadMetrics, io])
+
+  useEffect(() => {
+    if (!hasRestorePoint) return
+    const remainingMs = Math.max(0, RESTORE_POINT_TTL_MS - (Date.now() - hasRestorePoint.timestamp))
+    if (remainingMs <= 0) {
+      setHasRestorePoint(null)
+      return
+    }
+    const timer = setTimeout(() => {
+      setHasRestorePoint(null)
+    }, remainingMs)
+    return () => clearTimeout(timer)
+  }, [hasRestorePoint])
 
   const setPref = async <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     await settings.setPreference(key, value)
@@ -636,7 +649,7 @@ export function SettingsPanel({
               <span className="font-semibold text-amber-500">Restore Point Available</span>
               <span className="text-muted text-[10px] truncate">
                 Captured prior to last import (
-                {new Date(hasRestorePoint.timestamp).toLocaleTimeString()}).
+                {new Date(hasRestorePoint.timestamp).toLocaleTimeString()}). Available for 1 minute.
               </span>
             </div>
             <Button

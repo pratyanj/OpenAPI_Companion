@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { ok, type Result } from '@/types'
 import { StorageService } from '@/core/storage'
 import { EventBus } from '@/core/events'
@@ -283,5 +283,54 @@ describe('SettingsPanel', () => {
     expect(configureBtn).toBeInTheDocument()
     fireEvent.click(configureBtn)
     expect(onOpen).toHaveBeenCalledOnce()
+  })
+
+  it('renders restore point banner and handles undo rollback', async () => {
+    const io = mockIo({
+      getPreImportSnapshot: vi.fn(async () => ({
+        timestamp: Date.now(),
+        mode: 'replace' as const,
+        entries: { 'settings/theme': 'dark' },
+      })),
+      rollbackLastImport: vi.fn(async () => ok({ imported: 1, skipped: 0, renamed: 0 })),
+    })
+    renderPanel(mockSettings(), io)
+
+    expect(await screen.findByText('Restore Point Available')).toBeInTheDocument()
+    expect(screen.getByText(/Available for 1 minute\./)).toBeInTheDocument()
+    const undoBtn = screen.getByRole('button', { name: 'Undo Import' })
+    expect(undoBtn).toBeInTheDocument()
+
+    fireEvent.click(undoBtn)
+    await waitFor(() => expect(io.rollbackLastImport).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(screen.queryByText('Restore Point Available')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('auto-dismisses restore point banner after 1 minute', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const now = 1_000_000
+    vi.setSystemTime(now)
+
+    const io = mockIo({
+      getPreImportSnapshot: vi.fn(async () => ({
+        timestamp: now,
+        mode: 'replace' as const,
+        entries: { 'settings/theme': 'dark' },
+      })),
+    })
+
+    renderPanel(mockSettings(), io)
+
+    expect(await screen.findByText('Restore Point Available')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(screen.queryByText('Restore Point Available')).not.toBeInTheDocument()
+
+    vi.useRealTimers()
   })
 })
