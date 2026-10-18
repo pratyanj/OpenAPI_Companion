@@ -5,6 +5,11 @@ export interface DownloadOptions {
   subfolder?: string
   /** Whether to prompt the user with a Save As dialog. Defaults to false. */
   saveAs?: boolean
+  /**
+   * When true, erases the download record from Chrome's download history / tab / shelf
+   * upon completion so scheduled background backups do not clutter the user's downloads.
+   */
+  silent?: boolean
 }
 
 export type Downloader = (
@@ -119,7 +124,7 @@ export const universalDownloader: Downloader = (filename, content, mime, options
           saveAs,
           conflictAction: 'uniquify',
         },
-        () => {
+        (downloadId?: number) => {
           if (isBlobSupported && downloadUrl.startsWith('blob:')) {
             setTimeout(() => {
               try {
@@ -130,8 +135,46 @@ export const universalDownloader: Downloader = (filename, content, mime, options
             }, 10000)
           }
 
-          if (chrome.runtime.lastError) {
+          if (chrome.runtime?.lastError) {
             anchorDownload(filename, content, mime, options)
+            return
+          }
+
+          // If silent is requested, erase the item from Chrome's download history / tab shelf once complete
+          if (options?.silent && typeof downloadId === 'number' && chrome.downloads.erase) {
+            const eraseItem = () => {
+              try {
+                chrome.downloads.erase({ id: downloadId }, () => {
+                  // Erased from history without deleting the downloaded physical file
+                })
+              } catch {
+                // Ignore cleanup errors
+              }
+            }
+
+            if (chrome.downloads.onChanged) {
+              const listener = (delta: { id: number; state?: { current?: string } }) => {
+                if (delta.id === downloadId && delta.state?.current === 'complete') {
+                  try {
+                    chrome.downloads.onChanged.removeListener(listener)
+                  } catch {
+                    // Ignore
+                  }
+                  eraseItem()
+                }
+              }
+              chrome.downloads.onChanged.addListener(listener)
+              setTimeout(() => {
+                try {
+                  chrome.downloads.onChanged.removeListener(listener)
+                } catch {
+                  // Ignore
+                }
+                eraseItem()
+              }, 15000)
+            } else {
+              setTimeout(eraseItem, 3000)
+            }
           }
         },
       )

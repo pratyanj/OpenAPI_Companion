@@ -80,6 +80,21 @@ describe('ImportExportService.backup', () => {
       expect.objectContaining({ subfolder: 'MyCustomBackups', saveAs: false }),
     )
   })
+
+  it('passes silent: true to download options when auto is true (scheduled backup)', async () => {
+    const download = vi.fn()
+    const { service, storage } = setup(download)
+    await seed(storage)
+
+    const r = await service.backup(true)
+    expect(r.ok).toBe(true)
+    expect(download).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      'application/json',
+      expect.objectContaining({ silent: true, saveAs: false }),
+    )
+  })
 })
 
 describe('ImportExportService.previewImport', () => {

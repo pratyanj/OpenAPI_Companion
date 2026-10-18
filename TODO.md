@@ -537,8 +537,8 @@
 - [x] **7.1. Bug Fix: Settings Restore Point Undo Button Auto-Dismiss Timeout**
   - [x] Enforce 60-second (1-minute) max age in `import-export-service.ts` for pre-import rollback snapshots.
   - [x] Add 60-second countdown / auto-dismiss timer in `SettingsPanel.tsx` so the "Undo Import" button disappears automatically after 1 minute.
-- [ ] **7.2. Bug Fix: Scheduled Silent Background Backup**
-  - [ ] Ensure scheduled backups save directly into target folder without displaying Save As prompt or cluttering the browser's download shelf (`chrome.downloads.erase` or silent options).
+- [x] **7.2. Bug Fix: Scheduled Silent Background Backup**
+  - [x] Ensure scheduled backups save directly into target folder without displaying Save As prompt or cluttering the browser's download shelf (`chrome.downloads.erase` or silent options).
 - [ ] **7.3. Feature: Auth Tab Raw JSON User / Persona Import**
   - [ ] Add `[Form]` vs `[Paste JSON]` mode toggle inside the "Add account" card in `AuthPanel.tsx`.
   - [ ] Automatically extract username/email, password, extra payload fields (e.g. `force_logout: true`).

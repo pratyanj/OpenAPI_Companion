@@ -107,7 +107,11 @@ describe('backup-scheduler', () => {
       expect.any(String),
       expect.any(String),
       'application/json',
-      expect.objectContaining({ subfolder: DEFAULT_BACKUP_FOLDER, saveAs: false }),
+      expect.objectContaining({
+        subfolder: DEFAULT_BACKUP_FOLDER,
+        saveAs: false,
+        silent: true,
+      }),
     )
 
     const updatedPrefs = await settings.getPreferences()

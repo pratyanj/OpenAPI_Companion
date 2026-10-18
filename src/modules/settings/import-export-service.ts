@@ -254,6 +254,7 @@ export class ImportExportService implements ImportExportApi {
     this.download(filename, exported.value, 'application/json', {
       subfolder: subfolder ?? DEFAULT_BACKUP_FOLDER,
       saveAs: false,
+      silent: auto,
     })
     this.bus?.publish('DATA_BACKED_UP', {
       modules: rootsOf(Object.keys(parseEntries(exported.value))),

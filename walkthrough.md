@@ -274,6 +274,7 @@ Created persistent, dated archives of all recent plans:
 2. [`docs/plan/2026-10-11_chrome_store_policy_compliance_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-11_chrome_store_policy_compliance_plan.md) — CWS rejection keyword identification, safe phrasing alternatives, and store description.
 3. [`docs/plan/2026-10-11_agent_operational_rules_and_archiving_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-11_agent_operational_rules_and_archiving_plan.md) — Codification of environment, architecture, quality gates, and plan archiving rules.
 4. [`docs/plan/2026-10-17_settings_restore_point_undo_timeout_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-17_settings_restore_point_undo_timeout_plan.md) — Settings restore point 1-minute auto-dismiss timeout bug fix.
+5. [`docs/plan/2026-10-18_scheduled_silent_backup_plan.md`](file:///p:/React%20native/OpenAPI_Companion/docs/plan/2026-10-18_scheduled_silent_backup_plan.md) — Scheduled silent background backup plan.
 
 ---
 
@@ -301,4 +302,33 @@ All 7 mandatory CI quality gates verified locally:
 5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built successfully
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+---
+
+## 💾 Phase 7.2: Scheduled Silent Background Backup (Completed)
+
+### Summary of Changes
+Resolved the issue where scheduled auto-backups prompted the user with "Save As" file dialogs or cluttered the browser's download shelf / tab (`chrome://downloads`).
+1. **Silent Background Erasure (`downloader.ts`)**:
+   - Extended `DownloadOptions` with `silent?: boolean`.
+   - In `universalDownloader`: when `options?.silent` is true and `downloadId` is received from `chrome.downloads.download({ saveAs: false, conflictAction: 'uniquify' })`, registers an event listener on `chrome.downloads.onChanged`.
+   - Once the download reaches `state: 'complete'`, calls `chrome.downloads.erase({ id: downloadId })` which erases the download record from Chrome's download history / tab / shelf without deleting the downloaded physical file on the user's disk.
+   - Added safety timeout to ensure event cleanup and fallback erasing.
+2. **Auto-Backup Integration (`import-export-service.ts`)**:
+   - In `backup(auto = false, ...)`: passed `silent: auto` to downloader options, ensuring automated background backups run 100% silently while manual user-initiated backup downloads retain normal browser download notifications.
+3. **Automated Test Coverage**:
+   - `downloader.test.ts`: Added unit test verifying that `universalDownloader` listens for download completion and triggers `chrome.downloads.erase` when `silent: true`.
+   - `import-export-service.test.ts`: Added unit test verifying `silent: true` is passed when `auto: true`.
+   - `backup-scheduler.test.ts`: Verified `runScheduledBackup()` invokes `io.backup()` with `silent: true` and `saveAs: false`.
+
+### Verification Results
+All 7 mandatory CI quality gates verified locally:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **123 test files passed, 1,082 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built successfully
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
 

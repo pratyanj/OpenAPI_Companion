@@ -74,11 +74,55 @@ describe('downloader utilities', () => {
     URL.revokeObjectURL = vi.fn()
 
     const createElementSpy = vi.spyOn(document, 'createElement')
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     universalDownloader('test.json', '{"test":true}', 'application/json')
     expect(createElementSpy).toHaveBeenCalledWith('a')
 
+    clickSpy.mockRestore()
     createElementSpy.mockRestore()
     URL.createObjectURL = origCreateObjectURL
     URL.revokeObjectURL = origRevokeObjectURL
+  })
+
+  it('universalDownloader calls chrome.downloads.erase when silent: true on completion', () => {
+    let changeListener: ((delta: { id: number; state?: { current?: string } }) => void) | undefined
+    const mockAddListener = vi.fn((cb) => {
+      changeListener = cb
+    })
+    const mockRemoveListener = vi.fn()
+    const mockErase = vi.fn()
+    const mockDownload = vi.fn((_opts, cb) => {
+      cb(42) // returns downloadId = 42
+    })
+
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      runtime: { lastError: undefined },
+      downloads: {
+        download: mockDownload,
+        erase: mockErase,
+        onChanged: {
+          addListener: mockAddListener,
+          removeListener: mockRemoveListener,
+        },
+      },
+    }
+
+    universalDownloader('backup.json', '{"test":123}', 'application/json', {
+      subfolder: 'MyBackups',
+      saveAs: false,
+      silent: true,
+    })
+
+    expect(mockDownload).toHaveBeenCalledTimes(1)
+    expect(mockAddListener).toHaveBeenCalled()
+
+    // Trigger complete state change
+    changeListener?.({ id: 42, state: { current: 'complete' } })
+
+    expect(mockRemoveListener).toHaveBeenCalled()
+    expect(mockErase).toHaveBeenCalledWith({ id: 42 }, expect.any(Function))
+
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
   })
 })
