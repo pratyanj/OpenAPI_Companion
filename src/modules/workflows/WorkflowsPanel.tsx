@@ -348,7 +348,7 @@ export function WorkflowsPanel({
                 aria-label="Import workflows"
                 className="p-1.5 rounded text-muted hover:text-text hover:bg-surface-alt transition-colors"
               >
-                <UploadIcon className="h-3.5 w-3.5" />
+                <DownloadIcon className="h-3.5 w-3.5" />
               </button>
             )}
             {/* Export button — only shown if service supports it and there are workflows */}
@@ -360,7 +360,7 @@ export function WorkflowsPanel({
                 aria-label="Export workflows"
                 className="p-1.5 rounded text-muted hover:text-text hover:bg-surface-alt transition-colors"
               >
-                <DownloadIcon className="h-3.5 w-3.5" />
+                <UploadIcon className="h-3.5 w-3.5" />
               </button>
             )}
 

@@ -570,7 +570,7 @@ export function EnvironmentsPanel({
               aria-label="Import .env"
               className="flex items-center gap-1.5 text-xs"
             >
-              <UploadIcon className="h-3 w-3" />
+              <DownloadIcon className="h-3 w-3" />
               Import
             </Button>
             <Button
@@ -579,7 +579,7 @@ export function EnvironmentsPanel({
               aria-label="Export .env"
               className="flex items-center gap-1.5 text-xs"
             >
-              <DownloadIcon className="h-3 w-3" />
+              <UploadIcon className="h-3 w-3" />
               Export
             </Button>
           </div>
@@ -619,7 +619,7 @@ export function EnvironmentsPanel({
                   + Add variable
                 </Button>
                 <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                  <UploadIcon className="h-3 w-3 mr-1" />
+                  <DownloadIcon className="h-3 w-3 mr-1" />
                   Import .env
                 </Button>
               </div>
