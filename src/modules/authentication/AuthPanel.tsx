@@ -20,6 +20,12 @@ import {
 import type { RefreshLogEntry } from '@/services'
 import type { AuthRecord, SavedCredential, SavedLogin } from './types'
 import { authStatusOf } from './status'
+import {
+  type ExtraFieldEntry,
+  extraFieldsToRecord,
+  recordToExtraFields,
+  parseAccountJson,
+} from './auth-json-utils'
 
 /** Just the surface AuthPanel needs from AuthenticationService (eases testing). */
 export interface AuthPanelService {
@@ -127,46 +133,6 @@ function PasswordField({
   )
 }
 
-interface ExtraFieldEntry {
-  id: string
-  key: string
-  value: string
-  type: 'string' | 'boolean' | 'number'
-}
-
-function extraFieldsToRecord(
-  entries: ExtraFieldEntry[],
-): Record<string, string | number | boolean> | undefined {
-  const result: Record<string, string | number | boolean> = {}
-  let count = 0
-  for (const entry of entries) {
-    const trimmedKey = entry.key.trim()
-    if (!trimmedKey) continue
-    count++
-    if (entry.type === 'boolean') {
-      result[trimmedKey] = entry.value.toLowerCase() === 'true'
-    } else if (entry.type === 'number') {
-      const num = Number(entry.value)
-      result[trimmedKey] = Number.isNaN(num) ? entry.value : num
-    } else {
-      result[trimmedKey] = entry.value
-    }
-  }
-  return count > 0 ? result : undefined
-}
-
-function recordToExtraFields(
-  record?: Record<string, string | number | boolean>,
-): ExtraFieldEntry[] {
-  if (!record) return []
-  return Object.entries(record).map(([k, v], idx) => ({
-    id: `${Date.now()}-${idx}-${Math.random()}`,
-    key: k,
-    value: String(v),
-    type: typeof v === 'boolean' ? 'boolean' : typeof v === 'number' ? 'number' : 'string',
-  }))
-}
-
 function ExtraFieldsEditor({
   fields,
   onChange,
@@ -230,6 +196,7 @@ function ExtraFieldsEditor({
                 value={field.key}
                 onChange={(e) => updateField(field.id, { key: e.target.value })}
                 placeholder="Key (e.g. force_logout)"
+                aria-label="Extra field key"
                 className="w-1/3 min-w-0 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
               />
               <select
@@ -249,6 +216,7 @@ function ExtraFieldsEditor({
                 <select
                   value={field.value.toLowerCase() === 'false' ? 'false' : 'true'}
                   onChange={(e) => updateField(field.id, { value: e.target.value })}
+                  aria-label="Extra field value"
                   className="flex-1 min-w-0 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
                 >
                   <option value="true">true</option>
@@ -260,6 +228,7 @@ function ExtraFieldsEditor({
                   value={field.value}
                   onChange={(e) => updateField(field.id, { value: e.target.value })}
                   placeholder={field.type === 'number' ? 'Value (e.g. 1)' : 'Value'}
+                  aria-label="Extra field value"
                   className="flex-1 min-w-0 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:border-primary focus:outline-none"
                 />
               )}
@@ -312,6 +281,8 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
   const [activity, setActivity] = useState<RefreshLogEntry[]>([])
   const [testing, setTesting] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [addAccountMode, setAddAccountMode] = useState<'form' | 'json'>('form')
+  const [rawJsonInput, setRawJsonInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [newAccount, setNewAccount] = useState({ name: '', username: '', password: '' })
   const [newAccountExtraFields, setNewAccountExtraFields] = useState<ExtraFieldEntry[]>([])
@@ -320,6 +291,11 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
     username: false,
     password: false,
   })
+
+  const parsedJsonAccount = useMemo(() => {
+    if (!rawJsonInput.trim()) return null
+    return parseAccountJson(rawJsonInput)
+  }, [rawJsonInput])
   /** Which vault entry has its login form open. */
   const [editing, setEditing] = useState<string | null>(null)
   const [form, setForm] = useState<SavedLogin>(EMPTY_LOGIN)
@@ -397,6 +373,48 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
       setNewAccount({ name: '', username: '', password: '' })
       setNewAccountExtraFields([])
       setNewAccountTouched({ name: false, username: false, password: false })
+      setRawJsonInput('')
+      setAddAccountMode('form')
+      setAdding(false)
+    }
+    setActivity(await service.refreshActivity())
+    await load()
+  }
+
+  const populateFormFromJson = () => {
+    if (!parsedJsonAccount || !parsedJsonAccount.ok) return
+    const { name, username, password, extraFieldEntries } = parsedJsonAccount.value
+    setNewAccount({
+      name: name || '',
+      username: username || '',
+      password: password || '',
+    })
+    setNewAccountExtraFields(extraFieldEntries)
+    setAddAccountMode('form')
+  }
+
+  const addAccountFromJson = async () => {
+    if (!parsedJsonAccount || !parsedJsonAccount.ok) return
+    const { name, username, password, extraFields } = parsedJsonAccount.value
+    if (!name.trim() || !username.trim() || !password) {
+      bus.publish('NOTIFY', {
+        kind: 'error',
+        message: 'JSON must contain username/email and password.',
+      })
+      return
+    }
+    setBusy(true)
+    const result =
+      Object.keys(extraFields).length > 0
+        ? await service.addByLogin(name.trim(), username.trim(), password, extraFields)
+        : await service.addByLogin(name.trim(), username.trim(), password)
+    setBusy(false)
+    if (report(result)) {
+      setNewAccount({ name: '', username: '', password: '' })
+      setNewAccountExtraFields([])
+      setNewAccountTouched({ name: false, username: false, password: false })
+      setRawJsonInput('')
+      setAddAccountMode('form')
       setAdding(false)
     }
     setActivity(await service.refreshActivity())
@@ -692,7 +710,34 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
             keep the issued token, with its credentials, under one name. */}
         {adding ? (
           <div className="flex flex-col gap-2 rounded-md border border-primary p-2.5 bg-surface/30">
-            <span className="text-xs font-semibold text-text">Add account</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-text">Add account</span>
+              <div className="flex rounded border border-border bg-bg p-0.5 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setAddAccountMode('form')}
+                  className={`rounded px-2 py-0.5 font-medium transition-colors ${
+                    addAccountMode === 'form'
+                      ? 'bg-primary text-white'
+                      : 'text-muted hover:text-text'
+                  }`}
+                >
+                  Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddAccountMode('json')}
+                  className={`rounded px-2 py-0.5 font-medium transition-colors ${
+                    addAccountMode === 'json'
+                      ? 'bg-primary text-white'
+                      : 'text-muted hover:text-text'
+                  }`}
+                >
+                  Paste JSON
+                </button>
+              </div>
+            </div>
+
             <p className="text-[10px] leading-snug text-muted">
               Signs in with these details and saves the token it returns
               {loginEndpoint ? (
@@ -703,78 +748,161 @@ export function AuthPanel({ service, bus, environmentId, onNavigate }: AuthPanel
               ) : null}
               .
             </p>
-            <div className="flex flex-col gap-2">
-              <Input
-                value={newAccount.name}
-                onChange={(e) => {
-                  setNewAccount({ ...newAccount, name: e.target.value })
-                  if (newAccountTouched.name) {
-                    setNewAccountTouched((t) => ({ ...t, name: true }))
-                  }
-                }}
-                onBlur={() => setNewAccountTouched((t) => ({ ...t, name: true }))}
-                placeholder="Token name (e.g. Admin)"
-                aria-label="New account name"
-                error={
-                  newAccountTouched.name && !newAccount.name.trim()
-                    ? 'Token name is required.'
-                    : null
-                }
-              />
-              <Input
-                value={newAccount.username}
-                onChange={(e) => {
-                  setNewAccount({ ...newAccount, username: e.target.value })
-                  if (newAccountTouched.username) {
-                    setNewAccountTouched((t) => ({ ...t, username: true }))
-                  }
-                }}
-                onBlur={() => setNewAccountTouched((t) => ({ ...t, username: true }))}
-                placeholder="Email / username"
-                aria-label="New account email"
-                error={
-                  newAccountTouched.username && !newAccount.username.trim()
-                    ? 'Email / username is required.'
-                    : null
-                }
-              />
-              <PasswordField
-                value={newAccount.password}
-                onChange={(password) => {
-                  setNewAccount({ ...newAccount, password })
-                  if (newAccountTouched.password) {
-                    setNewAccountTouched((t) => ({ ...t, password: true }))
-                  }
-                }}
-                label="New account password"
-                onEnter={() => void addAccount()}
-                error={
-                  newAccountTouched.password && !newAccount.password
-                    ? 'Password is required.'
-                    : null
-                }
-              />
-              <ExtraFieldsEditor
-                fields={newAccountExtraFields}
-                onChange={setNewAccountExtraFields}
-              />
-            </div>
-            <div className="flex justify-end gap-1.5 pt-1">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setAdding(false)
-                  setNewAccount({ name: '', username: '', password: '' })
-                  setNewAccountExtraFields([])
-                  setNewAccountTouched({ name: false, username: false, password: false })
-                }}
-              >
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={() => void addAccount()} disabled={busy}>
-                {busy ? 'Signing in…' : 'Sign in & save'}
-              </Button>
-            </div>
+
+            {addAccountMode === 'json' ? (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={rawJsonInput}
+                  onChange={(e) => setRawJsonInput(e.target.value)}
+                  placeholder={`{\n  "email": "admin@example.com",\n  "password": "secret",\n  "tenant_id": 1\n}`}
+                  aria-label="Raw account JSON"
+                  rows={5}
+                  className="w-full rounded-md border border-border bg-bg p-2 font-mono text-xs text-text placeholder:text-muted/60 focus:border-primary focus:outline-none"
+                />
+
+                {parsedJsonAccount ? (
+                  parsedJsonAccount.ok ? (
+                    <div className="rounded border border-success/30 bg-success/10 px-2 py-1.5 text-[11px] text-success flex flex-col gap-0.5">
+                      <span className="font-medium">Detected account:</span>
+                      <span className="text-[10px] text-text font-mono truncate">
+                        ✓ Name: &quot;{parsedJsonAccount.value.name || '(unnamed)'}&quot; ·
+                        Username: &quot;
+                        {parsedJsonAccount.value.username || '(none)'}&quot; · Password:{' '}
+                        {parsedJsonAccount.value.password ? 'set' : 'missing'}
+                        {parsedJsonAccount.value.detectedKeys.extraCount > 0
+                          ? ` · ${parsedJsonAccount.value.detectedKeys.extraCount} extra field${
+                              parsedJsonAccount.value.detectedKeys.extraCount > 1 ? 's' : ''
+                            }`
+                          : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="rounded border border-danger/30 bg-danger/10 px-2 py-1.5 text-[11px] text-danger">
+                      {parsedJsonAccount.error}
+                    </div>
+                  )
+                ) : (
+                  <p className="text-[10px] text-muted">
+                    Paste raw JSON from Postman, test fixtures, or login bodies. Email, password,
+                    and custom fields are auto-detected, and account name is auto-derived from the
+                    email prefix if omitted.
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between gap-1.5 pt-1">
+                  <Button
+                    variant="secondary"
+                    onClick={populateFormFromJson}
+                    disabled={!parsedJsonAccount || !parsedJsonAccount.ok}
+                  >
+                    Switch to Form
+                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setAdding(false)
+                        setRawJsonInput('')
+                        setAddAccountMode('form')
+                        setNewAccount({ name: '', username: '', password: '' })
+                        setNewAccountExtraFields([])
+                        setNewAccountTouched({ name: false, username: false, password: false })
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => void addAccountFromJson()}
+                      disabled={
+                        busy ||
+                        !parsedJsonAccount ||
+                        !parsedJsonAccount.ok ||
+                        !parsedJsonAccount.value.username ||
+                        !parsedJsonAccount.value.password
+                      }
+                    >
+                      {busy ? 'Signing in…' : 'Sign in & save'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    value={newAccount.name}
+                    onChange={(e) => {
+                      setNewAccount({ ...newAccount, name: e.target.value })
+                      if (newAccountTouched.name) {
+                        setNewAccountTouched((t) => ({ ...t, name: true }))
+                      }
+                    }}
+                    onBlur={() => setNewAccountTouched((t) => ({ ...t, name: true }))}
+                    placeholder="Token name (e.g. Admin)"
+                    aria-label="New account name"
+                    error={
+                      newAccountTouched.name && !newAccount.name.trim()
+                        ? 'Token name is required.'
+                        : null
+                    }
+                  />
+                  <Input
+                    value={newAccount.username}
+                    onChange={(e) => {
+                      setNewAccount({ ...newAccount, username: e.target.value })
+                      if (newAccountTouched.username) {
+                        setNewAccountTouched((t) => ({ ...t, username: true }))
+                      }
+                    }}
+                    onBlur={() => setNewAccountTouched((t) => ({ ...t, username: true }))}
+                    placeholder="Email / username"
+                    aria-label="New account email"
+                    error={
+                      newAccountTouched.username && !newAccount.username.trim()
+                        ? 'Email / username is required.'
+                        : null
+                    }
+                  />
+                  <PasswordField
+                    value={newAccount.password}
+                    onChange={(password) => {
+                      setNewAccount({ ...newAccount, password })
+                      if (newAccountTouched.password) {
+                        setNewAccountTouched((t) => ({ ...t, password: true }))
+                      }
+                    }}
+                    label="New account password"
+                    onEnter={() => void addAccount()}
+                    error={
+                      newAccountTouched.password && !newAccount.password
+                        ? 'Password is required.'
+                        : null
+                    }
+                  />
+                  <ExtraFieldsEditor
+                    fields={newAccountExtraFields}
+                    onChange={setNewAccountExtraFields}
+                  />
+                </div>
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setAdding(false)
+                      setNewAccount({ name: '', username: '', password: '' })
+                      setNewAccountExtraFields([])
+                      setNewAccountTouched({ name: false, username: false, password: false })
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button variant="primary" onClick={() => void addAccount()} disabled={busy}>
+                    {busy ? 'Signing in…' : 'Sign in & save'}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <Button variant="secondary" onClick={() => setAdding(true)}>

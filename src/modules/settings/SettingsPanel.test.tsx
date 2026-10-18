@@ -334,7 +334,7 @@ describe('SettingsPanel', () => {
     vi.useRealTimers()
   })
 
-  it('renders "Firefox Only" notice for Automated Backups in Chrome', async () => {
+  it('hides Automated Backups section completely in Chrome', async () => {
     const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
     const origUserAgent = navigator.userAgent
 
@@ -348,11 +348,9 @@ describe('SettingsPanel', () => {
     }
 
     renderPanel()
-    expect(await screen.findByText('Automated Backups')).toBeInTheDocument()
-    expect(screen.getByText('Firefox Only')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Automated periodic backups are available in Firefox/),
-    ).toBeInTheDocument()
+    await screen.findByText('Appearance')
+    expect(screen.queryByText('Automated Backups')).not.toBeInTheDocument()
+    expect(screen.queryByText('Firefox Only')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Enable scheduled backup')).not.toBeInTheDocument()
 
     Object.defineProperty(navigator, 'userAgent', {

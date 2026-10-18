@@ -504,23 +504,8 @@ export function SettingsPanel({
         </div>
       </Section>
 
-      <Section title="Automated Backups">
-        {!isScheduledBackupSupported() ? (
-          <div className="flex flex-col gap-2 rounded-md border border-border bg-surface/40 p-3">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-xs text-text">Enable Scheduled Backup</span>
-              <span className="rounded bg-muted/20 px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                Firefox Only
-              </span>
-            </div>
-            <p className="text-[11px] text-muted leading-relaxed">
-              Automated periodic backups are available in Firefox. In Chrome, background downloads
-              to custom subfolders prompt for user interaction due to browser download manager
-              security policies. Please use the 1-click manual backup buttons in the Data section
-              below.
-            </p>
-          </div>
-        ) : (
+      {isScheduledBackupSupported() && (
+        <Section title="Automated Backups">
           <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface/40 p-3">
             <label className="flex items-center justify-between text-text cursor-pointer">
               <span className="font-medium text-xs">Enable Scheduled Backup</span>
@@ -624,8 +609,8 @@ export function SettingsPanel({
               </div>
             )}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
       <Section title="Data">
         {/* Passphrase protection input */}

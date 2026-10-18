@@ -379,13 +379,12 @@ Per user specification, scheduled automated background backups have been restric
    - In `syncBackupAlarm()`: when `!isScheduledBackupSupported()` (in Chrome), clears any existing `oac-auto-backup-alarm` and exits immediately, preventing Chrome from ever registering or firing periodic backup alarms.
    - In `runScheduledBackup()`: immediately checks `!isScheduledBackupSupported()` at the start and returns `{ executed: false, reason: 'Scheduled backup is only supported in Firefox' }` without accessing storage or download managers.
 3. **Settings UI Updates (`src/modules/settings/SettingsPanel.tsx`)**:
-   - In Chrome, renders the "Automated Backups" section with a prominent `[Firefox Only]` badge and a friendly message:
-     *"Automated periodic backups are available in Firefox. In Chrome, background downloads to custom subfolders prompt for user interaction due to browser download manager security policies. Please use the 1-click manual backup buttons in the Data section below."*
+   - In Chrome, the "Automated Backups" section is completely hidden from the Settings UI (instead of displaying a notice card/badge) for a cleaner, distraction-free interface.
    - In Firefox, renders the complete automated backup controls (toggle, frequency, custom interval, delta change detection, subfolder input).
    - The manual backup buttons under the "Data" section ("Download backup (all projects)" and "Download backup (current project)") remain completely untouched and fully functional in both Chrome and Firefox.
 4. **Automated Test Coverage**:
    - `src/background/backup-scheduler.test.ts`: Added tests verifying `isScheduledBackupSupported()` returns `true` for Firefox and `false` for Chrome, and verifying that `syncBackupAlarm` and `runScheduledBackup` abort cleanly in Chrome.
-   - `src/modules/settings/SettingsPanel.test.tsx`: Added tests verifying that Chrome renders the `[Firefox Only]` badge and notice, while Firefox renders the "Enable Scheduled Backup" checkbox.
+   - `src/modules/settings/SettingsPanel.test.tsx`: Added tests verifying that in Chrome the "Automated Backups" section and "Firefox Only" badge are completely omitted from the document, while in Firefox the "Enable Scheduled Backup" checkbox is rendered.
 
 ### Verification Results
 All 7 mandatory CI quality gates verified locally:
@@ -396,6 +395,52 @@ All 7 mandatory CI quality gates verified locally:
 5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.1s
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+---
+
+## 🔑 Phase 7.3: Auth Tab Raw JSON User / Persona Import (Completed)
+
+### Summary of Changes
+Implemented a streamlined JSON persona import feature in the Authentication tab, enabling developers to paste raw JSON login payloads directly (from Postman, documentation fixtures, curl commands, or auth responses) rather than manually filling out form inputs or adding custom payload fields one by one.
+
+1. **Auto-Derivation of Account Name (`src/modules/authentication/auth-json-utils.ts`)**:
+   - `deriveAccountNameFromUsername(username)`: Extracts the persona name from the email prefix before `@` (e.g., `admin@service.io` -> `admin`, `dev_lead@example.com` -> `dev_lead`).
+   - If no `@` is present, uses the raw username trimmed. If empty, falls back to `''`.
+
+2. **Smart JSON Parser & Key Mapper (`parseAccountJson`)**:
+   - Supports case-insensitive matching for:
+     - **Username/Email**: `username`, `email`, `user`, `login`, `identifier`.
+     - **Password**: `password`, `pass`, `secret`, `pwd`.
+     - **Persona Name**: `name`, `account`, `persona`, `title`, `label` (with fallback to the auto-derived name from email).
+   - Dynamically collects all remaining primitive properties (`boolean`, `number`, `string`) into an `extraFields` dictionary.
+   - Provides conversion utilities `recordToExtraFields` and `extraFieldsToRecord` to bridge between JSON records and the UI's `ExtraFieldEntry[]` format.
+
+3. **Dual-Mode UI in Add Account Card (`src/modules/authentication/AuthPanel.tsx`)**:
+   - Segmented toggle between `[Form]` and `[Paste JSON]` modes.
+   - Large monospace textarea with placeholder demonstrating email, password, and custom fields.
+   - Real-time JSON parsing and account detection preview banner showing:
+     - Auto-derived account name
+     - Detected username/email
+     - Password presence indicator
+     - Count of detected extra fields
+     - Formatted syntax errors when invalid JSON is entered.
+   - **Switch to Form**: 1-click action that maps parsed credentials and extra fields into the interactive form inputs for visual adjustment.
+   - **Sign in & save**: 1-click direct submission from JSON mode invoking `service.addByLogin(...)`.
+
+4. **Automated Test Coverage**:
+   - `src/modules/authentication/auth-json-utils.test.ts`: 10 comprehensive unit tests verifying name derivation, key matching, extra fields conversion, and malformed JSON handling.
+   - `src/modules/authentication/AuthPanel.test.tsx`: 4 new unit tests verifying tab switching, preview banner rendering, form population on "Switch to Form", and 1-click "Sign in & save" execution with extra payload fields.
+
+### Verification Results
+All 7 mandatory CI quality gates verified locally:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **124 test files passed, 1,104 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.89s
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
 
 
 

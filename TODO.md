@@ -106,6 +106,26 @@
 
 ---
 
+### 🔑 Phase 7: Developer Productivity & Ergonomics Enhancements
+- [x] **7.1. Firefox-Exclusive Scheduled Automated Backups (`src/modules/settings/downloader.ts`, `SettingsPanel.tsx`)**
+  - [x] Restrict automated scheduled background backups to Firefox where `saveAs: false` is honored without download destination prompts.
+  - [x] Keep manual "Download backup" 100% supported and intact across all browsers.
+  - [x] Completely hide the Automated Backups section in Chrome for a cleaner interface.
+- [x] **7.2. Restore Backup 1-Minute Undo Grace Period (`SettingsPanel.tsx`)**
+  - [x] Automatically dismiss the restore snapshot undo notice after 60 seconds (1 minute timer) to prevent stale rollback attempts.
+- [x] **7.3. Auth Tab Raw JSON User / Persona Import (`src/modules/authentication/`)**
+  - [x] Paste raw JSON payload in "Add account" card with segmented toggle `[Form]` / `[Paste JSON]`.
+  - [x] Auto-derive account name from email prefix before `@` (e.g. `admin@service.io` -> `admin`) when explicit `name` is omitted.
+  - [x] Parse `username`/`email`, `password`, and custom extra fields (`boolean`, `number`, `string`) seamlessly.
+  - [x] Live detected account validation preview banner and syntax error reporting.
+  - [x] "Switch to Form" button mapping extracted fields into individual inputs for visual review.
+  - [x] 1-Click "Sign in & save" action directly from JSON mode (**1,104 unit tests passing**).
+- [ ] **7.4. Variable Import Raw JSON Support (`src/modules/environment/`)**
+- [ ] **7.5. In-Page Swagger Execution History Button (`src/content/`)**
+- [ ] **7.6. In-Page Swagger Save Request Action Button (`src/content/`)**
+
+---
+
 ## 🚀 Release v1.2.1 Action Items & Completed Features (2026-09-27)
 
 - [x] **1. 🗂️ Workspaces & Projects Switcher Redesign**

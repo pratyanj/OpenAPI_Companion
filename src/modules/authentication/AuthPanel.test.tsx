@@ -458,4 +458,115 @@ describe('AuthPanel', () => {
     expect(await screen.findByText('Token name is required.')).toBeInTheDocument()
     expect(service.saveAs).not.toHaveBeenCalled()
   })
+
+  describe('Add Account with JSON Import', () => {
+    it('switches to Paste JSON mode and auto-derives name from email prefix', async () => {
+      const service = mockService({ current: vi.fn(async () => ok(authorized)) })
+      render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: /Add account with email/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Paste JSON' }))
+
+      const textarea = screen.getByLabelText('Raw account JSON')
+      expect(textarea).toBeInTheDocument()
+
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            email: 'admin@service.io',
+            password: 'secretPassword123',
+            tenant_id: 101,
+          }),
+        },
+      })
+
+      expect(await screen.findByText('Detected account:')).toBeInTheDocument()
+      expect(screen.getByText(/Name: "admin"/)).toBeInTheDocument()
+      expect(screen.getByText(/Username: "admin@service\.io"/)).toBeInTheDocument()
+      expect(screen.getByText(/1 extra field/)).toBeInTheDocument()
+    })
+
+    it('populates the form fields when clicking Switch to Form', async () => {
+      const service = mockService({ current: vi.fn(async () => ok(authorized)) })
+      render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: /Add account with email/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Paste JSON' }))
+
+      const textarea = screen.getByLabelText('Raw account JSON')
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            email: 'qa-lead@service.io',
+            password: 'qaPassword456',
+            role: 'tester',
+          }),
+        },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Switch to Form' }))
+
+      expect(screen.getByLabelText('New account name')).toHaveValue('qa-lead')
+      expect(screen.getByLabelText('New account email')).toHaveValue('qa-lead@service.io')
+      expect(screen.getByLabelText('New account password')).toHaveValue('qaPassword456')
+      expect(screen.getByLabelText('Extra field key')).toHaveValue('role')
+      expect(screen.getByLabelText('Extra field value')).toHaveValue('tester')
+    })
+
+    it('signs in and saves credential directly from Paste JSON mode with 1-click', async () => {
+      const service = mockService({
+        current: vi.fn(async () => ok(authorized)),
+        addByLogin: vi.fn(async () => ok(credential)),
+      })
+      render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: /Add account with email/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Paste JSON' }))
+
+      const textarea = screen.getByLabelText('Raw account JSON')
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            name: 'QA Persona',
+            email: 'tester@service.io',
+            password: 'testerPassword',
+            force_logout: true,
+          }),
+        },
+      })
+
+      const submitButton = screen.getByRole('button', { name: 'Sign in & save' })
+      expect(submitButton).not.toBeDisabled()
+
+      fireEvent.click(submitButton)
+
+      await waitFor(() => {
+        expect(service.addByLogin).toHaveBeenCalledWith(
+          'QA Persona',
+          'tester@service.io',
+          'testerPassword',
+          { force_logout: true },
+        )
+      })
+    })
+
+    it('shows syntax error when malformed JSON is entered', async () => {
+      const service = mockService({ current: vi.fn(async () => ok(authorized)) })
+      render(<AuthPanel service={service} bus={new EventBus()} environmentId="default" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: /Add account with email/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Paste JSON' }))
+
+      const textarea = screen.getByLabelText('Raw account JSON')
+      fireEvent.change(textarea, {
+        target: {
+          value: '{ invalid json',
+        },
+      })
+
+      expect(await screen.findByText(/Invalid JSON syntax/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sign in & save' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Switch to Form' })).toBeDisabled()
+    })
+  })
 })
