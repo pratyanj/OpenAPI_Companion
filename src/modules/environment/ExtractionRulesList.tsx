@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Badge, Button, DeleteIcon, LockIcon, PlusIcon, ZapIcon } from '@/components'
+import { Badge, Button, DeleteIcon, EditIcon, LockIcon, PlusIcon, ZapIcon } from '@/components'
 import type { Result } from '@/types'
 import type { EndpointInfo } from '@/adapters'
 import { MethodTag } from '@/modules/request/EndpointPicker'
@@ -12,7 +12,11 @@ export interface ExtractionRulesListProps {
   onToggleRule: (id: string, enabled: boolean) => Promise<void>
   onDeleteRule: (id: string) => Promise<void>
   onAddRule: (rule: ExtractionRuleInput) => Promise<void>
+  onUpdateRule?: (id: string, patch: Partial<ExtractionRule>) => Promise<void>
   onOpenAddModal?: () => Promise<boolean | Result<void> | void> | boolean | Result<void> | void
+  onOpenEditModal?: (
+    rule: ExtractionRule,
+  ) => Promise<boolean | Result<void> | void> | boolean | Result<void> | void
 }
 
 export function ExtractionRulesList({
@@ -21,22 +25,39 @@ export function ExtractionRulesList({
   onToggleRule,
   onDeleteRule,
   onAddRule,
+  onUpdateRule,
   onOpenAddModal,
+  onOpenEditModal,
 }: ExtractionRulesListProps) {
-  const [modalOpen, setModalOpen] = useState(false)
+  const [activeModalRule, setActiveModalRule] = useState<'new' | ExtractionRule | null>(null)
 
   const handleOpenModal = async () => {
     if (onOpenAddModal) {
       try {
         const res = await onOpenAddModal()
         if (res === false || (res && typeof res === 'object' && 'ok' in res && !res.ok)) {
-          setModalOpen(true)
+          setActiveModalRule('new')
         }
       } catch {
-        setModalOpen(true)
+        setActiveModalRule('new')
       }
     } else {
-      setModalOpen(true)
+      setActiveModalRule('new')
+    }
+  }
+
+  const handleEditRule = async (rule: ExtractionRule) => {
+    if (onOpenEditModal) {
+      try {
+        const res = await onOpenEditModal(rule)
+        if (res === false || (res && typeof res === 'object' && 'ok' in res && !res.ok)) {
+          setActiveModalRule(rule)
+        }
+      } catch {
+        setActiveModalRule(rule)
+      }
+    } else {
+      setActiveModalRule(rule)
     }
   }
 
@@ -123,7 +144,7 @@ export function ExtractionRulesList({
                 </div>
 
                 {/* Right side controls */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted select-none">
                     <input
                       type="checkbox"
@@ -135,7 +156,17 @@ export function ExtractionRulesList({
                   </label>
                   <button
                     type="button"
+                    title="Edit rule"
+                    aria-label="Edit rule"
+                    onClick={() => void handleEditRule(rule)}
+                    className="rounded p-1 text-muted hover:bg-surface hover:text-text"
+                  >
+                    <EditIcon className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     title="Delete rule"
+                    aria-label="Delete rule"
                     onClick={() => void onDeleteRule(rule.id)}
                     className="rounded p-1 text-muted hover:bg-surface hover:text-danger"
                   >
@@ -148,14 +179,35 @@ export function ExtractionRulesList({
         </div>
       )}
 
-      {/* Add Rule Dialog Modal (Fallback for unit testing / standalone) */}
-      {modalOpen ? (
+      {/* Extraction Rule Dialog Modal (Fallback for unit testing / standalone) */}
+      {activeModalRule ? (
         <ExtractionRuleModal
+          ruleId={typeof activeModalRule === 'object' ? activeModalRule.id : undefined}
           endpoints={endpoints}
-          onClose={() => setModalOpen(false)}
+          initialEndpointId={
+            typeof activeModalRule === 'object' ? activeModalRule.endpointId : undefined
+          }
+          initialProperty={
+            typeof activeModalRule === 'object' ? activeModalRule.property : undefined
+          }
+          initialTargetVariable={
+            typeof activeModalRule === 'object' ? activeModalRule.targetVariable : undefined
+          }
+          initialIsSecret={
+            typeof activeModalRule === 'object' ? activeModalRule.isSecret : undefined
+          }
+          onClose={() => setActiveModalRule(null)}
           onSave={async (input) => {
-            await onAddRule(input)
-            setModalOpen(false)
+            if (typeof activeModalRule === 'object') {
+              if (onUpdateRule) {
+                await onUpdateRule(activeModalRule.id, input)
+              } else {
+                await onAddRule(input)
+              }
+            } else {
+              await onAddRule(input)
+            }
+            setActiveModalRule(null)
           }}
         />
       ) : null}

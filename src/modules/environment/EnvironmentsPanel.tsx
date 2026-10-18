@@ -61,6 +61,7 @@ export interface EnvironmentsPanelProps {
     >
   }
   onOpenExtractionRuleModal?: (options?: {
+    ruleId?: string
     endpointId?: string
     property?: string
     targetVariable?: string
@@ -312,10 +313,39 @@ export function EnvironmentsPanel({
     }
   }
 
+  const handleUpdateRule = async (id: string, patch: Partial<ExtractionRule>) => {
+    if (service.updateRule) {
+      const res = await service.updateRule(id, patch)
+      if (!res.ok) throw new Error(res.error.message)
+      await loadRules()
+    }
+  }
+
   const handleOpenAddRuleModal = async () => {
     if (onOpenExtractionRuleModal) {
       try {
         const res = await onOpenExtractionRuleModal()
+        if (res && typeof res === 'object' && 'ok' in res && !res.ok) {
+          return false
+        }
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
+  }
+
+  const handleOpenEditRuleModal = async (rule: ExtractionRule) => {
+    if (onOpenExtractionRuleModal) {
+      try {
+        const res = await onOpenExtractionRuleModal({
+          ruleId: rule.id,
+          endpointId: rule.endpointId,
+          property: rule.property,
+          targetVariable: rule.targetVariable,
+          isSecret: rule.isSecret,
+        })
         if (res && typeof res === 'object' && 'ok' in res && !res.ok) {
           return false
         }
@@ -607,7 +637,9 @@ export function EnvironmentsPanel({
           onToggleRule={handleToggleRule}
           onDeleteRule={handleDeleteRule}
           onAddRule={handleAddRule}
+          onUpdateRule={handleUpdateRule}
           onOpenAddModal={handleOpenAddRuleModal}
+          onOpenEditModal={handleOpenEditRuleModal}
         />
       ) : editorMode === 'table' ? (
         <div className="flex flex-col gap-2">

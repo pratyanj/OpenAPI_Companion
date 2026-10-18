@@ -302,6 +302,7 @@ export function openPageHistoryDetail(id: string): void {
 }
 
 export interface ExtractionRuleModalOpenOptions {
+  ruleId?: string
   endpointId?: string
   property?: string
   targetVariable?: string

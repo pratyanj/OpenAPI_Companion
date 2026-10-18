@@ -19,6 +19,7 @@ import type { EventBus } from '@/core/events'
 const HOST_ID = 'oac-extraction-rule-host'
 
 export interface ExtractionRuleModalOpenOptions {
+  ruleId?: string
   endpointId?: string
   property?: string
   targetVariable?: string
@@ -71,6 +72,7 @@ export function mountExtractionRuleModal(
         <StrictMode>
           <ExtractionRuleModal
             key={`extraction-rule-${openCount}`}
+            ruleId={opts.ruleId}
             endpoints={endpointsList}
             initialEndpointId={opts.endpointId}
             initialProperty={opts.property}
@@ -78,7 +80,16 @@ export function mountExtractionRuleModal(
             initialIsSecret={opts.isSecret}
             onClose={closeModal}
             onSave={async (rule) => {
-              if (envService.saveRule) {
+              if (opts.ruleId && envService.updateRule) {
+                const res = await envService.updateRule(opts.ruleId, rule)
+                if (!res.ok) {
+                  throw new Error(res.error.message || 'Failed to update rule')
+                }
+                bus.publish('NOTIFY', {
+                  message: `Auto-extraction rule updated for ${rule.endpointId}`,
+                  kind: 'success',
+                })
+              } else if (envService.saveRule) {
                 const res = await envService.saveRule(rule)
                 if (!res.ok) {
                   throw new Error(res.error.message || 'Failed to save rule')

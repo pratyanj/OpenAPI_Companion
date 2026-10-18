@@ -78,4 +78,30 @@ describe('mountExtractionRuleModal (in-page auto-extraction rule overlay)', () =
     expect(dialog()).toBeNull()
     modal.destroy()
   })
+
+  it('opens the extraction rule dialog in edit mode when ruleId is passed', () => {
+    const bus = new EventBus()
+    const modal = mountExtractionRuleModal(
+      mockEnvService(),
+      () => [{ endpointId: 'post:/tasks', method: 'post', path: '/tasks', summary: 'Create Task' }],
+      bus,
+    )
+    act(() =>
+      modal.open({
+        ruleId: 'rule_123',
+        endpointId: 'post:/tasks',
+        property: 'token',
+        targetVariable: 'TASK_ID',
+      }),
+    )
+
+    const overlay = dialog()
+    expect(overlay).not.toBeNull()
+    expect(overlay?.getAttribute('aria-label')).toBe('Edit Auto-Extraction Rule')
+    expect(modal.isOpen()).toBe(true)
+
+    act(() => modal.close())
+    expect(modal.isOpen()).toBe(false)
+    modal.destroy()
+  })
 })

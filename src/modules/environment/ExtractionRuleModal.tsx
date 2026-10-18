@@ -5,6 +5,7 @@ import { EndpointPicker } from '@/modules/request/EndpointPicker'
 import type { ExtractionRuleInput } from './extraction-rules-types'
 
 export interface ExtractionRuleModalProps {
+  ruleId?: string
   endpoints?: EndpointInfo[]
   initialEndpointId?: string
   initialProperty?: string
@@ -25,6 +26,7 @@ const COMMON_PROPERTY_PRESETS = [
 ]
 
 export function ExtractionRuleModal({
+  ruleId,
   endpoints = [],
   initialEndpointId,
   initialProperty = 'access_token',
@@ -80,7 +82,12 @@ export function ExtractionRuleModal({
   }
 
   return (
-    <Dialog onClose={onClose} title="Add Auto-Extraction Rule" size="lg" align="top">
+    <Dialog
+      onClose={onClose}
+      title={ruleId ? 'Edit Auto-Extraction Rule' : 'Add Auto-Extraction Rule'}
+      size="lg"
+      align="top"
+    >
       <div className="flex flex-col gap-3 p-1">
         {/* Endpoint Selector */}
         <div className="flex flex-col gap-1">
@@ -163,7 +170,7 @@ export function ExtractionRuleModal({
             Cancel
           </Button>
           <Button variant="primary" onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving...' : 'Create Rule'}
+            {saving ? 'Saving...' : ruleId ? 'Save Changes' : 'Create Rule'}
           </Button>
         </div>
       </div>

@@ -441,6 +441,86 @@ All 7 mandatory CI quality gates verified locally:
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.89s
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
 
+---
+
+## 🔑 Phase 7.4: Variable Import Raw JSON Support (Completed)
+
+### Summary of Changes
+Added comprehensive raw JSON import capabilities to the Environment Variables panel, eliminating the need to manually reformat API responses, Swagger execution outputs, or JSON configs into `.env` format before importing.
+
+1. **JSON Parser & Recursive Object Flattening (`src/modules/environment/env-parser.ts`)**:
+   - `parseJsonVariables(content, options)`:
+     - Handles raw key-value objects, arrays of `{ key, value }` or `{ name, value }`, and delegates Postman export formats.
+     - Converts numbers, booleans, and strings into clean string values.
+     - Recursively flattens nested objects into underscore paths (`user_id`, `config_timeout`), ensuring full compatibility with OpenAPI Companion's variable interpolation engine (`{{VAR}}`).
+     - Supports `{ flattenNested: false }` to stringify nested objects when requested.
+     - Automatically flags keys containing `token`, `secret`, `password`, `key`, `auth`, `private` as sensitive secrets.
+   - `detectVariableContent(content, options)`: Real-time format analyzer returning format type (`'json' | 'postman' | 'dotenv' | 'invalid' | 'unknown'`), parsed variables, detected secrets, and syntax error diagnostics.
+
+2. **Interactive Import Modal Experience (`src/modules/environment/EnvironmentsPanel.tsx`)**:
+   - **Real-Time Detection Preview Banner**: Live feedback showing format badge (`[Raw JSON]`, `[Postman Environment]`, `[.env Format]`), count of detected variables and secrets, and preview chips of detected keys with secret indicators (`🔒`).
+   - **Syntax Error Protection**: Displays clear error messages when malformed JSON is entered and safely disables the import button.
+   - **Import Mode Selector**: Segmented toggle between **Merge with existing** (preserves other variables and adds/updates imported ones) and **Replace all** (replaces active environment variables completely).
+   - **Flatten Nested Objects Toggle**: Checkbox allowing users to toggle flattening behavior.
+
+3. **Automated Test Coverage**:
+   - `src/modules/environment/env-parser.test.ts`: Added 10 tests covering flat JSON, nested object flattening, arrays of key/value pairs, secret detection, and syntax error handling (20/20 tests passing).
+   - `src/modules/environment/EnvironmentsPanel.test.tsx`: Added 4 tests verifying raw JSON pasting, live preview banner, nested object flattening, merge vs replace modes, and error state handling (16/16 tests passing).
+
+### Verification Results
+All 7 mandatory CI quality gates verified locally:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **124 test files passed, 1,118 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.9s
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+---
+
+## ⚡ UI Polish & Features: Inverted Icon Fix & Editable Extraction Rules (Completed)
+
+### Summary of Changes
+
+1. **Fixed Inverted Import & Export Icons**:
+   - Swapped button icons in the Project Variables toolbar (`src/modules/environment/EnvironmentsPanel.tsx`) and empty state:
+     - **Import**: Now displays `DownloadIcon` (downward arrow pointing into tray $\downarrow$), accurately conveying ingestion/bringing data into the extension.
+     - **Export**: Now displays `UploadIcon` (upward arrow pointing out of tray $\uparrow$), accurately conveying sending data out of the extension.
+   - Synchronized icon semantics across `src/modules/workflows/WorkflowsPanel.tsx` for "Import workflows" (`DownloadIcon`) and "Export workflows" (`UploadIcon`).
+
+2. **Editable Auto-Extraction Rules**:
+   - **Edit Action Affordance (`src/modules/environment/ExtractionRulesList.tsx`)**:
+     - Added an Edit button (`EditIcon` pencil) to each extraction rule row alongside the active toggle checkbox and delete button.
+     - Integrated `onUpdateRule` and `onOpenEditModal` props for delegating edits to the in-page overlay or opening the standalone modal.
+   - **Edit Mode Support (`src/modules/environment/ExtractionRuleModal.tsx`)**:
+     - Supported optional `ruleId` prop:
+       - Displays title `"Edit Auto-Extraction Rule"`.
+       - Displays submit button `"Save Changes"`.
+       - Form controls (Endpoint picker, Presets, Property Path, Target Variable, Mask as secret) correctly pre-populate with the selected rule's values and allow seamless editing.
+   - **In-Page Overlay Integration (`src/content/extraction-rule-modal.tsx` & `src/sidepanel/bridge.ts`)**:
+     - Added `ruleId?: string` to `ExtractionRuleModalOpenOptions`.
+     - When `ruleId` is provided, invokes `envService.updateRule` and publishes success notification `"Auto-extraction rule updated for <endpoint>"`.
+   - **EnvironmentsPanel Controller (`src/modules/environment/EnvironmentsPanel.tsx`)**:
+     - Wired `handleUpdateRule` and `handleOpenEditRuleModal` to pass updates through `service.updateRule` and reload rules reactively.
+
+3. **Automated Test Coverage**:
+   - `src/modules/environment/ExtractionRuleModal.test.tsx`: Added unit test verifying edit mode rendering (title "Edit Auto-Extraction Rule", button "Save Changes") and save payload.
+   - `src/modules/environment/ExtractionRulesList.test.tsx`: Added unit tests verifying edit button interaction, pre-filled form values, submission via `onUpdateRule`, and delegation to `onOpenEditModal`.
+   - `src/content/extraction-rule-modal.test.tsx`: Added test verifying edit mode in in-page overlay.
+
+### Verification Results
+All 7 mandatory CI quality gates executed and verified 100% green:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **124 test files passed, 1,122 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.5s
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+
+
 
 
 

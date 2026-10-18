@@ -167,4 +167,81 @@ describe('ExtractionRulesList', () => {
     // Local modal opens as fallback so the user is never stuck
     expect(await screen.findByText('Add Auto-Extraction Rule')).toBeInTheDocument()
   })
+
+  it('opens edit rule modal when edit button is clicked and saves updates via onUpdateRule', async () => {
+    const onUpdateRule = vi.fn(async () => {})
+
+    render(
+      <ExtractionRulesList
+        rules={mockRules}
+        endpoints={mockEndpoints}
+        onToggleRule={vi.fn()}
+        onDeleteRule={vi.fn()}
+        onAddRule={vi.fn()}
+        onUpdateRule={onUpdateRule}
+      />,
+    )
+
+    const editButtons = screen.getAllByTitle('Edit rule')
+    expect(editButtons[0]).toBeDefined()
+    fireEvent.click(editButtons[0]!)
+
+    expect(await screen.findByText('Edit Auto-Extraction Rule')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('access_token')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('ACCESS_TOKEN')).toBeInTheDocument()
+
+    // Update target variable
+    const targetInput = screen.getByDisplayValue('ACCESS_TOKEN')
+    fireEvent.change(targetInput, { target: { value: 'UPDATED_TOKEN' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => {
+      expect(onUpdateRule).toHaveBeenCalledWith(
+        'rule_1',
+        expect.objectContaining({
+          property: 'access_token',
+          targetVariable: 'UPDATED_TOKEN',
+        }),
+      )
+    })
+  })
+
+  it('delegates to onOpenEditModal when provided and falls back to local modal on failure', async () => {
+    const onOpenEditModal = vi.fn(async () => true)
+
+    const { rerender } = render(
+      <ExtractionRulesList
+        rules={mockRules}
+        endpoints={mockEndpoints}
+        onToggleRule={vi.fn()}
+        onDeleteRule={vi.fn()}
+        onAddRule={vi.fn()}
+        onOpenEditModal={onOpenEditModal}
+      />,
+    )
+
+    const editButtons = screen.getAllByTitle('Edit rule')
+    expect(editButtons[0]).toBeDefined()
+    fireEvent.click(editButtons[0]!)
+
+    expect(onOpenEditModal).toHaveBeenCalledWith(mockRules[0])
+    expect(screen.queryByText('Edit Auto-Extraction Rule')).not.toBeInTheDocument()
+
+    // When onOpenEditModal fails / returns false:
+    const onOpenEditModalFail = vi.fn(async () => false)
+    rerender(
+      <ExtractionRulesList
+        rules={mockRules}
+        endpoints={mockEndpoints}
+        onToggleRule={vi.fn()}
+        onDeleteRule={vi.fn()}
+        onAddRule={vi.fn()}
+        onOpenEditModal={onOpenEditModalFail}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByTitle('Edit rule')[0]!)
+    expect(await screen.findByText('Edit Auto-Extraction Rule')).toBeInTheDocument()
+  })
 })
