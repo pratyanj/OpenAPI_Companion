@@ -90,7 +90,7 @@ export function endpointIdOf(block: Element): string | null {
   return method && path ? `${method} ${path}` : null
 }
 
-function bodyTextarea(block: Element): HTMLTextAreaElement | null {
+export function bodyTextarea(block: Element): HTMLTextAreaElement | null {
   return block.querySelector<HTMLTextAreaElement>(BODY_TEXTAREA)
 }
 

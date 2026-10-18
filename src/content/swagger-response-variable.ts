@@ -1,13 +1,22 @@
 /**
- * Swagger UI 1-Click "Save Response Property to Variable" Integration.
+ * Swagger UI 1-Click "Save Response Property to Variable" & "Save Request" Integration.
  *
- * Attaches a sleek, compact "Save to Variable" action button directly onto Swagger UI's rendered
+ * Attaches sleek, compact "Save Request" and "Save to Variable" action buttons directly onto Swagger UI's rendered
  * response body DOM (.live-responses-table .response-col_description) for successful 2xx responses,
  * with background and border matching the API operation method (GET, POST, PUT, DELETE, PATCH),
  * black Swagger native font color, right alignment, and comfortable spacing.
  */
-import { endpointIdOf } from '@/adapters/swagger/swagger-request-dom'
+import {
+  endpointIdOf,
+  bodyTextarea,
+  readParametersFromBlock,
+} from '@/adapters/swagger/swagger-request-dom'
 import type { SaveVariableModalHandle } from './save-variable-modal'
+import type { PresetEditorOpenOptions } from '@/modules/request'
+
+export interface SwaggerResponseActionsOptions {
+  onSaveRequest?: (options: PresetEditorOpenOptions) => void | Promise<void>
+}
 
 export interface SwaggerResponseVariableHandle {
   scanAndMount(root?: ParentNode): number
@@ -22,12 +31,14 @@ const CSS_STYLES = `
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 6px;
   width: 100%;
   margin-top: 4px;
   margin-bottom: 8px;
 }
 
-.oac-save-var-btn {
+.oac-save-var-btn,
+.oac-save-req-btn {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -47,24 +58,30 @@ const CSS_STYLES = `
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.oac-save-var-btn:hover {
+.oac-save-var-btn:hover,
+.oac-save-req-btn:hover {
   filter: brightness(0.96);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.oac-save-var-btn:active {
+.oac-save-var-btn:active,
+.oac-save-req-btn:active {
   filter: brightness(0.91);
 }
 
 /* GET - Swagger Blue/Soft Blue */
 .opblock.opblock-get .oac-save-var-btn,
-.oac-save-var-btn.oac-method-get {
+.opblock.opblock-get .oac-save-req-btn,
+.oac-save-var-btn.oac-method-get,
+.oac-save-req-btn.oac-method-get {
   background: rgba(97, 175, 254, 0.14);
   border-color: #61affe;
   color: #3b4151;
 }
 .opblock.opblock-get .oac-save-var-btn:hover,
-.oac-save-var-btn.oac-method-get:hover {
+.opblock.opblock-get .oac-save-req-btn:hover,
+.oac-save-var-btn.oac-method-get:hover,
+.oac-save-req-btn.oac-method-get:hover {
   background: rgba(97, 175, 254, 0.28);
   border-color: #4990e2;
   color: #1e293b;
@@ -72,13 +89,17 @@ const CSS_STYLES = `
 
 /* POST - Swagger Green */
 .opblock.opblock-post .oac-save-var-btn,
-.oac-save-var-btn.oac-method-post {
+.opblock.opblock-post .oac-save-req-btn,
+.oac-save-var-btn.oac-method-post,
+.oac-save-req-btn.oac-method-post {
   background: rgba(73, 204, 144, 0.14);
   border-color: #49cc90;
   color: #3b4151;
 }
 .opblock.opblock-post .oac-save-var-btn:hover,
-.oac-save-var-btn.oac-method-post:hover {
+.opblock.opblock-post .oac-save-req-btn:hover,
+.oac-save-var-btn.oac-method-post:hover,
+.oac-save-req-btn.oac-method-post:hover {
   background: rgba(73, 204, 144, 0.28);
   border-color: #34b37d;
   color: #1e293b;
@@ -86,13 +107,17 @@ const CSS_STYLES = `
 
 /* PUT - Swagger Orange */
 .opblock.opblock-put .oac-save-var-btn,
-.oac-save-var-btn.oac-method-put {
+.opblock.opblock-put .oac-save-req-btn,
+.oac-save-var-btn.oac-method-put,
+.oac-save-req-btn.oac-method-put {
   background: rgba(252, 161, 48, 0.14);
   border-color: #fca130;
   color: #3b4151;
 }
 .opblock.opblock-put .oac-save-var-btn:hover,
-.oac-save-var-btn.oac-method-put:hover {
+.opblock.opblock-put .oac-save-req-btn:hover,
+.oac-save-var-btn.oac-method-put:hover,
+.oac-save-req-btn.oac-method-put:hover {
   background: rgba(252, 161, 48, 0.28);
   border-color: #e59024;
   color: #1e293b;
@@ -100,13 +125,17 @@ const CSS_STYLES = `
 
 /* DELETE - Swagger Red / Soft Pink */
 .opblock.opblock-delete .oac-save-var-btn,
-.oac-save-var-btn.oac-method-delete {
+.opblock.opblock-delete .oac-save-req-btn,
+.oac-save-var-btn.oac-method-delete,
+.oac-save-req-btn.oac-method-delete {
   background: rgba(249, 62, 62, 0.14);
   border-color: #f93e3e;
   color: #3b4151;
 }
 .opblock.opblock-delete .oac-save-var-btn:hover,
-.oac-save-var-btn.oac-method-delete:hover {
+.opblock.opblock-delete .oac-save-req-btn:hover,
+.oac-save-var-btn.oac-method-delete:hover,
+.oac-save-req-btn.oac-method-delete:hover {
   background: rgba(249, 62, 62, 0.28);
   border-color: #d63030;
   color: #1e293b;
@@ -114,13 +143,17 @@ const CSS_STYLES = `
 
 /* PATCH - Swagger Teal */
 .opblock.opblock-patch .oac-save-var-btn,
-.oac-save-var-btn.oac-method-patch {
+.opblock.opblock-patch .oac-save-req-btn,
+.oac-save-var-btn.oac-method-patch,
+.oac-save-req-btn.oac-method-patch {
   background: rgba(80, 227, 194, 0.14);
   border-color: #50e3c2;
   color: #3b4151;
 }
 .opblock.opblock-patch .oac-save-var-btn:hover,
-.oac-save-var-btn.oac-method-patch:hover {
+.opblock.opblock-patch .oac-save-req-btn:hover,
+.oac-save-var-btn.oac-method-patch:hover,
+.oac-save-req-btn.oac-method-patch:hover {
   background: rgba(80, 227, 194, 0.28);
   border-color: #38c4a4;
   color: #1e293b;
@@ -128,7 +161,9 @@ const CSS_STYLES = `
 
 /* HEAD */
 .opblock.opblock-head .oac-save-var-btn,
-.oac-save-var-btn.oac-method-head {
+.opblock.opblock-head .oac-save-req-btn,
+.oac-save-var-btn.oac-method-head,
+.oac-save-req-btn.oac-method-head {
   background: rgba(144, 18, 254, 0.14);
   border-color: #9012fe;
   color: #3b4151;
@@ -136,14 +171,17 @@ const CSS_STYLES = `
 
 /* OPTIONS */
 .opblock.opblock-options .oac-save-var-btn,
-.oac-save-var-btn.oac-method-options {
+.opblock.opblock-options .oac-save-req-btn,
+.oac-save-var-btn.oac-method-options,
+.oac-save-req-btn.oac-method-options {
   background: rgba(13, 90, 167, 0.14);
   border-color: #0d5aa7;
   color: #3b4151;
 }
 
 /* Success feedback animation */
-.oac-save-var-btn.success {
+.oac-save-var-btn.success,
+.oac-save-req-btn.success {
   background: #dcfce7 !important;
   border-color: #22c55e !important;
   color: #15803d !important;
@@ -182,7 +220,7 @@ export function extractResponseBodyText(cell: Element): string | null {
   const clone = pre.cloneNode(true) as Element
   for (const control of Array.from(
     clone.querySelectorAll(
-      'button, .copy-to-clipboard, .download-contents, svg, .oac-save-var-btn, .oac-response-action-bar',
+      'button, .copy-to-clipboard, .download-contents, svg, .oac-save-var-btn, .oac-save-req-btn, .oac-response-action-bar',
     ),
   )) {
     control.remove()
@@ -193,6 +231,7 @@ export function extractResponseBodyText(cell: Element): string | null {
 export function mountSwaggerResponseVariable(
   modal: SaveVariableModalHandle,
   doc: Document = document,
+  options?: SwaggerResponseActionsOptions,
 ): SwaggerResponseVariableHandle {
   ensureStyles(doc)
 
@@ -218,15 +257,70 @@ export function mountSwaggerResponseVariable(
     const bar = doc.createElement('div')
     bar.className = 'oac-response-action-bar'
 
+    const block = cell.closest('.opblock')
+    const endpointId = block ? endpointIdOf(block) : undefined
+    const method = endpointId ? endpointId.split(' ')[0]?.toLowerCase() : undefined
+
+    // 1. "Save Request" button (if onSaveRequest callback is provided)
+    if (options?.onSaveRequest) {
+      const saveReqBtn = doc.createElement('button')
+      saveReqBtn.type = 'button'
+      saveReqBtn.className = 'oac-save-req-btn'
+      saveReqBtn.title = 'Save executed request as preset'
+      saveReqBtn.innerHTML = `<span class="oac-save-req-label">Save Request</span>`
+      if (method) {
+        saveReqBtn.classList.add(`oac-method-${method}`)
+      }
+
+      saveReqBtn.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        if (!block) return
+
+        const epId = endpointIdOf(block) || undefined
+        const { path, query } = readParametersFromBlock(block)
+        const body = bodyTextarea(block)?.value
+
+        // Derive friendly initial name from summary or path
+        const summary =
+          block.querySelector('.opblock-summary-description')?.textContent?.trim() ||
+          block.querySelector('.opblock-summary-path')?.getAttribute('data-path') ||
+          epId
+
+        saveReqBtn.classList.add('loading')
+        const label = saveReqBtn.querySelector('.oac-save-req-label')
+        if (label) label.textContent = 'Opening editor...'
+
+        try {
+          await options.onSaveRequest!({
+            initialEndpointId: epId,
+            initialBody: body || undefined,
+            initialPath: Object.keys(path).length > 0 ? path : undefined,
+            initialQuery: Object.keys(query).length > 0 ? query : undefined,
+            initialName: summary || undefined,
+          })
+
+          saveReqBtn.classList.remove('loading')
+          saveReqBtn.classList.add('success')
+          if (label) label.textContent = 'Pre-filled'
+          setTimeout(() => {
+            saveReqBtn.classList.remove('success')
+            if (label) label.textContent = 'Save Request'
+          }, 1800)
+        } catch {
+          saveReqBtn.classList.remove('loading')
+          if (label) label.textContent = 'Save Request'
+        }
+      })
+
+      bar.appendChild(saveReqBtn)
+    }
+
+    // 2. "Save to Variable" button
     const btn = doc.createElement('button')
     btn.type = 'button'
     btn.className = 'oac-save-var-btn'
     btn.title = 'Save response property to project variable'
     btn.innerHTML = `<span class="oac-save-var-label">Save to Variable</span>`
-
-    const block = cell.closest('.opblock')
-    const endpointId = block ? endpointIdOf(block) : undefined
-    const method = endpointId ? endpointId.split(' ')[0]?.toLowerCase() : undefined
     if (method) {
       btn.classList.add(`oac-method-${method}`)
     }
@@ -308,10 +402,14 @@ export function mountSwaggerResponseVariable(
     scanAndMount,
     dispose(): void {
       observer.disconnect()
-      const bars = doc.querySelectorAll('.oac-response-action-bar, .oac-save-var-btn')
+      const bars = doc.querySelectorAll(
+        '.oac-response-action-bar, .oac-save-var-btn, .oac-save-req-btn',
+      )
       bars.forEach((b) => b.parentNode?.removeChild(b))
       const cells = doc.querySelectorAll(`[${ATTACHED_ATTR}]`)
       cells.forEach((c) => c.removeAttribute(ATTACHED_ATTR))
     },
   }
 }
+
+export const mountSwaggerResponseActions = mountSwaggerResponseVariable

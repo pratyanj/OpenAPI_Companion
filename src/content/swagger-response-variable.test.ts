@@ -166,10 +166,118 @@ describe('swagger-response-variable', () => {
     const block = createLiveResponseBlock('GET', '/test', '{}', 200)
     document.body.appendChild(block)
 
-    const handle = mountSwaggerResponseVariable(mockModal, document)
+    const handle = mountSwaggerResponseVariable(mockModal, document, {
+      onSaveRequest: vi.fn(),
+    })
     expect(block.querySelector('.oac-save-var-btn')).not.toBeNull()
+    expect(block.querySelector('.oac-save-req-btn')).not.toBeNull()
 
     handle.dispose()
     expect(block.querySelector('.oac-save-var-btn')).toBeNull()
+    expect(block.querySelector('.oac-save-req-btn')).toBeNull()
+  })
+
+  it('mounts Save Request button when onSaveRequest option is provided', () => {
+    const block = createLiveResponseBlock('POST', '/api/login', '{"token":"xyz123"}', 200)
+    document.body.appendChild(block)
+
+    const onSaveRequest = vi.fn()
+    const handle = mountSwaggerResponseVariable(mockModal, document, { onSaveRequest })
+
+    const saveReqBtn = block.querySelector<HTMLButtonElement>('.oac-save-req-btn')
+    expect(saveReqBtn).not.toBeNull()
+    expect(saveReqBtn?.textContent).toContain('Save Request')
+    expect(saveReqBtn?.classList.contains('oac-method-post')).toBe(true)
+
+    handle.dispose()
+  })
+
+  it('does NOT mount Save Request button if onSaveRequest option is omitted', () => {
+    const block = createLiveResponseBlock('POST', '/api/login', '{"token":"xyz123"}', 200)
+    document.body.appendChild(block)
+
+    const handle = mountSwaggerResponseVariable(mockModal, document)
+
+    const saveReqBtn = block.querySelector('.oac-save-req-btn')
+    expect(saveReqBtn).toBeNull()
+
+    const saveVarBtn = block.querySelector('.oac-save-var-btn')
+    expect(saveVarBtn).not.toBeNull()
+
+    handle.dispose()
+  })
+
+  it('clicking Save Request extracts endpoint, parameters, body, summary, and triggers onSaveRequest with visual feedback', async () => {
+    vi.useFakeTimers()
+    const block = createLiveResponseBlock('POST', '/api/users/{id}', '{"id":123}', 200)
+
+    const summaryDesc = document.createElement('div')
+    summaryDesc.className = 'opblock-summary-description'
+    summaryDesc.textContent = 'Create or update user'
+    block.querySelector('.opblock-summary')?.appendChild(summaryDesc)
+
+    const paramWrapper = document.createElement('div')
+    paramWrapper.className = 'parameters-container'
+    paramWrapper.innerHTML = `
+      <table>
+        <tr data-param-name="id" data-param-in="path">
+          <td><input class="parameter" value="42" /></td>
+        </tr>
+        <tr data-param-name="notify" data-param-in="query">
+          <td><input class="parameter" value="true" /></td>
+        </tr>
+      </table>
+      <div class="opblock-section-request-body">
+        <textarea class="body-param__text">{"role":"admin"}</textarea>
+      </div>
+    `
+    block.appendChild(paramWrapper)
+    document.body.appendChild(block)
+
+    const onSaveRequest = vi.fn().mockResolvedValue(undefined)
+    const handle = mountSwaggerResponseVariable(mockModal, document, { onSaveRequest })
+
+    const saveReqBtn = block.querySelector<HTMLButtonElement>('.oac-save-req-btn')!
+    expect(saveReqBtn).not.toBeNull()
+
+    saveReqBtn.click()
+
+    expect(onSaveRequest).toHaveBeenCalledWith({
+      initialEndpointId: 'post /api/users/{id}',
+      initialBody: '{"role":"admin"}',
+      initialPath: { id: '42' },
+      initialQuery: { notify: 'true' },
+      initialName: 'Create or update user',
+    })
+
+    // Advance microtasks for async onSaveRequest resolution
+    await Promise.resolve()
+    expect(saveReqBtn.classList.contains('success')).toBe(true)
+    expect(saveReqBtn.textContent).toContain('Pre-filled')
+
+    // Fast-forward timeout to verify text reset
+    vi.advanceTimersByTime(1800)
+    expect(saveReqBtn.classList.contains('success')).toBe(false)
+    expect(saveReqBtn.textContent).toContain('Save Request')
+
+    vi.useRealTimers()
+    handle.dispose()
+  })
+
+  it('handles onSaveRequest rejection gracefully without crashing', async () => {
+    const block = createLiveResponseBlock('GET', '/api/items', '[]', 200)
+    document.body.appendChild(block)
+
+    const onSaveRequest = vi.fn().mockRejectedValue(new Error('Modal load failed'))
+    const handle = mountSwaggerResponseVariable(mockModal, document, { onSaveRequest })
+
+    const saveReqBtn = block.querySelector<HTMLButtonElement>('.oac-save-req-btn')!
+    await saveReqBtn.click()
+
+    expect(saveReqBtn.classList.contains('loading')).toBe(false)
+    expect(saveReqBtn.classList.contains('success')).toBe(false)
+    expect(saveReqBtn.textContent).toContain('Save Request')
+
+    handle.dispose()
   })
 })

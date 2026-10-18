@@ -564,15 +564,19 @@
   - [x] Add 60-second countdown / auto-dismiss timer in `SettingsPanel.tsx` so the "Undo Import" button disappears automatically after 1 minute.
 - [x] **7.2. Bug Fix: Scheduled Silent Background Backup**
   - [x] Ensure scheduled backups save directly into target folder without displaying Save As prompt or cluttering the browser's download shelf (`chrome.downloads.erase` or silent options).
-- [ ] **7.3. Feature: Auth Tab Raw JSON User / Persona Import**
-  - [ ] Add `[Form]` vs `[Paste JSON]` mode toggle inside the "Add account" card in `AuthPanel.tsx`.
-  - [ ] Automatically extract username/email, password, extra payload fields (e.g. `force_logout: true`).
-  - [ ] Auto-derive account name from the email prefix before `@` (e.g., `admin@example.com` -> `admin`) when not explicitly provided.
-  - [ ] 1-Click "Sign in & save" directly from raw JSON or "Switch to Form" with parsed fields mapped.
-- [ ] **7.4. Feature: In-Page Swagger UI "Save Request" Button on 2xx Responses**
-  - [ ] Inject styled method-themed "Save Request" button in `.oac-response-action-bar` only when endpoint execution finishes with 2xx status.
-  - [ ] Capture executed operation parameters, query, and request body, opening the in-page Preset Editor pre-filled for 1-click saving.
-- [ ] **7.5. Feature: Bulk JSON Project Variable Import**
-  - [ ] Allow developers to paste a JSON object in Environment / Variables to bulk-import and create/update project variables without tedious manual copy-pasting.
+- [x] **7.3. Feature: Auth Tab Raw JSON User / Persona Import**
+  - [x] Add `[Form]` vs `[Paste JSON]` mode toggle inside the "Add account" card in `AuthPanel.tsx`.
+  - [x] Automatically extract username/email, password, extra payload fields (e.g. `force_logout: true`).
+  - [x] Auto-derive account name from the email prefix before `@` (e.g., `admin@example.com` -> `admin`) when not explicitly provided.
+  - [x] 1-Click "Sign in & save" directly from raw JSON or "Switch to Form" with parsed fields mapped.
+- [x] **7.4. Feature: In-Page Swagger UI "Save Request" Button on 2xx Responses**
+  - [x] Inject styled method-themed "Save Request" button in `.oac-response-action-bar` only when endpoint execution finishes with 2xx status.
+  - [x] Capture executed operation parameters, query, and request body, opening the in-page Preset Editor pre-filled for 1-click saving.
+- [x] **7.5. Feature: Bulk JSON Project Variable Import & Flattening**
+  - [x] Allow developers to paste raw JSON object, Postman environment, or `.env` in Project Variables to bulk-import.
+  - [x] Live detection preview banner, merge vs. replace strategies, nested object flattening (`user_id`), and auto-secret detection.
+- [x] **UI Polish: Inverted Import/Export Icons & Editable Auto-Extraction Rules**
+  - [x] Invert Import (`DownloadIcon`) and Export (`UploadIcon`) icons in Project Variables and Workflows panels to match action semantics.
+  - [x] Add Edit action button (`EditIcon`) to extraction rules list with pre-filled edit dialog and in-page overlay integration.
 - [ ] **7.6. Feature: In-Page Swagger Endpoint History Button**
   - [ ] Add a "🕒 History" button directly on Swagger UI operation blocks that opens the in-page History Detail modal filtered to that endpoint's past execution calls.

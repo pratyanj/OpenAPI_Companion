@@ -239,8 +239,10 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
     body.oac-disable-mock-data.oac-disable-json-format.oac-disable-endpoint-history .oac-mock-data-bar {
       display: none !important;
     }
-    body.oac-disable-response-variables .oac-response-action-bar,
     body.oac-disable-response-variables .oac-save-var-btn {
+      display: none !important;
+    }
+    body.oac-disable-presets .oac-save-req-btn {
       display: none !important;
     }
     body.oac-disable-auth-badge .oac-auth-status-badge {
@@ -634,7 +636,12 @@ export async function bootAgent(
   const saveVarTheme = new ThemeManager({ storage, root: saveVariableModal.themeRoot, bus })
   void saveVarTheme.init()
 
-  mountSwaggerResponseVariable(saveVariableModal, document)
+  mountSwaggerResponseVariable(saveVariableModal, document, {
+    onSaveRequest: async (options) => {
+      const editor = await withPresetEditor()
+      editor?.open(options)
+    },
+  })
   mountSwaggerResponseViewer(document)
   mountSwaggerCopyCode(document)
   mountSwaggerResponseExport(document)

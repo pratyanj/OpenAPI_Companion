@@ -519,6 +519,44 @@ All 7 mandatory CI quality gates executed and verified 100% green:
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.5s
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
 
+---
+
+## 💾 Feature 7.4: In-Page Swagger UI "Save Request" Button on 2xx Responses (Completed)
+
+### Summary of Changes
+Implemented an in-context **Save Request** button injected directly into Swagger UI's response section on successful (2xx) executions, enabling developers to save executed operations, parameter values, and request bodies into reusable presets with 1 click.
+
+1. **DOM Request Extraction (`src/adapters/swagger/swagger-request-dom.ts`)**:
+   - Exported `bodyTextarea(block: Element): HTMLTextAreaElement | null` allowing response actions to extract the executed request body without duplicating DOM selectors.
+
+2. **Unified Response Action Bar (`src/content/swagger-response-variable.ts`)**:
+   - Defined `SwaggerResponseActionsOptions` accepting `onSaveRequest?: (options: PresetEditorOpenOptions) => void | Promise<void>`.
+   - Injected `.oac-save-req-btn` alongside `.oac-save-var-btn` inside `.oac-response-action-bar` directly above the response body container.
+   - Styled `.oac-save-req-btn` to match the exact Swagger UI HTTP method color palette (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS) and smooth hover transitions.
+   - On click, reads endpoint ID (`endpointIdOf`), path & query parameter inputs (`readParametersFromBlock`), request body (`bodyTextarea`), and summary description, invoking `onSaveRequest` with pre-filled options.
+   - Provides instant visual feedback: `"Opening editor..."` (with loading state) -> `"Pre-filled"` (with green `.success` highlight) -> resets back to `"Save Request"`.
+   - Updated `extractResponseBodyText` to strip `.oac-save-req-btn` so copying responses never leaks button text.
+   - Maintained single MutationObserver lifecycle ensuring both buttons cleanly detach if response updates to 4xx/5xx or on unmount.
+
+3. **In-Page Content Script Wiring (`src/content/index.tsx`)**:
+   - Wired `onSaveRequest` in `mountSwaggerResponseVariable` to lazy-load and open `withPresetEditor()`.
+   - Added scoped CSS rule `body.oac-disable-presets .oac-save-req-btn { display: none !important; }` to honor preset feature toggles.
+
+4. **Automated Unit Testing (`src/content/swagger-response-variable.test.ts`)**:
+   - Added unit tests for rendering on 200 OK, omitting when option is absent, extracting parameters/body/summary, animating visual feedback, handling rejection gracefully, and full cleanup on `dispose()`.
+
+### Verification Results
+All 7 mandatory CI quality gates executed and verified 100% green:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **124 test files passed, 1,126 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 10.01s
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+
+
 
 
 
