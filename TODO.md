@@ -120,7 +120,12 @@
   - [x] Live detected account validation preview banner and syntax error reporting.
   - [x] "Switch to Form" button mapping extracted fields into individual inputs for visual review.
   - [x] 1-Click "Sign in & save" action directly from JSON mode (**1,104 unit tests passing**).
-- [ ] **7.4. Variable Import Raw JSON Support (`src/modules/environment/`)**
+- [x] **7.4. Variable Import Raw JSON Support (`src/modules/environment/`)**
+  - [x] Support pasting raw JSON objects, API responses, and key/value arrays in addition to .env and Postman formats.
+  - [x] Recursive flattening of nested JSON objects into underscore paths (`user_id`, `config_timeout`) compliant with `{{VAR}}` interpolation.
+  - [x] Real-time live format detection preview banner with format badge (`Raw JSON`, `Postman`, `.env`), variable count, secret count, and key preview chips.
+  - [x] Import strategy selector: **Merge with existing** (default) or **Replace all**.
+  - [x] Syntax error diagnostics and auto-disabling of import button when malformed JSON is entered (**1,118 unit tests passing**).
 - [ ] **7.5. In-Page Swagger Execution History Button (`src/content/`)**
 - [ ] **7.6. In-Page Swagger Save Request Action Button (`src/content/`)**
 

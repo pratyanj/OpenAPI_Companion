@@ -329,4 +329,127 @@ describe('EnvironmentsPanel (Variables)', () => {
       expect(screen.getByText('unused')).toBeInTheDocument()
     })
   })
+
+  describe('Import Variables Modal (Raw JSON, Postman & .env)', () => {
+    it('opens Import modal and displays live detection preview for raw JSON', async () => {
+      const service = mockService()
+      render(<EnvironmentsPanel service={service} bus={new EventBus()} />)
+      await screen.findByText('Project Variables')
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Import/ })[0]!)
+      expect(await screen.findByText('Import Environment Variables')).toBeInTheDocument()
+
+      const textarea = screen.getByLabelText('Import text')
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            API_URL: 'https://staging.api.com',
+            PORT: 8080,
+            AUTH_TOKEN: 'token_secret_123',
+          }),
+        },
+      })
+
+      // Live detection preview displays badges and chips
+      expect(await screen.findByText('Raw JSON')).toBeInTheDocument()
+      expect(screen.getByText('3 variables')).toBeInTheDocument()
+      expect(screen.getByText('1 secret')).toBeInTheDocument()
+      expect(screen.getByText('API_URL')).toBeInTheDocument()
+      expect(screen.getByText('PORT')).toBeInTheDocument()
+      expect(screen.getByText('AUTH_TOKEN 🔒')).toBeInTheDocument()
+    })
+
+    it('imports raw JSON with nested objects flattened into active environment', async () => {
+      const service = mockService()
+      render(<EnvironmentsPanel service={service} bus={new EventBus()} />)
+      await screen.findByText('Project Variables')
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Import/ })[0]!)
+
+      const textarea = screen.getByLabelText('Import text')
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            user: {
+              id: 99,
+              role: 'admin',
+            },
+            is_active: true,
+          }),
+        },
+      })
+
+      const submitBtn = screen.getByRole('button', { name: 'Import Variables' })
+      expect(submitBtn).not.toBeDisabled()
+      fireEvent.click(submitBtn)
+
+      await waitFor(() => {
+        expect(service.update).toHaveBeenCalledWith('default', {
+          name: 'Default',
+          variables: {
+            user_id: '99',
+            user_role: 'admin',
+            is_active: 'true',
+          },
+          secrets: [],
+        })
+      })
+    })
+
+    it('replaces all variables when Replace all mode is selected', async () => {
+      const existing: Environment = {
+        id: 'default',
+        name: 'Default',
+        baseUrl: '',
+        variables: { OLD_KEY: 'old_value' },
+        secrets: [],
+        updatedAt: 0,
+      }
+      const service = mockService({ list: vi.fn(async () => ok([existing])) })
+      render(<EnvironmentsPanel service={service} bus={new EventBus()} />)
+      await screen.findByText('Project Variables')
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Import/ })[0]!)
+
+      const textarea = screen.getByLabelText('Import text')
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            NEW_KEY: 'new_value',
+          }),
+        },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Replace all' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Import Variables' }))
+
+      await waitFor(() => {
+        expect(service.update).toHaveBeenCalledWith('default', {
+          name: 'Default',
+          variables: {
+            NEW_KEY: 'new_value',
+          },
+          secrets: [],
+        })
+      })
+    })
+
+    it('shows error banner and disables import button when malformed JSON is entered', async () => {
+      const service = mockService()
+      render(<EnvironmentsPanel service={service} bus={new EventBus()} />)
+      await screen.findByText('Project Variables')
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Import/ })[0]!)
+
+      const textarea = screen.getByLabelText('Import text')
+      fireEvent.change(textarea, {
+        target: {
+          value: '{ invalid json payload',
+        },
+      })
+
+      expect(await screen.findByText(/Invalid JSON:/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Import Variables' })).toBeDisabled()
+    })
+  })
 })

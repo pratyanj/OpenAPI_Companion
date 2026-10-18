@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { parseDotEnv, serializeDotEnv, parsePostmanEnv, exportPostmanEnv } from './env-parser'
+import {
+  parseDotEnv,
+  serializeDotEnv,
+  parsePostmanEnv,
+  exportPostmanEnv,
+  parseJsonVariables,
+  detectVariableContent,
+} from './env-parser'
 
 describe('env-parser', () => {
   describe('parseDotEnv', () => {
@@ -124,6 +131,111 @@ SINGLE_QUOTE='Simple string'
       const parsed = JSON.parse(json)
       const secretVal = parsed.values.find((v: { key: string }) => v.key === 'API_KEY')
       expect(secretVal.value).toBe('••••••••')
+    })
+  })
+
+  describe('parseJsonVariables', () => {
+    it('parses flat JSON objects with primitives and converts to string values', () => {
+      const json = JSON.stringify({
+        API_URL: 'https://api.dev.com',
+        PORT: 8080,
+        DEBUG: true,
+        EMPTY: null,
+      })
+      const result = parseJsonVariables(json)
+      expect(result.variables).toEqual({
+        API_URL: 'https://api.dev.com',
+        PORT: '8080',
+        DEBUG: 'true',
+        EMPTY: '',
+      })
+    })
+
+    it('flattens nested objects into underscore paths by default', () => {
+      const json = JSON.stringify({
+        user: {
+          id: 101,
+          profile: {
+            role: 'lead_dev',
+            token: 'user_jwt_token',
+          },
+        },
+        active: true,
+      })
+      const result = parseJsonVariables(json)
+      expect(result.variables).toEqual({
+        user_id: '101',
+        user_profile_role: 'lead_dev',
+        user_profile_token: 'user_jwt_token',
+        active: 'true',
+      })
+      expect(result.secrets).toContain('user_profile_token')
+    })
+
+    it('stringifies nested objects if flattenNested is set to false', () => {
+      const json = JSON.stringify({
+        config: { timeout: 5000 },
+      })
+      const result = parseJsonVariables(json, { flattenNested: false })
+      expect(result.variables.config).toBe('{"timeout":5000}')
+    })
+
+    it('parses arrays of key/value or name/value pairs', () => {
+      const json = JSON.stringify([
+        { key: 'API_KEY', value: 'secret99', type: 'secret' },
+        { name: 'BASE_PATH', value: '/v1' },
+      ])
+      const result = parseJsonVariables(json)
+      expect(result.variables).toEqual({
+        API_KEY: 'secret99',
+        BASE_PATH: '/v1',
+      })
+      expect(result.secrets).toContain('API_KEY')
+    })
+
+    it('delegates Postman environment JSON automatically', () => {
+      const json = JSON.stringify({
+        name: 'Staging',
+        values: [{ key: 'HOST', value: 'api.io', enabled: true }],
+      })
+      const result = parseJsonVariables(json)
+      expect(result.variables).toEqual({ HOST: 'api.io' })
+    })
+  })
+
+  describe('detectVariableContent', () => {
+    it('detects standard raw JSON objects', () => {
+      const detected = detectVariableContent('{\n  "API_KEY": "123",\n  "HOST": "localhost"\n}')
+      expect(detected.format).toBe('json')
+      expect(detected.variables).toEqual({ API_KEY: '123', HOST: 'localhost' })
+      expect(detected.secrets).toContain('API_KEY')
+      expect(detected.error).toBeUndefined()
+    })
+
+    it('detects Postman environment JSON with values array', () => {
+      const detected = detectVariableContent(
+        '{\n  "name": "Production",\n  "values": [{ "key": "URL", "value": "https://prod.com" }]\n}',
+      )
+      expect(detected.format).toBe('postman')
+      expect(detected.name).toBe('Production')
+      expect(detected.variables.URL).toBe('https://prod.com')
+    })
+
+    it('detects standard .env content', () => {
+      const detected = detectVariableContent('PORT=3000\nHOST=127.0.0.1')
+      expect(detected.format).toBe('dotenv')
+      expect(detected.variables).toEqual({ PORT: '3000', HOST: '127.0.0.1' })
+    })
+
+    it('returns invalid format when JSON syntax is broken', () => {
+      const detected = detectVariableContent('{ "unclosed": 123 ')
+      expect(detected.format).toBe('invalid')
+      expect(detected.error).toBeDefined()
+    })
+
+    it('returns unknown format for empty or unrecognizable content', () => {
+      expect(detectVariableContent('').format).toBe('unknown')
+      expect(detectVariableContent('   ').format).toBe('unknown')
     })
   })
 })

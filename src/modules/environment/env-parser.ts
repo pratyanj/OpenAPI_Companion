@@ -204,3 +204,178 @@ export function exportPostmanEnv(
 
   return JSON.stringify(payload, null, 2)
 }
+
+/**
+ * Checks whether a variable key likely represents a sensitive secret/credential.
+ */
+export function isSecretKey(key: string): boolean {
+  return /token|secret|password|private|api_?key|auth/i.test(key)
+}
+
+export type VariableFormat = 'postman' | 'json' | 'dotenv' | 'invalid' | 'unknown'
+
+export interface DetectedVariableResult {
+  format: VariableFormat
+  name?: string
+  variables: Record<string, string>
+  secrets: string[]
+  error?: string
+}
+
+export interface JsonVariableOptions {
+  flattenNested?: boolean
+  prefix?: string
+}
+
+/**
+ * Parses raw JSON (key-value dictionary, nested response payload, or key/value array)
+ * into environment variables and detects secret keys.
+ */
+export function parseJsonVariables(
+  jsonText: string,
+  options?: JsonVariableOptions,
+): ParsedEnvResult {
+  const parsed = JSON.parse(jsonText) as unknown
+  const variables: Record<string, string> = {}
+  const secrets = new Set<string>()
+
+  if (parsed === null || parsed === undefined) {
+    return { variables, secrets: [] }
+  }
+
+  // 1. Postman environment JSON: has .values array
+  if (
+    typeof parsed === 'object' &&
+    !Array.isArray(parsed) &&
+    Array.isArray((parsed as PostmanEnvFormat).values)
+  ) {
+    const postman = parsePostmanEnv(jsonText)
+    return { variables: postman.variables, secrets: postman.secrets }
+  }
+
+  // 2. Array of key-value objects: e.g. [{ key: "A", value: "B" }] or [{ name: "A", value: "B" }]
+  if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      if (item && typeof item === 'object') {
+        const k = ((item as { key?: unknown }).key ?? (item as { name?: unknown }).name)
+          ?.toString()
+          .trim()
+        if (k) {
+          const val = (item as { value?: unknown }).value
+          variables[k] = typeof val === 'string' ? val : String(val ?? '')
+          if ((item as { type?: unknown }).type === 'secret' || isSecretKey(k)) {
+            secrets.add(k)
+          }
+        }
+      }
+    }
+    return { variables, secrets: Array.from(secrets) }
+  }
+
+  // 3. Standard JSON object / dictionary (API response, config, etc.)
+  if (typeof parsed === 'object') {
+    const shouldFlatten = options?.flattenNested !== false
+
+    const walk = (obj: Record<string, unknown>, currentPrefix = '') => {
+      for (const [key, val] of Object.entries(obj)) {
+        const trimmedKey = key.trim()
+        if (!trimmedKey) continue
+
+        const fullKey = currentPrefix ? `${currentPrefix}_${trimmedKey}` : trimmedKey
+
+        if (val === null || val === undefined) {
+          variables[fullKey] = ''
+        } else if (typeof val === 'object' && !Array.isArray(val)) {
+          if (shouldFlatten) {
+            walk(val as Record<string, unknown>, fullKey)
+          } else {
+            variables[fullKey] = JSON.stringify(val)
+          }
+        } else if (Array.isArray(val)) {
+          // If array of primitives or objects, serialize to JSON
+          variables[fullKey] = JSON.stringify(val)
+        } else {
+          variables[fullKey] = String(val)
+        }
+
+        if (isSecretKey(fullKey)) {
+          secrets.add(fullKey)
+        }
+      }
+    }
+
+    walk(parsed as Record<string, unknown>, options?.prefix ?? '')
+    return { variables, secrets: Array.from(secrets) }
+  }
+
+  return { variables, secrets: [] }
+}
+
+/**
+ * Detects whether content is Postman environment JSON, standard raw JSON, or .env text,
+ * parsing and extracting variables and diagnostics in real time.
+ */
+export function detectVariableContent(
+  content: string,
+  options?: JsonVariableOptions,
+): DetectedVariableResult {
+  const trimmed = content.trim()
+  if (!trimmed) {
+    return { format: 'unknown', variables: {}, secrets: [] }
+  }
+
+  // Check if content looks like JSON
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        !Array.isArray(parsed) &&
+        Array.isArray((parsed as PostmanEnvFormat).values)
+      ) {
+        const postman = parsePostmanEnv(trimmed)
+        return {
+          format: 'postman',
+          name: postman.name,
+          variables: postman.variables,
+          secrets: postman.secrets,
+        }
+      }
+
+      const jsonResult = parseJsonVariables(trimmed, options)
+      return {
+        format: 'json',
+        variables: jsonResult.variables,
+        secrets: jsonResult.secrets,
+      }
+    } catch (err) {
+      return {
+        format: 'invalid',
+        variables: {},
+        secrets: [],
+        error: err instanceof Error ? err.message : 'Invalid JSON format',
+      }
+    }
+  }
+
+  // Otherwise, treat as .env format
+  try {
+    const dotEnvResult = parseDotEnv(trimmed)
+    if (Object.keys(dotEnvResult.variables).length > 0) {
+      return {
+        format: 'dotenv',
+        variables: dotEnvResult.variables,
+        secrets: dotEnvResult.secrets,
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return {
+    format: 'unknown',
+    variables: {},
+    secrets: [],
+  }
+}

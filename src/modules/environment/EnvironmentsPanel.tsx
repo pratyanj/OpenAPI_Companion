@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Result } from '@/types'
 import type { EventBus } from '@/core/events'
 import { useEventBus } from '@/hooks'
@@ -24,7 +24,7 @@ import { copyText } from '@/utils'
 import type { EndpointInfo } from '@/adapters'
 import type { Environment } from '@/core/project'
 import type { EnvironmentInput } from './env-service'
-import { parseDotEnv, serializeDotEnv, parsePostmanEnv, exportPostmanEnv } from './env-parser'
+import { parseDotEnv, serializeDotEnv, exportPostmanEnv, detectVariableContent } from './env-parser'
 import type { ExtractionRule, ExtractionRuleInput } from './extraction-rules-types'
 import { ExtractionRulesList } from './ExtractionRulesList'
 
@@ -120,6 +120,13 @@ export function EnvironmentsPanel({
   const [importOpen, setImportOpen] = useState(false)
   const [importInput, setImportInput] = useState('')
   const [importStatus, setImportStatus] = useState<string | null>(null)
+  const [importStrategy, setImportStrategy] = useState<'merge' | 'replace'>('merge')
+  const [importFlattenNested, setImportFlattenNested] = useState(true)
+
+  const detectedImport = useMemo(() => {
+    if (!importInput.trim()) return null
+    return detectVariableContent(importInput, { flattenNested: importFlattenNested })
+  }, [importInput, importFlattenNested])
 
   const [exportOpen, setExportOpen] = useState(false)
   const [maskSecretsInExport, setMaskSecretsInExport] = useState(false)
@@ -371,36 +378,40 @@ export function EnvironmentsPanel({
       return
     }
 
+    const detected = detectVariableContent(trimmed, { flattenNested: importFlattenNested })
+    if (detected.format === 'invalid') {
+      setImportStatus(detected.error || 'Invalid JSON syntax. Please check formatting.')
+      return
+    }
+
+    if (Object.keys(detected.variables).length === 0) {
+      setImportStatus('No variables found in the pasted content.')
+      return
+    }
+
     try {
-      let importedVars: Record<string, string>
-      let importedSecrets: string[]
+      let finalVars: Record<string, string>
+      let finalSecrets: string[]
 
-      if (trimmed.startsWith('{') && trimmed.includes('"values"')) {
-        // Postman JSON format
-        const postman = parsePostmanEnv(trimmed)
-        importedVars = postman.variables
-        importedSecrets = postman.secrets
+      if (importStrategy === 'replace') {
+        finalVars = detected.variables
+        finalSecrets = detected.secrets
       } else {
-        // Standard .env format
-        const parsed = parseDotEnv(trimmed)
-        importedVars = parsed.variables
-        importedSecrets = parsed.secrets
+        // Merge with existing variables
+        const existingVars = Object.fromEntries(
+          vars.filter((v) => v.key.trim()).map((v) => [v.key.trim(), v.value]),
+        )
+        const existingSecrets = new Set(
+          vars.filter((v) => v.isSecret && v.key.trim()).map((v) => v.key.trim()),
+        )
+        finalVars = { ...existingVars, ...detected.variables }
+        finalSecrets = Array.from(new Set([...existingSecrets, ...detected.secrets]))
       }
-
-      // Merge with existing variables
-      const existingVars = Object.fromEntries(
-        vars.filter((v) => v.key.trim()).map((v) => [v.key.trim(), v.value]),
-      )
-      const existingSecrets = new Set(
-        vars.filter((v) => v.isSecret && v.key.trim()).map((v) => v.key.trim()),
-      )
-      const mergedVars = { ...existingVars, ...importedVars }
-      const mergedSecrets = Array.from(new Set([...existingSecrets, ...importedSecrets]))
 
       const patch: Partial<EnvironmentInput> = {
         name: activeEnv?.name ?? 'Default',
-        variables: mergedVars,
-        secrets: mergedSecrets,
+        variables: finalVars,
+        secrets: finalSecrets,
       }
       await service.update(activeId, patch)
       await load()
@@ -411,7 +422,7 @@ export function EnvironmentsPanel({
       setSavedSuccess(true)
       setTimeout(() => setSavedSuccess(false), 2000)
     } catch {
-      setImportStatus('Failed to parse content. Check format.')
+      setImportStatus('Failed to update environment with imported variables.')
     }
   }
 
@@ -750,23 +761,144 @@ export function EnvironmentsPanel({
         <Dialog title="Import Environment Variables" onClose={() => setImportOpen(false)}>
           <div className="flex flex-col gap-3 p-3">
             <p className="text-xs text-muted">
-              Paste standard <code className="font-mono text-primary">.env</code> format or Postman
-              environment JSON:
+              Paste raw JSON (API response or config), Postman environment, or standard{' '}
+              <code className="font-mono text-primary">.env</code> format:
             </p>
             <textarea
-              rows={8}
+              rows={7}
               value={importInput}
-              onChange={(e) => setImportInput(e.target.value)}
-              placeholder="API_KEY=secret123&#10;BASE_URL=https://api.example.com"
+              onChange={(e) => {
+                setImportInput(e.target.value)
+                if (importStatus) setImportStatus(null)
+              }}
+              placeholder={`// Raw JSON object, Postman environment JSON, or .env format\n{\n  "API_KEY": "sk_test_12345",\n  "BASE_URL": "https://api.example.com",\n  "user": {\n    "id": 1,\n    "role": "admin"\n  }\n}`}
               aria-label="Import text"
               className="w-full rounded-md border border-border bg-surface p-2 font-mono text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
+
+            {/* Live Detection Preview */}
+            {detectedImport && (
+              <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface/50 p-2.5 text-xs">
+                {detectedImport.format === 'invalid' ? (
+                  <div className="text-danger flex items-center gap-1.5 text-[11px]">
+                    <span className="font-semibold">Invalid JSON:</span>
+                    <span className="font-mono truncate">{detectedImport.error}</span>
+                  </div>
+                ) : detectedImport.format === 'unknown' ? (
+                  <span className="text-[11px] text-muted">
+                    No variables detected. Paste JSON or KEY=value pairs.
+                  </span>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-muted text-[11px]">Format:</span>
+                        <Badge kind="info">
+                          {detectedImport.format === 'json'
+                            ? 'Raw JSON'
+                            : detectedImport.format === 'postman'
+                              ? 'Postman Environment'
+                              : '.env Format'}
+                        </Badge>
+                        <Badge kind="success">
+                          {Object.keys(detectedImport.variables).length} variable
+                          {Object.keys(detectedImport.variables).length !== 1 ? 's' : ''}
+                        </Badge>
+                        {detectedImport.secrets.length > 0 && (
+                          <Badge kind="warning">
+                            {detectedImport.secrets.length} secret
+                            {detectedImport.secrets.length !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Detected Keys Chips */}
+                    {Object.keys(detectedImport.variables).length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1 max-h-24 overflow-y-auto">
+                        {Object.keys(detectedImport.variables)
+                          .slice(0, 8)
+                          .map((k) => (
+                            <span
+                              key={k}
+                              className="rounded border border-border bg-bg px-1.5 py-0.5 font-mono text-[10px] text-text"
+                            >
+                              {k}
+                              {detectedImport.secrets.includes(k) ? ' 🔒' : ''}
+                            </span>
+                          ))}
+                        {Object.keys(detectedImport.variables).length > 8 && (
+                          <span className="text-[10px] text-muted self-center">
+                            +{Object.keys(detectedImport.variables).length - 8} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Options */}
+            <div className="flex flex-col gap-2 pt-1 border-t border-border/60">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted text-[11px]">Import Mode:</span>
+                <div className="flex rounded border border-border bg-bg p-0.5 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setImportStrategy('merge')}
+                    className={`rounded px-2 py-0.5 font-medium transition-colors ${
+                      importStrategy === 'merge'
+                        ? 'bg-primary text-white'
+                        : 'text-muted hover:text-text'
+                    }`}
+                  >
+                    Merge with existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportStrategy('replace')}
+                    className={`rounded px-2 py-0.5 font-medium transition-colors ${
+                      importStrategy === 'replace'
+                        ? 'bg-primary text-white'
+                        : 'text-muted hover:text-text'
+                    }`}
+                  >
+                    Replace all
+                  </button>
+                </div>
+              </div>
+
+              {(!detectedImport || detectedImport.format === 'json') && (
+                <label className="flex items-center gap-1.5 text-[11px] text-muted cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={importFlattenNested}
+                    onChange={(e) => setImportFlattenNested(e.target.checked)}
+                    className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                  />
+                  Flatten nested objects (e.g.{' '}
+                  <code className="text-text font-mono">user: &#123; id: 1 &#125;</code> &rarr;{' '}
+                  <code className="text-text font-mono">user_id</code>)
+                </label>
+              )}
+            </div>
+
             {importStatus ? <span className="text-xs text-warning">{importStatus}</span> : null}
-            <div className="flex justify-end gap-2">
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
               <Button variant="secondary" onClick={() => setImportOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="primary" onClick={() => void handleImportParse()}>
+              <Button
+                variant="primary"
+                onClick={() => void handleImportParse()}
+                disabled={
+                  !detectedImport ||
+                  detectedImport.format === 'invalid' ||
+                  Object.keys(detectedImport.variables).length === 0
+                }
+              >
                 Import Variables
               </Button>
             </div>
