@@ -333,4 +333,50 @@ describe('SettingsPanel', () => {
 
     vi.useRealTimers()
   })
+
+  it('renders "Firefox Only" notice for Automated Backups in Chrome', async () => {
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    const origUserAgent = navigator.userAgent
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      sidePanel: {},
+    }
+
+    renderPanel()
+    expect(await screen.findByText('Automated Backups')).toBeInTheDocument()
+    expect(screen.getByText('Firefox Only')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Automated periodic backups are available in Firefox/),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Enable scheduled backup')).not.toBeInTheDocument()
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: origUserAgent,
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
+  })
+
+  it('renders scheduled backup toggle in Firefox', async () => {
+    const origUserAgent = navigator.userAgent
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0',
+      configurable: true,
+    })
+
+    renderPanel()
+    expect(await screen.findByText('Automated Backups')).toBeInTheDocument()
+    expect(screen.getByLabelText('Enable scheduled backup')).toBeInTheDocument()
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: origUserAgent,
+      configurable: true,
+    })
+  })
 })

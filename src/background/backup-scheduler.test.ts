@@ -4,6 +4,7 @@ import {
   frequencyToMinutes,
   syncBackupAlarm,
   runScheduledBackup,
+  isScheduledBackupSupported,
 } from './backup-scheduler'
 import { StorageService } from '@/core/storage'
 import { SettingsService } from '@/modules/settings/settings-service'
@@ -117,5 +118,156 @@ describe('backup-scheduler', () => {
     const updatedPrefs = await settings.getPreferences()
     expect(updatedPrefs.lastBackupAt).toBeGreaterThan(0)
     expect(updatedPrefs.lastBackupStatus).toContain('Saved')
+  })
+
+  it('chrome.downloads.onDeterminingFilename suggests filename and uniquify when byExtensionId matches', () => {
+    let capturedListener:
+      | ((
+          item: { byExtensionId?: string; filename?: string },
+          suggest: (opts?: { filename: string; conflictAction: string }) => void,
+        ) => void)
+      | undefined
+    const mockAddListener = vi.fn((fn) => {
+      capturedListener = fn
+    })
+
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      runtime: { id: 'test-ext-id' },
+      downloads: {
+        onDeterminingFilename: {
+          addListener: mockAddListener,
+        },
+      },
+    }
+
+    if (chrome.downloads?.onDeterminingFilename) {
+      chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+        if (item.byExtensionId === chrome.runtime.id && item.filename) {
+          suggest({
+            filename: item.filename,
+            conflictAction: 'uniquify',
+          })
+          return
+        }
+        suggest()
+      })
+    }
+
+    expect(mockAddListener).toHaveBeenCalled()
+
+    const suggestMock = vi.fn()
+    capturedListener?.(
+      {
+        byExtensionId: 'test-ext-id',
+        filename: 'MyBackups/openapi-companion-backup.json',
+      },
+      suggestMock,
+    )
+
+    expect(suggestMock).toHaveBeenCalledWith({
+      filename: 'MyBackups/openapi-companion-backup.json',
+      conflictAction: 'uniquify',
+    })
+
+    const otherSuggestMock = vi.fn()
+    capturedListener?.(
+      {
+        byExtensionId: 'other-ext',
+        filename: 'other.pdf',
+      },
+      otherSuggestMock,
+    )
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
+  })
+
+  it('isScheduledBackupSupported returns true for Firefox and false for Chrome with sidePanel', () => {
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    const origUserAgent = navigator.userAgent
+
+    // Firefox
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0',
+      configurable: true,
+    })
+    expect(isScheduledBackupSupported()).toBe(true)
+
+    // Chrome
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      sidePanel: {},
+    }
+    expect(isScheduledBackupSupported()).toBe(false)
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: origUserAgent,
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
+  })
+
+  it('syncBackupAlarm clears alarms and does not register in Chrome', async () => {
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    const origUserAgent = navigator.userAgent
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      sidePanel: {},
+    }
+
+    const clearMock = vi.fn(async () => true)
+    const createMock = vi.fn()
+    const alarmsMock = {
+      clear: clearMock,
+      create: createMock,
+    } as unknown as typeof chrome.alarms
+
+    const prefs: Preferences = {
+      ...DEFAULT_PREFERENCES,
+      autoBackup: true,
+      autoBackupFrequency: '2h',
+    }
+
+    await syncBackupAlarm(prefs, alarmsMock)
+    expect(clearMock).toHaveBeenCalledWith(BACKUP_ALARM_NAME)
+    expect(createMock).not.toHaveBeenCalled()
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: origUserAgent,
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
+  })
+
+  it('runScheduledBackup returns reason and aborts in Chrome', async () => {
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    const origUserAgent = navigator.userAgent
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      sidePanel: {},
+    }
+
+    const res = await runScheduledBackup()
+    expect(res.executed).toBe(false)
+    expect(res.reason).toContain('only supported in Firefox')
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: origUserAgent,
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
   })
 })

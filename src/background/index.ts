@@ -175,6 +175,21 @@ chrome.storage?.onChanged?.addListener((changes, areaName) => {
   }
 })
 
+// Chrome only: suggest destination filename and uniquify conflict action to prevent "Save As" prompts
+// when downloading backups into subfolders. Firefox does not support onDeterminingFilename and is safely skipped.
+if (chrome.downloads?.onDeterminingFilename) {
+  chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+    if (item.byExtensionId === chrome.runtime.id && item.filename) {
+      suggest({
+        filename: item.filename,
+        conflictAction: 'uniquify',
+      })
+      return
+    }
+    suggest()
+  })
+}
+
 // Message bridge (content <-> background).
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'PING') {

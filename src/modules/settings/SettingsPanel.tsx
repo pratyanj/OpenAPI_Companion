@@ -37,6 +37,7 @@ import type {
   StorageMetrics,
 } from './types'
 import { DEFAULT_BACKUP_FOLDER } from './types'
+import { isScheduledBackupSupported } from '@/background/backup-scheduler'
 
 interface SettingsPanelProps {
   settings: SettingsApi
@@ -504,107 +505,126 @@ export function SettingsPanel({
       </Section>
 
       <Section title="Automated Backups">
-        <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface/40 p-3">
-          <label className="flex items-center justify-between text-text cursor-pointer">
-            <span className="font-medium text-xs">Enable Scheduled Backup</span>
-            <input
-              type="checkbox"
-              aria-label="Enable scheduled backup"
-              checked={prefs?.autoBackup ?? false}
-              onChange={(e) => void setPref('autoBackup', e.target.checked)}
-              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-            />
-          </label>
+        {!isScheduledBackupSupported() ? (
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-surface/40 p-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-xs text-text">Enable Scheduled Backup</span>
+              <span className="rounded bg-muted/20 px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                Firefox Only
+              </span>
+            </div>
+            <p className="text-[11px] text-muted leading-relaxed">
+              Automated periodic backups are available in Firefox. In Chrome, background downloads
+              to custom subfolders prompt for user interaction due to browser download manager
+              security policies. Please use the 1-click manual backup buttons in the Data section
+              below.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5 rounded-md border border-border bg-surface/40 p-3">
+            <label className="flex items-center justify-between text-text cursor-pointer">
+              <span className="font-medium text-xs">Enable Scheduled Backup</span>
+              <input
+                type="checkbox"
+                aria-label="Enable scheduled backup"
+                checked={prefs?.autoBackup ?? false}
+                onChange={(e) => void setPref('autoBackup', e.target.checked)}
+                className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+              />
+            </label>
 
-          {prefs?.autoBackup && (
-            <div className="flex flex-col gap-2.5 border-t border-border/60 pt-2.5 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-muted">Frequency:</span>
-                <select
-                  value={prefs.autoBackupFrequency ?? '24h'}
-                  aria-label="Backup frequency"
-                  onChange={(e) =>
-                    void setPref('autoBackupFrequency', e.target.value as BackupFrequency)
-                  }
-                  className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                >
-                  <option value="30m">Every 30 minutes</option>
-                  <option value="2h">Every 2 hours</option>
-                  <option value="6h">Every 6 hours</option>
-                  <option value="12h">Every 12 hours</option>
-                  <option value="24h">Daily (24 hours)</option>
-                  <option value="custom">Custom interval</option>
-                </select>
-              </div>
-
-              {prefs.autoBackupFrequency === 'custom' && (
+            {prefs?.autoBackup && (
+              <div className="flex flex-col gap-2.5 border-t border-border/60 pt-2.5 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted">Interval (minutes):</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10080"
-                    value={prefs.autoBackupCustomMinutes ?? 60}
-                    aria-label="Custom backup interval in minutes"
-                    onChange={(e) =>
-                      void setPref('autoBackupCustomMinutes', Math.max(1, Number(e.target.value)))
-                    }
-                    className="w-24 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary text-right"
-                  />
-                </div>
-              )}
-
-              <label className="flex items-center gap-2 text-[11px] text-text cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={prefs.autoBackupSkipUnchanged ?? true}
-                  onChange={(e) => void setPref('autoBackupSkipUnchanged', e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
-                />
-                <span>Skip backup if no data changed since last backup</span>
-              </label>
-
-              {projectId && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted">Backup Scope:</span>
+                  <span className="text-[11px] text-muted">Frequency:</span>
                   <select
-                    value={prefs.autoBackupScope ?? 'all'}
-                    aria-label="Backup scope"
-                    onChange={(e) => void setPref('autoBackupScope', e.target.value as BackupScope)}
+                    value={prefs.autoBackupFrequency ?? '24h'}
+                    aria-label="Backup frequency"
+                    onChange={(e) =>
+                      void setPref('autoBackupFrequency', e.target.value as BackupFrequency)
+                    }
                     className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
-                    <option value="all">Full Workspace (All Projects)</option>
-                    <option value="current">Current Project Only</option>
+                    <option value="30m">Every 30 minutes</option>
+                    <option value="2h">Every 2 hours</option>
+                    <option value="6h">Every 6 hours</option>
+                    <option value="12h">Every 12 hours</option>
+                    <option value="24h">Daily (24 hours)</option>
+                    <option value="custom">Custom interval</option>
                   </select>
                 </div>
-              )}
 
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted">Backup Subfolder:</span>
+                {prefs.autoBackupFrequency === 'custom' && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted">Interval (minutes):</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10080"
+                      value={prefs.autoBackupCustomMinutes ?? 60}
+                      aria-label="Custom backup interval in minutes"
+                      onChange={(e) =>
+                        void setPref('autoBackupCustomMinutes', Math.max(1, Number(e.target.value)))
+                      }
+                      className="w-24 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary text-right"
+                    />
+                  </div>
+                )}
+
+                <label className="flex items-center gap-2 text-[11px] text-text cursor-pointer">
                   <input
-                    type="text"
-                    value={prefs.backupFolder ?? DEFAULT_BACKUP_FOLDER}
-                    aria-label="Backup subfolder"
-                    placeholder={DEFAULT_BACKUP_FOLDER}
-                    onChange={(e) => void setPref('backupFolder', e.target.value)}
-                    className="w-48 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono text-right"
+                    type="checkbox"
+                    checked={prefs.autoBackupSkipUnchanged ?? true}
+                    onChange={(e) => void setPref('autoBackupSkipUnchanged', e.target.checked)}
+                    className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
                   />
-                </div>
-                <span className="text-[10px] text-muted truncate">
-                  📁 Saved to: Downloads/
-                  {(prefs.backupFolder || DEFAULT_BACKUP_FOLDER).replace(/^\/+|\/+$/g, '')}/
-                </span>
-              </div>
+                  <span>Skip backup if no data changed since last backup</span>
+                </label>
 
-              {prefs.lastBackupStatus && (
-                <div className="rounded bg-surface px-2 py-1 text-[10px] text-muted font-mono truncate">
-                  Status: {prefs.lastBackupStatus}
+                {projectId && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted">Backup Scope:</span>
+                    <select
+                      value={prefs.autoBackupScope ?? 'all'}
+                      aria-label="Backup scope"
+                      onChange={(e) =>
+                        void setPref('autoBackupScope', e.target.value as BackupScope)
+                      }
+                      className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      <option value="all">Full Workspace (All Projects)</option>
+                      <option value="current">Current Project Only</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted">Backup Subfolder:</span>
+                    <input
+                      type="text"
+                      value={prefs.backupFolder ?? DEFAULT_BACKUP_FOLDER}
+                      aria-label="Backup subfolder"
+                      placeholder={DEFAULT_BACKUP_FOLDER}
+                      onChange={(e) => void setPref('backupFolder', e.target.value)}
+                      className="w-48 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono text-right"
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted truncate">
+                    📁 Saved to: Downloads/
+                    {(prefs.backupFolder || DEFAULT_BACKUP_FOLDER).replace(/^\/+|\/+$/g, '')}/
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {prefs.lastBackupStatus && (
+                  <div className="rounded bg-surface px-2 py-1 text-[10px] text-muted font-mono truncate">
+                    Status: {prefs.lastBackupStatus}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </Section>
 
       <Section title="Data">

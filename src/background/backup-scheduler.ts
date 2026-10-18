@@ -12,8 +12,21 @@ import {
   type Preferences,
 } from '@/modules/settings/types'
 import { universalDownloader } from '@/modules/settings/downloader'
+import { usesSidebarAction } from '@/core/sidebar'
 
 export const BACKUP_ALARM_NAME = 'oac-auto-backup-alarm'
+
+/**
+ * Returns true if running in Firefox where silent background subfolder downloads are supported.
+ * In Chromium, automated background downloads to subfolders are blocked or prompt for user interaction.
+ * Therefore, scheduled automated background backups are supported exclusively in Firefox.
+ */
+export function isScheduledBackupSupported(): boolean {
+  if (typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)) {
+    return true
+  }
+  return usesSidebarAction()
+}
 
 /** Convert backup frequency setting to alarm interval in minutes. */
 export function frequencyToMinutes(frequency: BackupFrequency, customMinutes?: number): number {
@@ -42,6 +55,12 @@ export async function syncBackupAlarm(
   alarmsApi = typeof chrome !== 'undefined' ? chrome.alarms : undefined,
 ): Promise<void> {
   if (!alarmsApi) return
+
+  // Scheduled background backups are restricted to Firefox. In Chrome, clear any existing alarm.
+  if (!isScheduledBackupSupported()) {
+    await alarmsApi.clear(BACKUP_ALARM_NAME)
+    return
+  }
 
   if (!prefs.autoBackup || prefs.autoBackupFrequency === 'off') {
     await alarmsApi.clear(BACKUP_ALARM_NAME)
@@ -82,6 +101,10 @@ export async function runScheduledBackup(deps?: {
   settings?: SettingsService
   io?: ImportExportService
 }): Promise<ScheduledBackupResult> {
+  if (!isScheduledBackupSupported()) {
+    return { executed: false, reason: 'Scheduled backup is only supported in Firefox' }
+  }
+
   const storage = deps?.storage ?? new StorageService({ area: chromeLocalArea(), bus })
   const settings = deps?.settings ?? new SettingsService({ storage, bus })
   const io =

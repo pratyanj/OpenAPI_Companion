@@ -331,4 +331,72 @@ All 7 mandatory CI quality gates verified locally:
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built successfully
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
 
+---
+
+## 🛠️ Phase 7.2b: Prevent "Save As" Prompt in Chrome for Backup Downloads (Completed)
+
+### Summary of Changes
+Resolved the issue where Google Chrome prompted the native Windows "Save As" file dialog when downloading backups into designated subfolders (e.g. `OpenAPI-Companion-Backups-ch`), while ensuring Firefox's working download behavior remained 100% untouched.
+
+1. **Chrome `onDeterminingFilename` Handler (`src/background/index.ts`)**:
+   - Added a `chrome.downloads.onDeterminingFilename` listener guarded by `if (chrome.downloads?.onDeterminingFilename)` so it is completely inert in Firefox (where the API is not supported or needed).
+   - For downloads initiated by OpenAPI Companion (`item.byExtensionId === chrome.runtime.id`), automatically calls `suggest({ filename: item.filename, conflictAction: 'uniquify' })`. This confirms the target relative subfolder path and instructs Chromium's download manager to auto-uniquify conflicting filenames without displaying the "Save As" prompt.
+   - Preserves default browser behavior for all non-extension downloads by calling `suggest()`.
+
+2. **Dual-Browser Optimized URL Resolution (`src/modules/settings/downloader.ts`)**:
+   - Added browser detection for Firefox (`/firefox/i.test(navigator.userAgent)`).
+   - **For Firefox**: Strictly preserved existing `URL.createObjectURL(new Blob([content], { type: mime }))` logic without any modifications.
+   - **For Chrome**: For JSON payloads under 1.5MB (well below Chromium's 2MB IPC string limit), uses inline `data:${mime};charset=utf-8,${encodeURIComponent(content)}` URLs to bypass extension blob URL sandbox heuristics that frequently trigger download confirmation prompts in Chrome. Falls back to `URL.createObjectURL` for large payloads.
+
+3. **Chrome User Guidance in Settings UI (`src/modules/settings/SettingsPanel.tsx`)**:
+   - Added an informative tip beneath the Backup Subfolder input advising Chrome users that if Chrome still prompts "Save As", they should check `chrome://settings/downloads` to disable *"Ask where to save each file before downloading"*.
+
+4. **Automated Test Coverage**:
+   - `src/modules/settings/downloader.test.ts`: Added unit test validating inline Data URL generation in Chrome and Blob URL generation in Firefox.
+   - `src/background/backup-scheduler.test.ts`: Added unit test verifying `onDeterminingFilename` suggests `conflictAction: 'uniquify'` and the exact target filename when `byExtensionId` matches.
+
+### Verification Results
+All 7 mandatory CI quality gates verified locally:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **123 test files passed, 1,085 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 12s
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+---
+
+## 🦊 Phase 7.2c: Restrict Scheduled Automated Backups to Firefox Only (Completed)
+
+### Summary of Changes
+Per user specification, scheduled automated background backups have been restricted exclusively to Firefox where background downloads to subfolders run silently, while ensuring that manual 1-click backup downloads remain 100% available and functional in both Chrome and Firefox.
+
+1. **Browser Support Detection (`isScheduledBackupSupported`) in `src/background/backup-scheduler.ts`**:
+   - Added `isScheduledBackupSupported()` checking for Firefox via `navigator.userAgent` and `usesSidebarAction()`.
+   - Returns `true` in Firefox and `false` in Chrome/Chromium.
+2. **Background Alarm Suppression (`src/background/backup-scheduler.ts`)**:
+   - In `syncBackupAlarm()`: when `!isScheduledBackupSupported()` (in Chrome), clears any existing `oac-auto-backup-alarm` and exits immediately, preventing Chrome from ever registering or firing periodic backup alarms.
+   - In `runScheduledBackup()`: immediately checks `!isScheduledBackupSupported()` at the start and returns `{ executed: false, reason: 'Scheduled backup is only supported in Firefox' }` without accessing storage or download managers.
+3. **Settings UI Updates (`src/modules/settings/SettingsPanel.tsx`)**:
+   - In Chrome, renders the "Automated Backups" section with a prominent `[Firefox Only]` badge and a friendly message:
+     *"Automated periodic backups are available in Firefox. In Chrome, background downloads to custom subfolders prompt for user interaction due to browser download manager security policies. Please use the 1-click manual backup buttons in the Data section below."*
+   - In Firefox, renders the complete automated backup controls (toggle, frequency, custom interval, delta change detection, subfolder input).
+   - The manual backup buttons under the "Data" section ("Download backup (all projects)" and "Download backup (current project)") remain completely untouched and fully functional in both Chrome and Firefox.
+4. **Automated Test Coverage**:
+   - `src/background/backup-scheduler.test.ts`: Added tests verifying `isScheduledBackupSupported()` returns `true` for Firefox and `false` for Chrome, and verifying that `syncBackupAlarm` and `runScheduledBackup` abort cleanly in Chrome.
+   - `src/modules/settings/SettingsPanel.test.tsx`: Added tests verifying that Chrome renders the `[Firefox Only]` badge and notice, while Firefox renders the "Enable Scheduled Backup" checkbox.
+
+### Verification Results
+All 7 mandatory CI quality gates verified locally:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **123 test files passed, 1,090 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 9.1s
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+
+
 

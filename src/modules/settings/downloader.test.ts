@@ -62,8 +62,49 @@ describe('downloader utilities', () => {
     expect(callArgs.filename).toBe('MyBackups/backup.json')
     expect(callArgs.saveAs).toBe(false)
     expect(callArgs.conflictAction).toBe('uniquify')
+    // In Chrome, small JSON files use inline data: URI
+    expect(callArgs.url).toContain('data:application/json;charset=utf-8,')
 
     ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
+  })
+
+  it('universalDownloader uses Blob URL when running in Firefox', () => {
+    const origCreateObjectURL = URL.createObjectURL
+    const origRevokeObjectURL = URL.revokeObjectURL
+    URL.createObjectURL = vi.fn(() => 'blob:firefox-mock-url')
+    URL.revokeObjectURL = vi.fn()
+
+    const mockDownload = vi.fn()
+    const origChrome = (globalThis as unknown as { chrome: unknown }).chrome
+    ;(globalThis as unknown as { chrome: unknown }).chrome = {
+      downloads: {
+        download: mockDownload,
+      },
+    }
+
+    const origUserAgent = navigator.userAgent
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0',
+      configurable: true,
+    })
+
+    universalDownloader('backup.json', '{"test":123}', 'application/json', {
+      subfolder: 'FirefoxBackups',
+      saveAs: false,
+    })
+
+    expect(mockDownload).toHaveBeenCalledTimes(1)
+    const callArgs = mockDownload.mock.calls[0]![0]
+    expect(callArgs.filename).toBe('FirefoxBackups/backup.json')
+    expect(callArgs.url).toBe('blob:firefox-mock-url')
+
+    Object.defineProperty(navigator, 'userAgent', {
+      value: origUserAgent,
+      configurable: true,
+    })
+    ;(globalThis as unknown as { chrome: unknown }).chrome = origChrome
+    URL.createObjectURL = origCreateObjectURL
+    URL.revokeObjectURL = origRevokeObjectURL
   })
 
   it('universalDownloader falls back to anchor download when chrome.downloads is unavailable', () => {

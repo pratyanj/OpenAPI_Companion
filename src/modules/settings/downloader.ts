@@ -108,14 +108,23 @@ export const universalDownloader: Downloader = (filename, content, mime, options
     typeof chrome.downloads.download === 'function'
   ) {
     try {
+      const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent)
+
       const isBlobSupported =
         typeof URL !== 'undefined' &&
         typeof URL.createObjectURL === 'function' &&
         typeof Blob !== 'undefined'
 
-      const downloadUrl = isBlobSupported
-        ? URL.createObjectURL(new Blob([content], { type: mime }))
-        : `data:${mime};charset=utf-8,${encodeURIComponent(content)}`
+      // In Firefox, Blob URLs work seamlessly with saveAs: false into subfolders.
+      // In Chrome, extension Blob URLs trigger security heuristics and prompts when saving into subfolders.
+      // Therefore, in Chrome/Chromium we prefer inline data: URIs for standard JSON files (< 1.5MB IPC limit),
+      // falling back to Blob URLs only for large payloads or when running in Firefox.
+      const useDataUrl = !isFirefox && content.length < 1.5 * 1024 * 1024
+
+      const downloadUrl =
+        !useDataUrl && isBlobSupported
+          ? URL.createObjectURL(new Blob([content], { type: mime }))
+          : `data:${mime};charset=utf-8,${encodeURIComponent(content)}`
 
       chrome.downloads.download(
         {
@@ -125,7 +134,11 @@ export const universalDownloader: Downloader = (filename, content, mime, options
           conflictAction: 'uniquify',
         },
         (downloadId?: number) => {
-          if (isBlobSupported && downloadUrl.startsWith('blob:')) {
+          if (
+            downloadUrl.startsWith('blob:') &&
+            typeof URL !== 'undefined' &&
+            typeof URL.revokeObjectURL === 'function'
+          ) {
             setTimeout(() => {
               try {
                 URL.revokeObjectURL(downloadUrl)
