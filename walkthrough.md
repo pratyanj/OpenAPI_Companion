@@ -555,11 +555,62 @@ All 7 mandatory CI quality gates executed and verified 100% green:
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly in 10.01s
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
 
+---
 
+## 🕒 Feature 7.6: In-Page Swagger Endpoint History Button (Completed)
 
+### Summary of Changes
+Implemented an in-context **History** button injected directly into Swagger UI operation blocks inside the `.try-out` toolbar, displaying dynamic past execution counts and opening the in-page `HistoryDetailModal` pre-filtered to that specific endpoint.
 
+1. **In-Page History Detail Modal Extension (`src/modules/history/HistoryDetailModal.tsx` & `src/content/history-detail.tsx`)**:
+   - Added `initialEndpointId?: string` support to `HistoryDetailModalProps`.
+   - When opened with `initialEndpointId`, queries all past executions for that endpoint, loads the latest record, and lists all prior runs in the call switcher with full payload details, response headers, and response body inspection.
+   - When 0 past executions exist, renders an informative empty state inside the modal explaining how to execute calls in Swagger UI.
+   - Supported `open(target: string | { historyId?: string; endpointId?: string })` in `HistoryDetailHandle` with 100% backwards compatibility.
 
+2. **In-Page Swagger Endpoint History Button Module (`src/content/swagger-endpoint-history-button.ts`)**:
+   - Created `mountSwaggerEndpointHistoryButton(service, bus, doc, options)`.
+   - Injects `.oac-endpoint-history-btn` into each operation block's `.try-out` toolbar **only when past execution history exists** (`count > 0`).
+   - If an endpoint has 0 executions, the button remains completely hidden until execution.
+   - Displays SVG clock icon, "History" label, and dynamic count pill (`.oac-history-count-badge`).
+   - Subscribes to `bus` events:
+     - `HISTORY_RECORDED`: reactively increments count and mounts button if previously 0.
+     - `REQUEST_REPLAYED`: refreshes all endpoint counts.
+     - `HISTORY_CLEARED`: clears all count badges and removes all buttons from DOM.
+   - On click, triggers `onOpenHistory({ endpointId })`.
+   - Cleans up DOM elements, observers, and event listeners on `dispose()`.
 
+3. **Config Feature Toggle & Content Script Wiring (`src/modules/config/ConfigPanel.tsx`, `src/modules/settings/types.ts`, `src/content/index.tsx`)**:
+   - Added `endpointHistoryButton: boolean` to `SwaggerFeaturePreferences` (default: `true`).
+   - Added "In-Page Endpoint Execution History Button" switch in the **Config** panel under Swagger Features.
+   - Added CSS scoped disable rule: `body.oac-disable-endpoint-history-button .oac-endpoint-history-btn { display: none !important; }`.
+   - Mounted `mountSwaggerEndpointHistoryButton` hooked to `historyPanelService`, `bus`, and `withHistoryDetail()`.
 
+4. **Automated Unit Testing (`src/content/swagger-endpoint-history-button.test.ts`, `src/content/history-detail.test.tsx`, `src/modules/settings/settings-service.test.ts`)**:
+   - Added unit test suite covering:
+     - Button is omitted when endpoint has 0 history calls.
+     - Button appears dynamically on `HISTORY_RECORDED` when an execution finishes.
+     - Button is removed from DOM on `HISTORY_CLEARED`.
+     - Count badge displays execution count and updates dynamically.
+     - Default setting in preferences includes `endpointHistoryButton: true`.
+     - Click triggers `onOpenHistory({ endpointId })`.
+     - Overlay opens with `initialEndpointId` and renders empty state when 0 executions exist.
 
+5. **Button Placement & Native Controls Alignment (`src/content/swagger-endpoint-history-button.ts`)**:
+   - Implemented direct-child sibling scanning in `findRightControlsAnchor(summary)` that strictly ignores `.opblock-summary-control` (which wraps the star, method, path, and description) and targets native right-side controls (`.copy-to-clipboard`, `.authorization__btn`, `.opblock-control-arrow`, `.view-line-link`).
+   - Inserts `.oac-endpoint-history-btn` **after** `.opblock-summary-control` and **before** right-side controls using `summary.insertBefore(btn, anchor)`.
+   - Native Swagger controls (`[clipboard]`, `[lock]`, `[v arrow]`) remain untouched, in their standard order, and flush against the far right margin.
+   - Expand/collapse arrows `[v]` stay vertically aligned across all operations regardless of history count.
+   - Click listener calls `e.stopImmediatePropagation()`, preventing accordion collapse/expand toggles when opening history.
+   - Refined button styling with `margin-left: auto !important`, `margin-right: 8px !important`, and `flex-shrink: 0 !important` to ensure the button rests in the open space before the right controls.
+   - Includes automatic relocation in `scanAndMount` for any existing buttons.
 
+### Verification Results
+All 7 mandatory CI quality gates executed and verified 100% green:
+1. `npm run lint` — 0 errors, 0 warnings
+2. `npm run format:check` — 100% conforming Prettier code style
+3. `npm run typecheck` — 0 TypeScript errors
+4. `npm test` — **125 test files passed, 1,136 tests passed (100% green)**
+5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
+6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly
+7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed

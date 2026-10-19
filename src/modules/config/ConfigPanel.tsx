@@ -121,6 +121,12 @@ const FEATURES: FeatureItem[] = [
     description:
       'Detects OpenAPI/Swagger contract modifications, highlights breaking changes with impact warnings on workflows and presets, and provides an interactive diff review modal.',
   },
+  {
+    id: 'endpointHistoryButton',
+    title: 'In-Page Endpoint Execution History Button',
+    description:
+      'Display a "History" button with past execution counts on operation blocks to open the request/response history overlay.',
+  },
 ]
 
 export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
@@ -190,6 +196,7 @@ export function ConfigPanel({ settings, bus }: ConfigPanelProps) {
       scenarioRecorder: true,
       paginationTester: true,
       specChangeDetector: true,
+      endpointHistoryButton: true,
     }
     await settings.setPreference('swaggerFeatures', allEnabled)
     setPrefs((p) => (p ? { ...p, swaggerFeatures: allEnabled } : p))

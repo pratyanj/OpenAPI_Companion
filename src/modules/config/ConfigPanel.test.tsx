@@ -23,13 +23,13 @@ function mockSettings(over: Partial<SettingsApi> = {}): SettingsApi {
 }
 
 describe('ConfigPanel', () => {
-  it('renders all 16 swagger feature toggles with active count', async () => {
+  it('renders all 17 swagger feature toggles with active count', async () => {
     const settings = mockSettings()
     const bus = new EventBus()
     render(<ConfigPanel settings={settings} bus={bus} />)
 
     expect(await screen.findByText(/Swagger In-Page Features/i)).toBeInTheDocument()
-    expect(screen.getByText('16/16 Active')).toBeInTheDocument()
+    expect(screen.getByText('17/17 Active')).toBeInTheDocument()
 
     const mockDataCheckbox = screen.getByLabelText(
       /Toggle 1-Click Realistic Mock Data/i,
@@ -94,6 +94,11 @@ describe('ConfigPanel', () => {
       /Toggle Spec Change Detector & Impact Analysis/i,
     ) as HTMLInputElement
     expect(specDetectorCheckbox.checked).toBe(true)
+
+    const endpointHistoryBtnCheckbox = screen.getByLabelText(
+      /Toggle In-Page Endpoint Execution History Button/i,
+    ) as HTMLInputElement
+    expect(endpointHistoryBtnCheckbox.checked).toBe(true)
 
     expect(screen.getByText('Ctrl+Shift+V')).toBeInTheDocument()
     expect(screen.getByText('Alt+M')).toBeInTheDocument()

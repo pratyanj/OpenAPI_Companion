@@ -53,6 +53,7 @@ import { mountSwaggerPasteCurl } from './swagger-paste-curl'
 import { mountSwaggerGlobalHeaders } from './swagger-global-headers'
 import { HeadersService } from '@/modules/headers'
 import { mountSwaggerEndpointHistory } from './swagger-endpoint-history'
+import { mountSwaggerEndpointHistoryButton } from './swagger-endpoint-history-button'
 import { mountSwaggerAuthBadge } from './swagger-auth-badge'
 import { ScenarioRecorderService } from '@/modules/workflows/recorder'
 import { mountScenarioModal } from './scenario-modal'
@@ -233,7 +234,9 @@ function ensureSwaggerFeatureStyles(doc: Document): void {
       display: none !important;
     }
     body.oac-disable-endpoint-history .oac-last-payload-bar-btn,
-    body.oac-disable-endpoint-history .oac-last-payload-btn {
+    body.oac-disable-endpoint-history .oac-last-payload-btn,
+    body.oac-disable-endpoint-history .oac-endpoint-history-btn,
+    body.oac-disable-endpoint-history-button .oac-endpoint-history-btn {
       display: none !important;
     }
     body.oac-disable-mock-data.oac-disable-json-format.oac-disable-endpoint-history .oac-mock-data-bar {
@@ -483,6 +486,7 @@ function applySwaggerFeatureClasses(
   b.classList.toggle('oac-disable-scenario-recorder', !features.scenarioRecorder)
   b.classList.toggle('oac-disable-pagination-tester', !features.paginationTester)
   b.classList.toggle('oac-disable-spec-change-detector', !features.specChangeDetector)
+  b.classList.toggle('oac-disable-endpoint-history-button', !features.endpointHistoryButton)
 }
 
 let isBooting = false
@@ -600,6 +604,14 @@ export async function bootAgent(
     bus,
     extraction: environments,
   })
+  const historyPanelService: HistoryPanelService = {
+    list: (query) => history.list(query ?? {}),
+    get: (id) => history.get(id),
+    replay: (id) => history.replay(id),
+    locate: (endpointId) => history.locate(endpointId),
+    deleteEntry: (id) => history.deleteEntry(id),
+    clearProject: () => history.clearProject(),
+  }
   const collections = new CollectionsService({ storage, projectId: meta.id, bus })
   const workflows = new WorkflowService({
     storage,
@@ -648,6 +660,12 @@ export async function bootAgent(
   mountSwaggerEndpointHistory(document, {
     storageKeyPrefix: `oac_last_payload_${meta.id}_`,
     getBinding: getShortcutBinding,
+  })
+  mountSwaggerEndpointHistoryButton(historyPanelService, bus, document, {
+    onOpenHistory: async (options) => {
+      const h = await withHistoryDetail()
+      h?.open(options)
+    },
   })
 
   const scenarioRecorder = new ScenarioRecorderService({ projectId: meta.id, bus })
@@ -882,14 +900,6 @@ export async function bootAgent(
   const withHistoryDetail = async (): Promise<HistoryDetailHandle | null> => {
     if (historyDetail) return historyDetail
     try {
-      const historyPanelService: HistoryPanelService = {
-        list: (query) => history.list(query ?? {}),
-        get: (id) => history.get(id),
-        replay: (id) => history.replay(id),
-        locate: (endpointId) => history.locate(endpointId),
-        deleteEntry: (id) => history.deleteEntry(id),
-        clearProject: () => history.clearProject(),
-      }
       historyDetail = mountHistoryDetail(historyPanelService, environments, bus, location.origin)
       const detailTheme = new ThemeManager({ storage, root: historyDetail.themeRoot, bus })
       await detailTheme.init()

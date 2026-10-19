@@ -64,6 +64,7 @@ describe('SettingsService preferences', () => {
     expect(prefs.historyLimit).toBe(500)
     expect(prefs.swaggerFeatures).toEqual(DEFAULT_SWAGGER_FEATURES)
     expect(prefs.swaggerFeatures.endpointHistory).toBe(true)
+    expect(prefs.swaggerFeatures.endpointHistoryButton).toBe(true)
   })
 
   it('resets to defaults', async () => {

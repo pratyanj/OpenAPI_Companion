@@ -19,8 +19,13 @@ import type { EventBus } from '@/core/events'
 
 const HOST_ID = 'oac-history-detail-host'
 
+export interface HistoryDetailOpenOptions {
+  historyId?: string
+  endpointId?: string
+}
+
 export interface HistoryDetailHandle {
-  open(historyId: string): void
+  open(target: string | HistoryDetailOpenOptions): void
   close(): void
   isOpen(): boolean
   themeRoot: HTMLElement
@@ -50,15 +55,17 @@ export function mountHistoryDetail(
   const root: Root = createRoot(mount)
   let open = false
   let openCount = 0
-  let currentHistoryId: string | undefined
+  let currentTarget: HistoryDetailOpenOptions | undefined
 
   function paint(): void {
+    const hasTarget = Boolean(currentTarget?.historyId || currentTarget?.endpointId)
     root.render(
-      open && currentHistoryId ? (
+      open && hasTarget ? (
         <StrictMode>
           <HistoryDetailModal
             key={`history-detail-${openCount}`}
-            initialHistoryId={currentHistoryId}
+            initialHistoryId={currentTarget?.historyId}
+            initialEndpointId={currentTarget?.endpointId}
             service={historyService}
             environmentService={envService}
             bus={bus}
@@ -77,9 +84,9 @@ export function mountHistoryDetail(
   }
 
   return {
-    open: (historyId: string) => {
+    open: (target: string | HistoryDetailOpenOptions) => {
       openCount++
-      currentHistoryId = historyId
+      currentTarget = typeof target === 'string' ? { historyId: target } : target
       open = true
       paint()
     },

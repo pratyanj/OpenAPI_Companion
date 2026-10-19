@@ -9,6 +9,7 @@ import { ResponseDiffModal } from './ResponseDiffModal'
 
 export interface HistoryDetailModalProps {
   initialHistoryId?: string
+  initialEndpointId?: string
   initialRecord?: HistoryRecord | null
   service: HistoryPanelService
   environmentService?: EnvironmentPanelService
@@ -19,6 +20,7 @@ export interface HistoryDetailModalProps {
 
 export function HistoryDetailModal({
   initialHistoryId,
+  initialEndpointId,
   initialRecord,
   service,
   environmentService,
@@ -28,7 +30,9 @@ export function HistoryDetailModal({
 }: HistoryDetailModalProps) {
   const [record, setRecord] = useState<HistoryRecord | null>(initialRecord ?? null)
   const [calls, setCalls] = useState<HistoryEntry[]>([])
-  const [loading, setLoading] = useState(!initialRecord && Boolean(initialHistoryId))
+  const [loading, setLoading] = useState(
+    !initialRecord && Boolean(initialHistoryId || initialEndpointId),
+  )
   const [replaying, setReplaying] = useState(false)
 
   // In-memory record cache for 0ms instantaneous switching without modal reload
@@ -81,8 +85,24 @@ export function HistoryDetailModal({
         }
         setLoading(false)
       })
+    } else if (initialEndpointId) {
+      setLoading(true)
+      void service.list().then(async (listRes) => {
+        if (listRes.ok) {
+          const matchingCalls = listRes.value.filter((e) => e.endpointId === initialEndpointId)
+          setCalls(matchingCalls)
+          if (matchingCalls.length > 0 && matchingCalls[0]) {
+            const firstRes = await service.get(matchingCalls[0].id)
+            if (firstRes.ok && firstRes.value) {
+              cacheRef.current.set(firstRes.value.id, firstRes.value)
+              setRecord(firstRes.value)
+            }
+          }
+        }
+        setLoading(false)
+      })
     }
-  }, [initialHistoryId, initialRecord, service])
+  }, [initialEndpointId, initialHistoryId, initialRecord, service])
 
   const handleReplay = async () => {
     if (!record) return
@@ -177,6 +197,29 @@ export function HistoryDetailModal({
               setDiffOpen(true)
             }}
           />
+        ) : initialEndpointId ? (
+          <div className="py-12 px-6 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-muted">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-text">No execution history yet</p>
+            <p className="mt-1 text-xs text-muted max-w-sm mx-auto">
+              Execute this request in Swagger UI to view request &amp; response snapshots, compare
+              executions, and inspect payloads.
+            </p>
+          </div>
         ) : (
           <p className="p-4 text-center text-xs text-muted">Request not found.</p>
         )}

@@ -83,4 +83,39 @@ describe('mountHistoryDetail (in-page history request detail overlay)', () => {
     expect(dialog()).toBeNull()
     overlay.destroy()
   })
+
+  it('opens dialog with endpointId and loads the latest call for that endpoint', async () => {
+    const bus = new EventBus()
+    const service = mockHistoryService()
+    const overlay = mountHistoryDetail(service, undefined, bus)
+
+    await act(async () => {
+      overlay.open({ endpointId: 'post:/auth/login' })
+    })
+
+    const el = dialog()
+    expect(el).not.toBeNull()
+    expect(overlay.isOpen()).toBe(true)
+    expect(el?.textContent).toContain('/auth/login')
+
+    overlay.destroy()
+  })
+
+  it('displays empty state when opened with endpointId with 0 executions', async () => {
+    const bus = new EventBus()
+    const service = mockHistoryService()
+    const overlay = mountHistoryDetail(service, undefined, bus)
+
+    await act(async () => {
+      overlay.open({ endpointId: 'get:/api/empty' })
+    })
+
+    const el = dialog()
+    expect(el).not.toBeNull()
+    expect(overlay.isOpen()).toBe(true)
+    expect(el?.textContent).toContain('No execution history yet')
+    expect(el?.textContent).toContain('Execute this request in Swagger UI')
+
+    overlay.destroy()
+  })
 })

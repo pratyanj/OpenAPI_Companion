@@ -124,10 +124,15 @@
   - [x] Support pasting raw JSON objects, API responses, and key/value arrays in addition to .env and Postman formats.
   - [x] Recursive flattening of nested JSON objects into underscore paths (`user_id`, `config_timeout`) compliant with `{{VAR}}` interpolation.
   - [x] Real-time live format detection preview banner with format badge (`Raw JSON`, `Postman`, `.env`), variable count, secret count, and key preview chips.
-  - [x] Import strategy selector: **Merge with existing** (default) or **Replace all**.
   - [x] Syntax error diagnostics and auto-disabling of import button when malformed JSON is entered (**1,118 unit tests passing**).
-- [ ] **7.5. In-Page Swagger Execution History Button (`src/content/`)**
-- [ ] **7.6. In-Page Swagger Save Request Action Button (`src/content/`)**
+- [x] **7.5. In-Page Swagger Execution History Button (`src/content/`)**
+  - [x] Injects dynamic History button before native right-side controls on operation summary bars when past execution history exists (`count > 0`).
+  - [x] Real-time count badge updates on `HISTORY_RECORDED` and automatic cleanup on `HISTORY_CLEARED`.
+  - [x] Direct feature toggle `endpointHistoryButton` in Config tab with live CSS scoping.
+  - [x] In-page `HistoryDetailModal` filter by `initialEndpointId` (**1,136 unit tests passing**).
+- [x] **7.6. In-Page Swagger Save Request Action Button (`src/content/`)**
+  - [x] Injected into Swagger UI 2xx response sections alongside Save Variable.
+  - [x] Pre-fills Preset editor modal with path, parameters, body, and summary.
 
 ---
 
@@ -578,5 +583,5 @@
 - [x] **UI Polish: Inverted Import/Export Icons & Editable Auto-Extraction Rules**
   - [x] Invert Import (`DownloadIcon`) and Export (`UploadIcon`) icons in Project Variables and Workflows panels to match action semantics.
   - [x] Add Edit action button (`EditIcon`) to extraction rules list with pre-filled edit dialog and in-page overlay integration.
-- [ ] **7.6. Feature: In-Page Swagger Endpoint History Button**
-  - [ ] Add a "🕒 History" button directly on Swagger UI operation blocks that opens the in-page History Detail modal filtered to that endpoint's past execution calls.
+- [x] **7.6. Feature: In-Page Swagger Endpoint History Button**
+  - [x] Add a "🕒 History" button directly on Swagger UI operation blocks that opens the in-page History Detail modal filtered to that endpoint's past execution calls.

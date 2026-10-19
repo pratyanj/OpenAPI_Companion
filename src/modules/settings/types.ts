@@ -34,6 +34,8 @@ export interface SwaggerFeaturePreferences {
   paginationTester: boolean
   /** OpenAPI Spec Change Detector & Impact Analysis banner and review modal. Default: true */
   specChangeDetector: boolean
+  /** In-page "History" button on operation blocks with past execution counts. Default: true */
+  endpointHistoryButton: boolean
 }
 
 export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
@@ -53,6 +55,7 @@ export const DEFAULT_SWAGGER_FEATURES: SwaggerFeaturePreferences = {
   scenarioRecorder: true,
   paginationTester: true,
   specChangeDetector: true,
+  endpointHistoryButton: true,
 }
 
 /** User preferences owned by SettingsService (theme is owned by ThemeManager). */
