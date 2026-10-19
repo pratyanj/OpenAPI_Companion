@@ -5,18 +5,14 @@ Tired of re-entering authentication tokens after every page refresh, manually cr
 OpenAPI Companion integrates seamlessly with Swagger UI and the native browser Side Panel, giving developers a persistent, powerful workspace directly alongside their API documentation.
 
 ========================================
-WHAT’S NEW IN VERSION 1.3.0
+WHAT’S NEW IN VERSION 1.3.1
 ========================================
-• Multi-Persona Authentication & Dynamic Payload Fields: Configure non-standard or mandatory login parameters (e.g. force_logout: true, tenant_id, role) with dynamic type casting (string, boolean, number) directly in the Auth Vault.
-• Native Auto-Token Capture & Direct Authorization: Sending or replaying login requests automatically detects 2xx responses, extracts bearer tokens, and applies them to Swagger UI's authorization header with zero copy-pasting.
-• OpenAPI Spec Change Detector & Impact Analysis: Automatically compares active API docs with cached schemas, alerting you to altered endpoints, removed parameters, and potential breaking changes.
-• Automated Pagination Tester & Export: Test cursor-based, page/limit, and offset/limit pagination flows with automated record fetching, integrity checks, and 1-click JSON/CSV export.
-• API Scenario Recorder & Visual Workflow Editor: Record live endpoint executions directly from documentation pages into reusable automated test workflows with drag-and-drop step management.
-• Rich Assertions Engine: Validate status codes, latency thresholds, headers, regex patterns, and nested JSONPath queries (e.g., $.data.items[0].id).
-• Refreshed Keyboard Shortcuts:
-  - Press Ctrl+F (or Cmd+F on macOS) for the instant Command Palette endpoint search.
-  - Press Ctrl+K (or Cmd+K on macOS) for the Keyboard Shortcuts Manager and cheat-sheet.
-• Seamless Sidepanel Hot-Reloading: Automatically detects extension build updates and refreshes the panel without requiring full tab reloads.
+• In-Page Swagger Endpoint History Button: View past executions directly on each Swagger endpoint block header, conditionally rendered only when history exists, with a configurable toggle in Settings.
+• In-Page "Save Request" Button on 2xx Responses: Instantly preserve successful endpoint parameters, headers, and request bodies into named Request Presets with a single click.
+• Bulk JSON Import for Authentication Personas: Rapidly configure multiple test users, roles, and tokens by pasting or importing standard JSON array definitions.
+• Bulk JSON Import for Environment Variables: Fast-track project variable setup with multi-key JSON import, conflict detection, and merge options.
+• Inline Editable Variable Extraction Rules: Seamlessly modify, update, and manage auto-extraction response paths directly within the Environments manager.
+• Firefox Automated Backup Parity: Automated scheduled data backups are fully supported on Firefox via background alarm integration and persistent local snapshots.
 
 ========================================
 CORE CAPABILITIES

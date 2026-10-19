@@ -614,3 +614,25 @@ All 7 mandatory CI quality gates executed and verified 100% green:
 5. `npm audit --omit=dev --audit-level=high` — 0 vulnerabilities
 6. `npm run build` — Chrome bundle + Firefox AMO release zip built cleanly
 7. `npm run test:e2e` — 2 / 2 Playwright smoke tests passed
+
+---
+
+## 🚀 Release v1.3.1 Milestone (Completed)
+
+### Summary of Changes
+Completed full release lifecycle preparation and quality gate verification for **Version 1.3.1**:
+
+1. **Version Synchronization**:
+   - `package.json`: Updated `"version": "1.3.1"`.
+   - `package-lock.json`: Synchronized top-level and root dependency versions to `"1.3.1"`.
+
+2. **Documentation & Release Notes**:
+   - `FIRE_FOX_RELEASE_NOTES.md`: Documented all 6 core features shipped in v1.3.1 (History button, Save Request button, bulk JSON persona import, bulk JSON variable import, editable extraction rules, and Firefox automated backups parity) with updated distribution links.
+   - `STORE_DESCRIPTION.md`: Updated `WHAT’S NEW IN VERSION 1.3.1` highlighting new capabilities while strictly adhering to Chrome Web Store policy guidelines (zero prohibited keywords, zero hack/bypass claims, no tag clouds).
+
+3. **Packaging & Distribution Archives**:
+   - Packaged Chromium unpacked extension preview: `share/openapi-companion-1.3.1.zip`
+   - Packaged Firefox AMO release bundle: `share/openapi-companion-1.3.1-firefox.zip`
+
+4. **CI & Quality Gate Verification**:
+   - Verified all 7 quality gates locally.
