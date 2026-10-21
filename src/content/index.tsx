@@ -18,7 +18,7 @@ import {
   type ProjectInput,
   type CandidateProject,
 } from '@/core/project'
-import { docIdentityUrl, isLocalHost } from '@/utils'
+import { docIdentityUrl, isLocalHost, stableId } from '@/utils'
 import { SwaggerUiAdapter, type AuthSnapshot, type RequestSnapshot } from '@/adapters'
 import { ThemeManager, TokenRefreshService } from '@/services'
 import { AuthenticationService } from '@/modules/authentication'
@@ -40,6 +40,7 @@ import {
   type WorkflowExportBundle,
 } from '@/modules/workflows'
 import { SwaggerBridge } from './swagger-bridge'
+import { BRIDGE_TAG } from './swagger-protocol'
 import { mountLauncher } from './launcher'
 import { mountSwaggerVariables } from './swagger-variables'
 import { mountSwaggerMockData } from './swagger-mock-data'
@@ -767,10 +768,67 @@ export async function bootAgent(
     baseUrl: () => envBaseUrl || location.origin,
   })
   await productivity.init()
-  mountSwaggerPinnedEndpoints(productivity, document)
-  mountSwaggerPasteCurl(document, productivity, { getBinding: getShortcutBinding })
+  let syncAuthBadge: () => Promise<void> = async () => {}
+
   const headersService = new HeadersService({ storage, projectId: meta.id })
-  mountSwaggerGlobalHeaders(document, headersService)
+  const globalHeadersHandle = mountSwaggerGlobalHeaders(document, headersService)
+
+  mountSwaggerPinnedEndpoints(productivity, document)
+  mountSwaggerPasteCurl(document, productivity, {
+    getBinding: getShortcutBinding,
+    onApplyAuth: async (snapshot) => {
+      const injected = adapter.writeAuth(snapshot)
+      await auth.applyToken(currentEnv, snapshot.token, snapshot.schemeName)
+      void syncAuthBadge()
+      return injected.ok
+    },
+    onSaveGlobalHeaders: async (customHeaders) => {
+      try {
+        const existing = await headersService.getHeaders()
+        const merged = [...existing]
+        for (const [name, value] of Object.entries(customHeaders)) {
+          const idx = merged.findIndex(
+            (h) => h.name.trim().toLowerCase() === name.trim().toLowerCase(),
+          )
+          const target = idx >= 0 ? merged[idx] : undefined
+          if (target) {
+            merged[idx] = {
+              ...target,
+              value,
+              enabled: true,
+            }
+          } else {
+            merged.push({
+              id: stableId('hdr'),
+              name: name.trim(),
+              value,
+              enabled: true,
+            })
+          }
+        }
+        await headersService.saveHeaders(merged)
+        const activeRecord: Record<string, string> = {}
+        for (const h of merged) {
+          if (h.enabled && h.name.trim()) {
+            activeRecord[h.name.trim()] = h.value
+          }
+        }
+        window.postMessage(
+          {
+            tag: BRIDGE_TAG,
+            dir: 'to-main',
+            cmd: 'syncGlobalHeaders',
+            headers: activeRecord,
+          },
+          '*',
+        )
+        globalHeadersHandle.scanAndMount()
+        return Object.keys(customHeaders).length
+      } catch {
+        return 0
+      }
+    },
+  })
 
   const specService = new SpecService({
     storage,
@@ -1191,7 +1249,7 @@ export async function bootAgent(
     },
   })
 
-  const syncAuthBadge = async (): Promise<void> => {
+  syncAuthBadge = async (): Promise<void> => {
     try {
       const [recRes, name, savedRes] = await Promise.all([
         auth.current(currentEnv),

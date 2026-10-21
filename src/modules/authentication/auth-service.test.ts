@@ -455,5 +455,36 @@ describe('AuthenticationService credential vault', () => {
       expect(added.ok && added.value.token).toBe(`Bearer ${JWT}`)
       expect(added.ok && added.value.schemeName).toBe('Bearer')
     })
+
+    it('clears active credential link when applying a custom/unrelated token', async () => {
+      const adapter = mockAdapter({ readAuth: () => ({ type: 'bearer', token: 'DEV_TOKEN' }) })
+      const { service } = setup(adapter)
+      const saved = await service.saveAs('dev', 'default')
+      if (!saved.ok) throw new Error('save failed')
+
+      await service.activateSaved(saved.value.id, 'default')
+      expect(await service.activeCredentialName('default')).toBe('dev')
+
+      // Now apply an unrelated custom token (e.g. from a pasted cURL)
+      const applied = await service.applyToken('default', 'CUSTOM_CURL_TOKEN')
+      expect(applied.ok).toBe(true)
+
+      // Active credential name should now be null (not dev!)
+      expect(await service.activeCredentialName('default')).toBeNull()
+
+      // activeLogin should return null rather than falling back to dev
+      expect(await service.activeLogin('default')).toBeNull()
+    })
+
+    it('links active credential when applying a token that matches a saved account', async () => {
+      const adapter = mockAdapter({ readAuth: () => ({ type: 'bearer', token: 'DEV_TOKEN' }) })
+      const { service } = setup(adapter)
+      const dev = await service.saveAs('dev', 'default')
+      if (!dev.ok) throw new Error('save failed')
+
+      // Apply dev's token directly
+      await service.applyToken('default', 'DEV_TOKEN')
+      expect(await service.activeCredentialName('default')).toBe('dev')
+    })
   })
 })

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { parseCurl, normalizeCurlString } from './curl-parser'
+import {
+  parseCurl,
+  normalizeCurlString,
+  extractAuthFromHeaders,
+  extractCustomHeaders,
+} from './curl-parser'
 
 describe('curl-parser', () => {
   it('normalizes multi-line and backtick continuations', () => {
@@ -89,5 +94,79 @@ describe('curl-parser', () => {
     expect(parsed.method).toBe('GET')
     expect(parsed.path).toBe('')
     expect(parsed.queryParams).toEqual({})
+  })
+
+  it('parses basic auth via -u or --user flag', () => {
+    const parsed = parseCurl('curl -u "admin:secret123" https://api.example.com/data')
+    expect(parsed.headers['Authorization']).toBe(`Basic ${btoa('admin:secret123')}`)
+
+    const parsedLong = parseCurl('curl --user alice:pass99 https://api.example.com/data')
+    expect(parsedLong.headers['Authorization']).toBe(`Basic ${btoa('alice:pass99')}`)
+  })
+})
+
+describe('extractAuthFromHeaders & extractCustomHeaders', () => {
+  it('extracts Bearer authorization token case-insensitively', () => {
+    const auth1 = parseCurl('curl https://api.example.com -H "Authorization: Bearer eyJhbGciOi..."')
+    const res1 = extractAuthFromHeaders(auth1.headers)
+    expect(res1).toEqual({
+      type: 'bearer',
+      token: 'Bearer eyJhbGciOi...',
+      rawHeaderKey: 'Authorization',
+      schemeName: 'bearerAuth',
+    })
+
+    const auth2 = parseCurl('curl https://api.example.com -H "authorization: Bearer my-token"')
+    const res2 = extractAuthFromHeaders(auth2.headers)
+    expect(res2?.token).toBe('Bearer my-token')
+    expect(res2?.type).toBe('bearer')
+  })
+
+  it('extracts Basic authorization and raw tokens', () => {
+    const auth1 = parseCurl(
+      'curl https://api.example.com -H "Authorization: Basic YWRtaW46c2VjcmV0"',
+    )
+    const res1 = extractAuthFromHeaders(auth1.headers)
+    expect(res1).toEqual({
+      type: 'basic',
+      token: 'YWRtaW46c2VjcmV0',
+      rawHeaderKey: 'Authorization',
+      schemeName: 'basicAuth',
+    })
+
+    const auth2 = parseCurl('curl https://api.example.com -H "Authorization: raw-jwt-token-string"')
+    const res2 = extractAuthFromHeaders(auth2.headers)
+    expect(res2).toEqual({
+      type: 'bearer',
+      token: 'raw-jwt-token-string',
+      rawHeaderKey: 'Authorization',
+      schemeName: 'bearerAuth',
+    })
+  })
+
+  it('extracts API key variants from headers', () => {
+    const parsed = parseCurl('curl https://api.example.com -H "X-API-Key: secret-key-123"')
+    const res = extractAuthFromHeaders(parsed.headers)
+    expect(res).toEqual({
+      type: 'apiKey',
+      token: 'secret-key-123',
+      rawHeaderKey: 'X-API-Key',
+      schemeName: 'X-API-Key',
+    })
+  })
+
+  it('extracts custom non-auth headers excluding hop-by-hop and body headers', () => {
+    const parsed = parseCurl(`
+      curl https://api.example.com/items \\
+        -H "Authorization: Bearer tok123" \\
+        -H "Content-Type: application/json" \\
+        -H "X-Tenant-ID: tenant-42" \\
+        -H "X-Client-Version: 3.2.1"
+    `)
+    const custom = extractCustomHeaders(parsed.headers)
+    expect(custom).toEqual({
+      'X-Tenant-ID': 'tenant-42',
+      'X-Client-Version': '3.2.1',
+    })
   })
 })

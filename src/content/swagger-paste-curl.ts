@@ -11,7 +11,14 @@
  * - Feature toggle support: `.oac-disable-paste-curl`.
  */
 
-import { parseCurl, type ParsedCurl } from '@/utils/curl-parser'
+import type { AuthSnapshot } from '@/adapters'
+import {
+  parseCurl,
+  type ParsedCurl,
+  extractAuthFromHeaders,
+  extractCustomHeaders,
+  type ExtractedAuthHeader,
+} from '@/utils/curl-parser'
 import { matchEndpointFromCurl, type EndpointMatchResult } from '@/utils/endpoint-matcher'
 import { openEndpoint } from '@/adapters/swagger/swagger-endpoint-dom'
 import {
@@ -26,6 +33,8 @@ import { matchesShortcut } from '@/modules/shortcuts/shortcut-utils'
 
 export interface SwaggerPasteCurlOptions {
   getBinding?: (action: ShortcutActionId) => ShortcutBinding | undefined
+  onApplyAuth?: (snapshot: AuthSnapshot) => Promise<boolean> | boolean
+  onSaveGlobalHeaders?: (headers: Record<string, string>) => Promise<unknown> | unknown
 }
 
 export interface SwaggerPasteCurlHandle {
@@ -46,6 +55,8 @@ const SVG_ICONS = {
   close: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
   arrowRight: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`,
   code: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+  key: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>`,
+  globe: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
 }
 
 const CSS_STYLES = `
@@ -428,6 +439,103 @@ body.oac-disable-paste-curl #oac-paste-curl-modal {
   margin: 0 !important;
 }
 
+/* Auth Token Detected Box */
+.oac-preview-auth-box {
+  background: #0f1f38 !important;
+  border: 1px solid #1e40af !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.oac-preview-auth-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #60a5fa !important;
+}
+
+.oac-preview-auth-badge {
+  background: #1e3a8a !important;
+  border: 1px solid #3b82f6 !important;
+  color: #bfdbfe !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.oac-preview-auth-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 11px !important;
+  color: #93c5fd !important;
+  background: #091224 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  word-break: break-all !important;
+  user-select: text !important;
+}
+
+.oac-preview-toggle-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #e2e8f0 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  margin-top: 2px !important;
+}
+
+.oac-preview-toggle-label input[type="checkbox"] {
+  cursor: pointer !important;
+  accent-color: #3b82f6 !important;
+  margin: 0 !important;
+}
+
+.oac-preview-headers-header-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 2px !important;
+}
+
+.oac-save-global-headers-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #38bdf8 !important;
+  background: #0c4a6e !important;
+  border: 1px solid #0284c7 !important;
+  border-radius: 4px !important;
+  padding: 2px 8px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.oac-save-global-headers-btn:hover {
+  background: #0369a1 !important;
+  color: #ffffff !important;
+}
+
+.oac-save-global-headers-btn.saved {
+  background: #065f46 !important;
+  border-color: #059669 !important;
+  color: #a7f3d0 !important;
+  cursor: default !important;
+}
+
 /* Footer Actions */
 .oac-paste-modal-footer {
   display: flex !important;
@@ -520,6 +628,10 @@ export function mountSwaggerPasteCurl(
   let modalEl: HTMLElement | null = doc.getElementById(MODAL_ID)
   let currentParsed: ParsedCurl | null = null
   let currentMatch: EndpointMatchResult | null = null
+  let currentAuth: ExtractedAuthHeader | null = null
+  let currentCustomHeaders: Record<string, string> = {}
+  let applyAuthEnabled = true
+  let saveGlobalHeadersEnabled = false
 
   function getAvailableEndpoints(): EndpointListItem[] {
     try {
@@ -636,6 +748,8 @@ export function mountSwaggerPasteCurl(
 
     clearBtn.addEventListener('click', () => {
       textarea.value = ''
+      currentAuth = null
+      currentCustomHeaders = {}
       updatePreview('')
     })
 
@@ -660,12 +774,22 @@ export function mountSwaggerPasteCurl(
 
     autoFillBtn.addEventListener('click', () => {
       if (!currentParsed || !currentMatch) return
-      executeAutoFill(currentParsed, currentMatch)
+      executeAutoFill(
+        currentParsed,
+        currentMatch,
+        applyAuthEnabled && Boolean(currentAuth),
+        saveGlobalHeadersEnabled && Object.keys(currentCustomHeaders).length > 0,
+      )
       closeModal()
     })
 
     updatePreview('')
     return modalEl
+  }
+
+  function truncate(str: string, maxLen = 60): string {
+    if (str.length <= maxLen) return str
+    return str.slice(0, maxLen - 3) + '...'
   }
 
   /**
@@ -678,9 +802,13 @@ export function mountSwaggerPasteCurl(
 
     const parsed = parseCurl(rawCurl)
     currentParsed = parsed
+    currentAuth = extractAuthFromHeaders(parsed.headers)
+    currentCustomHeaders = extractCustomHeaders(parsed.headers)
 
     if (!rawCurl.trim()) {
       currentMatch = null
+      currentAuth = null
+      currentCustomHeaders = {}
       autoFillBtn.disabled = true
       previewBox.innerHTML = `
         <div class="oac-preview-header">
@@ -726,8 +854,29 @@ export function mountSwaggerPasteCurl(
       previewHtml += `<div class="oac-preview-params-list">${paramChips.join('')}</div>`
     }
 
+    // Auth Token Preview Section
+    if (currentAuth) {
+      previewHtml += `
+        <div class="oac-preview-auth-box">
+          <div class="oac-preview-auth-header">
+            ${SVG_ICONS.key}
+            <span>Authentication Token Detected</span>
+            <span class="oac-preview-auth-badge">${currentAuth.type.toUpperCase()}</span>
+          </div>
+          <div class="oac-preview-auth-val" title="${escapeHtml(currentAuth.token)}">
+            ${escapeHtml(truncate(currentAuth.token, 60))}
+          </div>
+          <label class="oac-preview-toggle-label">
+            <input type="checkbox" id="oac-preview-auth-toggle" class="oac-apply-auth-checkbox" ${applyAuthEnabled ? 'checked' : ''} />
+            <span>Apply token to Swagger Authorize (execute request as this user)</span>
+          </label>
+        </div>
+      `
+    }
+
     // Headers preview showing every header key and its exact value
     const headerEntries = Object.entries(parsed.headers)
+    const customHeaderCount = Object.keys(currentCustomHeaders).length
     if (headerEntries.length > 0) {
       const headerRows = headerEntries
         .map(
@@ -741,8 +890,26 @@ export function mountSwaggerPasteCurl(
         .join('')
 
       previewHtml += `
-        <div class="oac-preview-section-title">Headers (${headerEntries.length}):</div>
+        <div class="oac-preview-headers-header-wrap">
+          <div class="oac-preview-section-title">Headers (${headerEntries.length}):</div>
+          ${
+            customHeaderCount > 0
+              ? `<button type="button" class="oac-save-global-headers-btn" title="Add custom headers to Global Headers">
+                  ${SVG_ICONS.globe}
+                  <span>+ Save to Global Headers</span>
+                </button>`
+              : ''
+          }
+        </div>
         <div class="oac-preview-headers-box">${headerRows}</div>
+        ${
+          customHeaderCount > 0
+            ? `<label class="oac-preview-toggle-label oac-global-headers-toggle">
+                <input type="checkbox" id="oac-preview-headers-toggle" class="oac-save-global-headers-checkbox" ${saveGlobalHeadersEnabled ? 'checked' : ''} />
+                <span>Save ${customHeaderCount} custom header(s) to Global Headers</span>
+              </label>`
+            : ''
+        }
       `
     }
 
@@ -756,6 +923,34 @@ export function mountSwaggerPasteCurl(
 
     previewBox.innerHTML = previewHtml
     autoFillBtn.disabled = !match
+
+    // Attach dynamic toggles and quick action listeners
+    const authCheckbox = previewBox.querySelector<HTMLInputElement>('.oac-apply-auth-checkbox')
+    authCheckbox?.addEventListener('change', (e) => {
+      applyAuthEnabled = (e.target as HTMLInputElement).checked
+    })
+
+    const globalHeadersCheckbox = previewBox.querySelector<HTMLInputElement>(
+      '.oac-save-global-headers-checkbox',
+    )
+    globalHeadersCheckbox?.addEventListener('change', (e) => {
+      saveGlobalHeadersEnabled = (e.target as HTMLInputElement).checked
+    })
+
+    const quickSaveBtn = previewBox.querySelector<HTMLButtonElement>('.oac-save-global-headers-btn')
+    quickSaveBtn?.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      if (Object.keys(currentCustomHeaders).length > 0) {
+        try {
+          await options?.onSaveGlobalHeaders?.(currentCustomHeaders)
+          quickSaveBtn.classList.add('saved')
+          quickSaveBtn.disabled = true
+          quickSaveBtn.innerHTML = `${SVG_ICONS.check} <span>Saved to Global Headers!</span>`
+        } catch (err) {
+          console.warn('[OpenAPI Companion] Failed to save global headers:', err)
+        }
+      }
+    })
   }
 
   function escapeHtml(str: string): string {
@@ -769,7 +964,32 @@ export function mountSwaggerPasteCurl(
   /**
    * Automatically opens endpoint, enables Try-it-out, fills parameters and body.
    */
-  function executeAutoFill(curl: ParsedCurl, match: EndpointMatchResult): boolean {
+  function executeAutoFill(
+    curl: ParsedCurl,
+    match: EndpointMatchResult,
+    shouldApplyAuth = false,
+    shouldSaveGlobalHeaders = false,
+  ): boolean {
+    if (shouldApplyAuth && currentAuth) {
+      try {
+        void options?.onApplyAuth?.({
+          type: currentAuth.type,
+          token: currentAuth.token,
+          schemeName: currentAuth.schemeName,
+        })
+      } catch (err) {
+        console.warn('[OpenAPI Companion] Failed to apply auth from cURL:', err)
+      }
+    }
+
+    if (shouldSaveGlobalHeaders && Object.keys(currentCustomHeaders).length > 0) {
+      try {
+        void options?.onSaveGlobalHeaders?.(currentCustomHeaders)
+      } catch (err) {
+        console.warn('[OpenAPI Companion] Failed to save global headers from cURL:', err)
+      }
+    }
+
     const endpointId = match.endpointId
     openEndpoint(doc, endpointId)
 

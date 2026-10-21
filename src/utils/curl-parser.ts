@@ -76,6 +76,17 @@ export function parseCurl(rawInput: string): ParsedCurl {
     }
   }
 
+  // Extract basic auth credentials (-u or --user)
+  const userMatch = normalized.match(/(?:-u|--user)\s+['"]?([^'"\s]+)['"]?/)
+  if (userMatch && userMatch[1]) {
+    const creds = userMatch[1]
+    const encoded = typeof btoa === 'function' ? btoa(creds) : Buffer.from(creds).toString('base64')
+    const hasAuth = Object.keys(headers).some((k) => k.toLowerCase() === 'authorization')
+    if (!hasAuth) {
+      headers['Authorization'] = `Basic ${encoded}`
+    }
+  }
+
   // 3. Extract Body (-d, --data, --data-raw, --data-binary, --data-urlencode)
   let body: string | undefined
   const bodyRegex =
@@ -180,4 +191,94 @@ export function parseCurl(rawInput: string): ParsedCurl {
     isJsonBody,
     formattedBody,
   }
+}
+
+export interface ExtractedAuthHeader {
+  type: 'bearer' | 'basic' | 'apiKey'
+  token: string
+  rawHeaderKey: string
+  schemeName?: string
+}
+
+/**
+ * Extracts authentication token details from request headers.
+ * Supports Authorization (Bearer, Basic, raw token) and API key variants.
+ */
+export function extractAuthFromHeaders(
+  headers: Record<string, string>,
+): ExtractedAuthHeader | null {
+  for (const [key, value] of Object.entries(headers)) {
+    const lowerKey = key.toLowerCase().trim()
+    const trimmedVal = value.trim()
+    if (!trimmedVal) continue
+
+    if (lowerKey === 'authorization') {
+      if (/^bearer\s+/i.test(trimmedVal)) {
+        return {
+          type: 'bearer',
+          token: trimmedVal,
+          rawHeaderKey: key,
+          schemeName: 'bearerAuth',
+        }
+      }
+      if (/^basic\s+/i.test(trimmedVal)) {
+        return {
+          type: 'basic',
+          token: trimmedVal.replace(/^basic\s+/i, '').trim(),
+          rawHeaderKey: key,
+          schemeName: 'basicAuth',
+        }
+      }
+      return {
+        type: 'bearer',
+        token: trimmedVal,
+        rawHeaderKey: key,
+        schemeName: 'bearerAuth',
+      }
+    }
+
+    if (
+      lowerKey === 'x-api-key' ||
+      lowerKey === 'api-key' ||
+      lowerKey === 'apikey' ||
+      lowerKey === 'x-api-token' ||
+      lowerKey === 'x-access-token' ||
+      lowerKey === 'x-auth-token' ||
+      lowerKey === 'token'
+    ) {
+      return {
+        type: 'apiKey',
+        token: trimmedVal,
+        rawHeaderKey: key,
+        schemeName: key,
+      }
+    }
+  }
+
+  return null
+}
+
+const IGNORED_GLOBAL_HEADER_KEYS = new Set([
+  'authorization',
+  'content-type',
+  'content-length',
+  'host',
+  'connection',
+  'accept-encoding',
+  'user-agent',
+])
+
+/**
+ * Extracts custom request headers suitable for storing into Global Headers
+ * (filters out standard transport/body headers like Content-Type and Authorization).
+ */
+export function extractCustomHeaders(headers: Record<string, string>): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const [key, value] of Object.entries(headers)) {
+    const lowerKey = key.toLowerCase().trim()
+    if (!IGNORED_GLOBAL_HEADER_KEYS.has(lowerKey) && value.trim()) {
+      result[key] = value.trim()
+    }
+  }
+  return result
 }

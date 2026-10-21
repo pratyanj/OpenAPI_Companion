@@ -106,6 +106,27 @@ export class AuthenticationService {
     return projectKey(this.projectId, 'auth-active-credential', environmentId)
   }
 
+  /**
+   * Synchronizes activeCredentialKey with the vault: if `token` matches an existing
+   * saved credential, keeps/points the link to it. If the token is custom/different,
+   * clears the link so an unrelated saved account is not falsely kept active or refreshed.
+   */
+  private async syncActiveCredentialLink(environmentId: string, token: string): Promise<void> {
+    const savedList = await this.listSaved()
+    if (!savedList.ok) return
+    const cleanToken = stripBearer(token).trim()
+    const matchingSaved = savedList.value.find(
+      (c) => stripBearer(c.token).trim() === cleanToken || c.token.trim() === token.trim(),
+    )
+    if (matchingSaved) {
+      await this.storage.set(this.activeCredentialKey(environmentId), matchingSaved.id, {
+        immediate: true,
+      })
+    } else {
+      await this.storage.remove(this.activeCredentialKey(environmentId))
+    }
+  }
+
   /** Global opt-in for auto token refresh (default off). */
   async isAutoRefreshEnabled(): Promise<boolean> {
     const got = await this.storage.getData<boolean>(AUTO_REFRESH_KEY)
@@ -150,7 +171,9 @@ export class AuthenticationService {
       expiresAt: this.expiryOf(snapshot.token) ?? undefined,
     }
     const saved = await this.save(record)
-    return saved.ok ? ok(record) : saved
+    if (!saved.ok) return saved
+    await this.syncActiveCredentialLink(environmentId, snapshot.token)
+    return ok(record)
   }
 
   /**
@@ -175,7 +198,8 @@ export class AuthenticationService {
     // Format per the project's Bearer preference (defaults to inference), so
     // apiKey schemes that expect "Authorization: Bearer <jwt>" keep working while
     // the user can also force a raw token.
-    const applied = withBearerPrefix(token, await this.bearerPrefix(environmentId))
+    const applied =
+      kind === 'basic' ? token : withBearerPrefix(token, await this.bearerPrefix(environmentId))
 
     const snapshot: AuthSnapshot = { type: kind, token: applied, schemeName: scheme }
     const record: AuthRecord = {
@@ -189,7 +213,9 @@ export class AuthenticationService {
     const injected = this.adapter.writeAuth(this.toSnapshot(record))
     if (!injected.ok) return injected
     const saved = await this.save(record)
-    return saved.ok ? ok(record) : saved
+    if (!saved.ok) return saved
+    await this.syncActiveCredentialLink(environmentId, applied)
+    return ok(record)
   }
 
   validate(auth: AuthRecord): boolean {
@@ -506,9 +532,12 @@ export class AuthenticationService {
         (c) => c.token.replace(/^bearer\s+/i, '').trim() === cleanActive,
       )
       if (byToken?.login) return { ...byToken.login, credentialId: byToken.id }
+      // If an active token is present and doesn't match any saved account,
+      // it is a custom/pasted session — never falsely fallback to another saved user.
+      return null
     }
 
-    // Fallback if exactly one saved account has credentials
+    // Fallback if exactly one saved account has credentials (only when no active custom token is set)
     const withLogin = saved.value.filter((c) => c.login?.username && c.login?.password)
     if (withLogin.length === 1 && withLogin[0]?.login) {
       return { ...withLogin[0].login, credentialId: withLogin[0].id }

@@ -257,4 +257,116 @@ describe('swagger-paste-curl', () => {
     expect(doc.getElementById('oac-paste-curl-modal')).toBeNull()
     expect(doc.getElementById('oac-paste-curl-styles')).toBeNull()
   })
+
+  it('detects Bearer auth token from cURL, displays preview callout, and invokes onApplyAuth on auto-fill', async () => {
+    const onApplyAuth = vi.fn(async () => true)
+    const handle = mountSwaggerPasteCurl(doc, mockProductivity as unknown as ProductivityService, {
+      onApplyAuth,
+    })
+
+    handle.openModal(
+      `curl -X GET "http://127.0.0.1:8008/tasks/123" -H "Authorization: Bearer my-custom-jwt-token"`,
+    )
+
+    const modal = doc.getElementById('oac-paste-curl-modal')!
+    const authBox = modal.querySelector<HTMLElement>('.oac-preview-auth-box')!
+    expect(authBox).not.toBeNull()
+    expect(authBox.textContent).toContain('Authentication Token Detected')
+    expect(authBox.textContent?.toLowerCase()).toContain('bearer')
+    expect(authBox.textContent).toContain('my-custom-jwt-token')
+
+    const toggle = modal.querySelector<HTMLInputElement>('#oac-preview-auth-toggle')!
+    expect(toggle).not.toBeNull()
+    expect(toggle.checked).toBe(true)
+
+    const autoFillBtn = modal.querySelector<HTMLButtonElement>('.oac-modal-btn-primary')!
+    autoFillBtn.click()
+
+    expect(onApplyAuth).toHaveBeenCalledTimes(1)
+    expect(onApplyAuth).toHaveBeenCalledWith({
+      type: 'bearer',
+      token: 'Bearer my-custom-jwt-token',
+      schemeName: 'bearerAuth',
+    })
+
+    handle.dispose()
+  })
+
+  it('does not invoke onApplyAuth when the auth toggle is unchecked by user', async () => {
+    const onApplyAuth = vi.fn(async () => true)
+    const handle = mountSwaggerPasteCurl(doc, mockProductivity as unknown as ProductivityService, {
+      onApplyAuth,
+    })
+
+    handle.openModal(
+      `curl -X GET "http://127.0.0.1:8008/tasks/123" -H "Authorization: Bearer secret-token-456"`,
+    )
+
+    const modal = doc.getElementById('oac-paste-curl-modal')!
+    const toggle = modal.querySelector<HTMLInputElement>('#oac-preview-auth-toggle')!
+    expect(toggle).not.toBeNull()
+    toggle.checked = false
+    toggle.dispatchEvent(new Event('change'))
+
+    const autoFillBtn = modal.querySelector<HTMLButtonElement>('.oac-modal-btn-primary')!
+    autoFillBtn.click()
+
+    expect(onApplyAuth).not.toHaveBeenCalled()
+
+    handle.dispose()
+  })
+
+  it('detects custom headers and allows saving to Global Headers via 1-click button', async () => {
+    const onSaveGlobalHeaders = vi.fn(async () => true)
+    const handle = mountSwaggerPasteCurl(doc, mockProductivity as unknown as ProductivityService, {
+      onSaveGlobalHeaders,
+    })
+
+    handle.openModal(
+      `curl -X GET "http://127.0.0.1:8008/tasks/123" -H "Authorization: Bearer tok" -H "X-Custom-Env: production" -H "X-Trace-ID: trace-999"`,
+    )
+
+    const modal = doc.getElementById('oac-paste-curl-modal')!
+    const saveBtn = modal.querySelector<HTMLButtonElement>('.oac-save-global-headers-btn')!
+    expect(saveBtn).not.toBeNull()
+    expect(saveBtn.textContent).toContain('Save to Global Headers')
+
+    await saveBtn.click()
+
+    expect(onSaveGlobalHeaders).toHaveBeenCalledTimes(1)
+    expect(onSaveGlobalHeaders).toHaveBeenCalledWith({
+      'X-Custom-Env': 'production',
+      'X-Trace-ID': 'trace-999',
+    })
+    expect(saveBtn.textContent).toContain('Saved to Global Headers')
+
+    handle.dispose()
+  })
+
+  it('saves custom headers on auto-fill when the global headers toggle is checked', async () => {
+    const onSaveGlobalHeaders = vi.fn(async () => true)
+    const handle = mountSwaggerPasteCurl(doc, mockProductivity as unknown as ProductivityService, {
+      onSaveGlobalHeaders,
+    })
+
+    handle.openModal(`curl -X GET "http://127.0.0.1:8008/tasks/123" -H "X-Client-Version: 2.1.0"`)
+
+    const modal = doc.getElementById('oac-paste-curl-modal')!
+    const headersToggle = modal.querySelector<HTMLInputElement>('#oac-preview-headers-toggle')!
+    expect(headersToggle).not.toBeNull()
+    expect(headersToggle.checked).toBe(false)
+
+    headersToggle.checked = true
+    headersToggle.dispatchEvent(new Event('change'))
+
+    const autoFillBtn = modal.querySelector<HTMLButtonElement>('.oac-modal-btn-primary')!
+    autoFillBtn.click()
+
+    expect(onSaveGlobalHeaders).toHaveBeenCalledTimes(1)
+    expect(onSaveGlobalHeaders).toHaveBeenCalledWith({
+      'X-Client-Version': '2.1.0',
+    })
+
+    handle.dispose()
+  })
 })

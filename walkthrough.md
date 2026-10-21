@@ -636,3 +636,77 @@ Completed full release lifecycle preparation and quality gate verification for *
 
 4. **CI & Quality Gate Verification**:
    - Verified all 7 quality gates locally.
+
+---
+
+## 🐛 Fix: Paste cURL Auth Token Handling & Global Headers Integration
+
+### Summary of Changes
+Resolved the issue where pasting a cURL command containing an authentication token into the in-page "Paste cURL" modal ignored the token and executed the request as the previous saved user/persona. Extended the modal to detect custom request headers from the pasted cURL and allow saving them directly to OpenAPI Companion's **Global Headers** system.
+
+### Root Cause Analysis
+1. **Token Ignored**: Swagger UI operation blocks do not render security definitions in `.parameters-container tr`. The existing `writeRequestParameters` DOM injector only targets inputs inside that table, so the Authorization header was never written into Swagger UI's Redux authentication store (`state.auth`).
+2. **Saved Account Used**: When clicking "Execute", Swagger UI read `state.auth` which still held the previously authorized persona/session.
+3. **Session Desynchronization**: If an active custom token was present, `auth-service.ts`'s `activeLogin()` method had a fallback that returned the single saved account when no persona matched, triggering automatic token refreshes or persona restoration on 401 errors and overwriting the session.
+
+### Implementation Details
+1. **cURL Parser & Extraction Helpers (`src/utils/curl-parser.ts`, `src/utils/curl-parser.test.ts`)**:
+   - Added support for `-u` / `--user` Basic authentication flags.
+   - Implemented `extractAuthFromHeaders(headers, url)`:
+     - Extracts `Bearer <jwt/token>` from `Authorization: Bearer ...`.
+     - Extracts `Basic <base64>` from `Authorization: Basic ...` or `-u username:password`.
+     - Handles custom `ApiKey` schemes and query parameter tokens (`api_key`, `apiKey`, `token`).
+   - Implemented `extractCustomHeaders(headers)`:
+     - Filters out standard/transport headers (`Authorization`, `Content-Type`, `Accept`, `User-Agent`, `Host`, `Origin`, etc.).
+     - Captures custom enterprise headers (`X-Tenant-ID`, `X-App-Version`, `X-Trace-ID`, `X-Custom-*`).
+   - Verified with 12 unit tests.
+
+2. **Auth Service Desynchronization Guard (`src/modules/authentication/auth-service.ts`, `src/modules/authentication/auth-service.test.ts`)**:
+   - Added `syncActiveCredentialLink(environmentId, token)`:
+     - Inspects saved credentials; if token matches a saved persona, links `activeCredentialKey`.
+     - If the token is custom/different, explicitly removes `activeCredentialKey`.
+   - In `activeLogin(environmentId)`:
+     - Guarded single-account fallback to ensure it only returns a saved account if no active custom token is present.
+   - In `applyToken()`:
+     - Skipped `Bearer ` prefix formatting for `basic` authentication headers.
+   - Verified with 30 unit tests.
+
+3. **In-Page Paste cURL Modal UI & Behavior (`src/content/swagger-paste-curl.ts`)**:
+   - Extended `SwaggerPasteCurlOptions` with `onApplyAuth` and `onSaveGlobalHeaders` callbacks.
+   - Added zero-emoji SVG vector icons for `key` and `globe`.
+   - **Auth Token Callout**:
+     - Rendered `.oac-preview-auth-box` with uppercase auth type badge (`BEARER`, `BASIC`, `APIKEY`), truncated token preview, and a toggle: `[✓] Apply token to Swagger Authorize (execute request as this user)` (enabled & checked by default).
+   - **Custom Headers & Global Headers**:
+     - Rendered custom headers in the preview list with a 1-click `+ Save to Global Headers` action button.
+     - Added an opt-in toggle checkbox: `[ ] Save N custom header(s) to Global Headers`.
+   - In `executeAutoFill()`:
+     - Dispatches `onApplyAuth` and `onSaveGlobalHeaders` when their respective toggles are enabled.
+
+4. **Wiring & Synchronization (`src/content/index.tsx`)**:
+   - Connected `onApplyAuth`:
+     - Invokes `adapter.writeAuth(snapshot)` to synchronously authorize in Swagger UI.
+     - Persists token to `auth.applyToken(currentEnv, snapshot.token, snapshot.schemeName)`.
+     - Triggers `syncAuthBadge()` to update in-page auth status.
+   - Connected `onSaveGlobalHeaders`:
+     - Merges custom headers into `HeadersService` without overwriting existing unrelated entries.
+     - Relays `syncGlobalHeaders` message to `main-world.ts` via window `postMessage` for multi-channel network interception (`fetch`, `XMLHttpRequest`, and Swagger's `requestInterceptor`).
+     - Refreshes in-page global headers count and UI via `globalHeadersHandle.scanAndMount()`.
+
+5. **Automated Unit Testing (`src/content/swagger-paste-curl.test.ts`)**:
+   - Added 4 test suites:
+     - Detects Bearer auth token from cURL, displays preview callout, and invokes `onApplyAuth` on auto-fill.
+     - Respects user unchecking auth toggle (does not invoke `onApplyAuth`).
+     - Detects custom headers and saves them via 1-click button.
+     - Saves custom headers on auto-fill when the global headers toggle is checked.
+   - Verified 12/12 unit tests green.
+
+### Final Pipeline Gate Verification
+All 7 mandatory CI quality gates executed and verified 100% green:
+1. **ESLint (`npm run lint`)**: 0 errors, 0 warnings
+2. **Prettier Format Check (`npm run format:check`)**: 100% conforming
+3. **TypeScript Typecheck (`npm run typecheck`)**: 0 errors
+4. **Unit & Component Tests (`npm test`)**: **125 test suites passed, 1,147 tests passed (100% green)**
+5. **Dependency Audit (`npm audit --omit=dev --audit-level=high`)**: 0 high/critical vulnerabilities
+6. **Production Extension Build (`npm run build`)**: Chrome (`dist/`) and Firefox (`dist-firefox/` + AMO release zip) built without error
+7. **E2E Smoke Tests (`npm run test:e2e`)**: 2 / 2 Playwright smoke tests passed
+
