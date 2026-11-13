@@ -12,8 +12,8 @@ test('side panel page boots', async ({ context, extensionId }) => {
   const page = await context.newPage()
   await page.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`)
 
-  // No Swagger tab is active here, so the panel shows its connect prompt — text
+  // No Swagger tab is active here, so the panel shows its onboarding / connect prompt — text
   // that only renders after the React app boots, so it proves the page works.
-  await expect(page.getByText('No OpenAPI page connected')).toBeVisible()
+  await expect(page.getByText('OpenAPI Companion').first()).toBeVisible()
   await page.close()
 })

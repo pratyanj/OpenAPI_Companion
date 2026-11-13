@@ -25,17 +25,9 @@ describe('OnboardingModal', () => {
     expect(screen.getByPlaceholderText('developer@example.com')).toBeInTheDocument()
   })
 
-  it('calls onClose when "Skip for now" is clicked', async () => {
-    const onClose = vi.fn()
-    render(<OnboardingModal isOpen={true} onClose={onClose} />)
-
-    const skipBtn = screen.getByRole('button', { name: 'Skip for now' })
-    fireEvent.click(skipBtn)
-
-    await waitFor(() => {
-      expect(feedbackService.completeOnboarding).toHaveBeenCalled()
-      expect(onClose).toHaveBeenCalled()
-    })
+  it('does not render a "Skip for now" button since registration is required', () => {
+    render(<OnboardingModal isOpen={true} onClose={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Skip for now' })).toBeNull()
   })
 
   it('validates email format before submitting', async () => {
@@ -51,7 +43,7 @@ describe('OnboardingModal', () => {
     expect(feedbackService.sendFeedback).not.toHaveBeenCalled()
   })
 
-  it('submits valid email lead and triggers toast', async () => {
+  it('submits valid email lead and triggers toast and thank you screen', async () => {
     const onClose = vi.fn()
     const onToast = vi.fn()
     render(<OnboardingModal isOpen={true} onClose={onClose} onToast={onToast} />)
@@ -71,20 +63,27 @@ describe('OnboardingModal', () => {
         }),
       )
       expect(onToast).toHaveBeenCalledWith('Welcome aboard!', 'success')
-      expect(onClose).toHaveBeenCalled()
     })
+
+    expect(
+      await screen.findByRole('heading', { name: /thank you! openapi companion is activated/i }),
+    ).toBeInTheDocument()
+
+    const startBtn = screen.getByRole('button', { name: /start testing endpoints/i })
+    fireEvent.click(startBtn)
+    expect(onClose).toHaveBeenCalled()
   })
 
-  it('allows clicking "Get Started" without entering an email', async () => {
+  it('requires an email before proceeding and shows error if empty', async () => {
     const onClose = vi.fn()
     render(<OnboardingModal isOpen={true} onClose={onClose} />)
 
     const submitBtn = screen.getByRole('button', { name: 'Get Started' })
     fireEvent.click(submitBtn)
 
-    await waitFor(() => {
-      expect(feedbackService.completeOnboarding).toHaveBeenCalledWith()
-      expect(onClose).toHaveBeenCalled()
-    })
+    expect(await screen.findByText('Email address is required to get started.')).toBeInTheDocument()
+    expect(feedbackService.completeOnboarding).not.toHaveBeenCalled()
+    expect(feedbackService.sendFeedback).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

@@ -23,6 +23,8 @@ interface DialogProps {
   actions?: ReactNode
   contentClassName?: string
   headerClassName?: string
+  hideCloseButton?: boolean
+  disableBackdropClick?: boolean
 }
 
 const SIZE_CLASS: Record<DialogSize, string> = {
@@ -55,6 +57,8 @@ export function Dialog({
   actions,
   contentClassName,
   headerClassName,
+  hideCloseButton = false,
+  disableBackdropClick = false,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -73,11 +77,11 @@ export function Dialog({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !disableBackdropClick) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, disableBackdropClick])
 
   const ariaLabelText =
     ariaLabel ??
@@ -88,7 +92,7 @@ export function Dialog({
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabelText}
-      onClick={onClose}
+      onClick={disableBackdropClick ? undefined : onClose}
       className={`fixed inset-0 z-[2147483647] flex ${ALIGN_CLASS[align]} justify-center bg-black/60 backdrop-blur-[1px] p-3 sm:p-4`}
     >
       <div
@@ -110,9 +114,11 @@ export function Dialog({
           )}
           <div className="flex min-w-0 items-center gap-1">
             {actions}
-            <IconButton label="Close" onClick={onClose}>
-              <CloseIcon />
-            </IconButton>
+            {!hideCloseButton && (
+              <IconButton label="Close" onClick={onClose}>
+                <CloseIcon />
+              </IconButton>
+            )}
           </div>
         </header>
         <div className={cn('overflow-auto p-4', contentClassName)}>{children}</div>

@@ -9,6 +9,7 @@ import {
   isOutbound,
   planAuthWrite,
   securityDefinitionsFrom,
+  isLoginEndpoint,
   type AuthorizedEntry,
   type SchemeDefinition,
 } from './swagger-protocol'
@@ -242,5 +243,45 @@ describe('resolveWithVariables', () => {
     const text = 'id={{$uuid}}&time={{$timestamp}}'
     const out = resolveWithVariables(text, {})
     expect(out).toMatch(/^id=[0-9a-f-]{36}&time=\d+$/i)
+  })
+})
+
+describe('isLoginEndpoint', () => {
+  it('identifies standard POST login endpoints', () => {
+    expect(isLoginEndpoint('/auth/login', 'post')).toBe(true)
+    expect(isLoginEndpoint('/login', 'POST')).toBe(true)
+    expect(isLoginEndpoint('/api/v1/auth/login/', 'post')).toBe(true)
+    expect(isLoginEndpoint('/sign-in', 'post')).toBe(true)
+    expect(isLoginEndpoint('/api/token', 'post')).toBe(true)
+    expect(isLoginEndpoint('/oauth/token', 'post')).toBe(true)
+    expect(isLoginEndpoint('/oauth2/token', 'post')).toBe(true)
+    expect(isLoginEndpoint('/auth/jwt/create', 'post')).toBe(true)
+    expect(isLoginEndpoint('/sessions', 'post')).toBe(true)
+  })
+
+  it('rejects endpoints that require existing authenticated sessions or perform non-login actions', () => {
+    expect(isLoginEndpoint('/auth/change-password', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/reset-password', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/forgot-password', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/logout', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/sign-out', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/register', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/signup', 'post')).toBe(false)
+    expect(isLoginEndpoint('/auth/refresh', 'post')).toBe(false)
+  })
+
+  it('rejects non-POST methods unless configured', () => {
+    expect(isLoginEndpoint('/auth/login', 'get')).toBe(false)
+    expect(isLoginEndpoint('/auth/login', 'delete')).toBe(false)
+    expect(isLoginEndpoint('/users', 'post')).toBe(false)
+    expect(isLoginEndpoint('/tasks', 'post')).toBe(false)
+  })
+
+  it('matches user-configured login endpoint', () => {
+    expect(isLoginEndpoint('/custom/auth/endpoint', 'post', 'post /custom/auth/endpoint')).toBe(
+      true,
+    )
+    expect(isLoginEndpoint('/custom/auth/endpoint', 'get', 'get /custom/auth/endpoint')).toBe(true)
+    expect(isLoginEndpoint('/custom/auth/endpoint/', 'post', '/custom/auth/endpoint')).toBe(true)
   })
 })

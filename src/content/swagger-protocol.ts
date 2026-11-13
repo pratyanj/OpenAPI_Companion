@@ -45,6 +45,12 @@ export type BridgeOutbound =
       cmd: 'syncGlobalHeaders'
       headers: Record<string, string>
     }
+  | {
+      tag: typeof BRIDGE_TAG
+      dir: 'to-main'
+      cmd: 'syncLoginEndpoint'
+      endpoint: string | null
+    }
 
 export function isInbound(data: unknown): data is BridgeInbound {
   const d = data as Partial<BridgeInbound> | undefined
@@ -240,4 +246,65 @@ export function planAuthWrite(
 /** Pure variable resolver for strings containing {{VAR}} or %7B%7BVAR%7D%7D. */
 export function resolveWithVariables(text: string, variables: Record<string, string>): string {
   return substitute(text, variables).text
+}
+
+/** Paths that unmistakably identify a sign-in / login endpoint. */
+export const LOGIN_PATH_RE =
+  /(?:^|\/)(?:log[-_ ]?in|sign[-_ ]?in|signin|login|token|authenticate|auth|session|sessions)\/?$/i
+
+/** Endpoints that issue OAuth, connect, or JWT tokens. */
+export const OAUTH_TOKEN_PATH_RE =
+  /(?:oauth2?\/token|connect\/token|jwt\/create|token\/login|auth\/token|access[-_ ]?token)/i
+
+/**
+ * Endpoints that require an existing authenticated session or perform non-login
+ * actions, which must NEVER be cleared or treated as login requests.
+ */
+export const DANGEROUS_AUTH_PATH_RE =
+  /(?:forgot[-_ ]?password|reset[-_ ]?password|change[-_ ]?password|update[-_ ]?password|register|sign[-_ ]?up|signup|log[-_ ]?out|sign[-_ ]?out|logout|refresh|verify|confirm|activate|resend|invite|otp|2fa|mfa)/i
+
+/**
+ * Determine if a given operation represents a login / token-issuing endpoint.
+ * When true, executing this endpoint will first clear any stale/expired Swagger
+ * token to avoid rejected requests.
+ */
+export function isLoginEndpoint(
+  path: string,
+  method = 'post',
+  configuredEndpoint?: string | null,
+): boolean {
+  if (!path) return false
+  const cleanPath = path.trim().toLowerCase()
+  const cleanMethod = (method || 'post').trim().toLowerCase()
+
+  // 1. User-configured login endpoint takes precedence
+  if (configuredEndpoint) {
+    const normConfig = configuredEndpoint.trim().toLowerCase()
+    const endpointId = `${cleanMethod} ${cleanPath}`
+    if (
+      endpointId === normConfig ||
+      cleanPath === normConfig ||
+      endpointId.replace(/\/+$/, '') === normConfig.replace(/\/+$/, '') ||
+      cleanPath.replace(/\/+$/, '') === normConfig.replace(/\/+$/, '')
+    ) {
+      return true
+    }
+  }
+
+  // 2. Dangerous endpoints (password reset, change password, logout, register, etc.) are never login endpoints
+  if (DANGEROUS_AUTH_PATH_RE.test(cleanPath)) {
+    return false
+  }
+
+  // 3. Login endpoints in REST/OpenAPI are virtually always POST requests
+  if (cleanMethod === 'post') {
+    if (LOGIN_PATH_RE.test(cleanPath) || OAUTH_TOKEN_PATH_RE.test(cleanPath)) {
+      return true
+    }
+    if (/log[-_ ]?in|sign[-_ ]?in|authenticate/i.test(cleanPath)) {
+      return true
+    }
+  }
+
+  return false
 }

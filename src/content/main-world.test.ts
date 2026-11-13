@@ -325,4 +325,121 @@ describe('main-world execute parameter synchronization', () => {
     }).not.toThrow()
     expect(parentA.contains(newChild)).toBe(true)
   })
+
+  it('clears Swagger auth token when user clicks Execute on a login endpoint', () => {
+    const logoutSpy = vi.fn()
+    ;(window as unknown as { ui?: unknown }).ui = {
+      getState: () => ({
+        toJS: () => ({
+          auth: {
+            authorized: {
+              bearerAuth: { value: 'expired-jwt-token' },
+            },
+          },
+        }),
+      }),
+      authActions: {
+        logout: logoutSpy,
+      },
+      specActions: {},
+    }
+
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <div class="opblock-summary">
+          <span class="opblock-summary-method">POST</span>
+          <span class="opblock-summary-path" data-path="/auth/login">/auth/login</span>
+        </div>
+        <button class="btn execute">Execute</button>
+      </div>
+    `
+
+    const executeBtn = document.querySelector<HTMLButtonElement>('.btn.execute')!
+    executeBtn.click()
+
+    expect(logoutSpy).toHaveBeenCalledTimes(1)
+    expect(logoutSpy).toHaveBeenCalledWith(['bearerAuth'])
+  })
+
+  it('does NOT clear Swagger auth token when executing non-login or authenticated endpoints like /auth/change-password', () => {
+    const logoutSpy = vi.fn()
+    ;(window as unknown as { ui?: unknown }).ui = {
+      getState: () => ({
+        toJS: () => ({
+          auth: {
+            authorized: {
+              bearerAuth: { value: 'active-jwt-token' },
+            },
+          },
+        }),
+      }),
+      authActions: {
+        logout: logoutSpy,
+      },
+      specActions: {},
+    }
+
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <div class="opblock-summary">
+          <span class="opblock-summary-method">POST</span>
+          <span class="opblock-summary-path" data-path="/auth/change-password">/auth/change-password</span>
+        </div>
+        <button class="btn execute">Execute</button>
+      </div>
+    `
+
+    const executeBtn = document.querySelector<HTMLButtonElement>('.btn.execute')!
+    executeBtn.click()
+
+    expect(logoutSpy).not.toHaveBeenCalled()
+  })
+
+  it('updates activeLoginEndpoint on syncLoginEndpoint message and clears auth for configured endpoint', () => {
+    const logoutSpy = vi.fn()
+    ;(window as unknown as { ui?: unknown }).ui = {
+      getState: () => ({
+        toJS: () => ({
+          auth: {
+            authorized: {
+              apiKey: { value: 'stale-token' },
+            },
+          },
+        }),
+      }),
+      authActions: {
+        logout: logoutSpy,
+      },
+      specActions: {},
+    }
+
+    // Sync a custom login endpoint
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          tag: BRIDGE_TAG,
+          dir: 'to-main',
+          cmd: 'syncLoginEndpoint',
+          endpoint: 'post /api/v2/custom-login',
+        },
+        source: window,
+      }),
+    )
+
+    document.body.innerHTML = `
+      <div class="opblock is-open">
+        <div class="opblock-summary">
+          <span class="opblock-summary-method">POST</span>
+          <span class="opblock-summary-path" data-path="/api/v2/custom-login">/api/v2/custom-login</span>
+        </div>
+        <button class="btn execute">Execute</button>
+      </div>
+    `
+
+    const executeBtn = document.querySelector<HTMLButtonElement>('.btn.execute')!
+    executeBtn.click()
+
+    expect(logoutSpy).toHaveBeenCalledTimes(1)
+    expect(logoutSpy).toHaveBeenCalledWith(['apiKey'])
+  })
 })

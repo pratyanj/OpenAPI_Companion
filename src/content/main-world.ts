@@ -50,6 +50,7 @@ import {
   planAuthWrite,
   type SchemeDefinition,
   resolveWithVariables,
+  isLoginEndpoint,
 } from './swagger-protocol'
 
 function readAuthorized(): Record<string, AuthorizedEntry> | undefined {
@@ -140,6 +141,7 @@ function applyWrite(snapshot: Parameters<typeof buildAuthorizePayload>[0], attem
 
 let activeVariables: Record<string, string> = {}
 let activeGlobalHeaders: Record<string, string> = {}
+let activeLoginEndpoint: string | null = null
 
 export function getActiveGlobalHeaders(): Record<string, string> {
   return activeGlobalHeaders
@@ -147,6 +149,14 @@ export function getActiveGlobalHeaders(): Record<string, string> {
 
 export function getActiveVariables(): Record<string, string> {
   return activeVariables
+}
+
+export function getActiveLoginEndpoint(): string | null {
+  return activeLoginEndpoint
+}
+
+export function setActiveLoginEndpoint(endpoint: string | null): void {
+  activeLoginEndpoint = endpoint
 }
 
 /** Hook into Swagger's configuration requestInterceptor if available. */
@@ -337,6 +347,10 @@ hookExecuteClick()
 // ---------------------------------------------------------------------------
 
 export function hookExecuteClick(doc: Document = document): () => void {
+  const d = doc as Document & { __oacExecuteHooked?: boolean }
+  if (d.__oacExecuteHooked) return () => {}
+  d.__oacExecuteHooked = true
+
   const bypassing = new WeakSet<Element>()
 
   function onExecuteClick(e: MouseEvent): void {
@@ -371,6 +385,19 @@ export function hookExecuteClick(doc: Document = document): () => void {
       pathEl?.getAttribute('data-path') ||
       pathEl?.querySelector('a span, span')?.textContent?.trim() ||
       pathEl?.textContent?.trim()
+
+    // If user is executing a login API, clear any existing/expired Swagger auth token first
+    // so Swagger does not attach a stale Authorization header to the login request.
+    if (endpointPath && isLoginEndpoint(endpointPath, method || 'post', activeLoginEndpoint)) {
+      const authorized = readAuthorized()
+      if (authorized && Object.keys(authorized).length > 0) {
+        console.debug(
+          `[OpenAPI Companion] Login API detected (${method?.toUpperCase()} ${endpointPath}) — clearing Swagger auth token before execution`,
+        )
+        resolveSwaggerUi()?.authActions?.logout?.(Object.keys(authorized))
+        pushAuth(true)
+      }
+    }
 
     const swagger = resolveSwaggerUi()
     const pathMethod = endpointPath && method ? [endpointPath, method] : null
@@ -493,6 +520,7 @@ export function hookExecuteClick(doc: Document = document): () => void {
 
   doc.addEventListener('click', onExecuteClick as EventListener, true)
   return () => {
+    d.__oacExecuteHooked = false
     doc.removeEventListener('click', onExecuteClick as EventListener, true)
   }
 }
@@ -515,6 +543,8 @@ window.addEventListener('message', (event: MessageEvent) => {
   } else if (message.cmd === 'syncGlobalHeaders') {
     activeGlobalHeaders = { ...(message.headers ?? {}) }
     hookSwaggerInterceptor()
+  } else if (message.cmd === 'syncLoginEndpoint') {
+    activeLoginEndpoint = message.endpoint ?? null
   }
 })
 

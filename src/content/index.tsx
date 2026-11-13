@@ -1194,6 +1194,24 @@ export async function bootAgent(
   // Token auto-refresh (opt-in; toggled from the Auth panel via RPC → runs here).
   let autoRefreshEnabled = await auth.isAutoRefreshEnabled()
   let configuredLoginEndpoint = await auth.getConfiguredLoginEndpoint()
+
+  const syncLoginEndpointToMain = (endpoint: string | null): void => {
+    try {
+      window.postMessage(
+        {
+          tag: BRIDGE_TAG,
+          dir: 'to-main',
+          cmd: 'syncLoginEndpoint',
+          endpoint,
+        },
+        '*',
+      )
+    } catch {
+      // ignore
+    }
+  }
+  syncLoginEndpointToMain(configuredLoginEndpoint)
+
   const tokenRefresh = new TokenRefreshService({
     adapter,
     auth,
@@ -1291,7 +1309,10 @@ export async function bootAgent(
       void auth.isAutoRefreshEnabled().then((on) => (autoRefreshEnabled = on))
     }
     if (payload.keys.includes('auth-login-endpoint')) {
-      void auth.getConfiguredLoginEndpoint().then((ep) => (configuredLoginEndpoint = ep))
+      void auth.getConfiguredLoginEndpoint().then((ep) => {
+        configuredLoginEndpoint = ep
+        syncLoginEndpointToMain(ep)
+      })
     }
   })
 
@@ -1488,6 +1509,7 @@ export async function bootAgent(
       const res = await auth.setConfiguredLoginEndpoint((endpointId as string) || null)
       if (res.ok) {
         configuredLoginEndpoint = (endpointId as string) || null
+        syncLoginEndpointToMain(configuredLoginEndpoint)
       }
       return res
     },
@@ -1732,36 +1754,6 @@ export async function bootAgent(
   pushState() // initial mirror for any already-open panel
 }
 
-function injectPageSafeguard(doc: Document = document): void {
-  try {
-    const script = doc.createElement('script')
-    script.textContent = `
-      if (typeof Node === 'function' && Node.prototype && !window.__oacNodeSafeguard) {
-        window.__oacNodeSafeguard = true;
-        const origRemoveChild = Node.prototype.removeChild;
-        Node.prototype.removeChild = function(child) {
-          if (child && child.parentNode !== this) {
-            if (child.parentNode) return child.parentNode.removeChild(child);
-            return child;
-          }
-          return origRemoveChild.call(this, child);
-        };
-        const origInsertBefore = Node.prototype.insertBefore;
-        Node.prototype.insertBefore = function(newNode, refNode) {
-          if (refNode && refNode.parentNode !== this) {
-            return this.appendChild(newNode);
-          }
-          return origInsertBefore.call(this, newNode, refNode);
-        };
-      }
-    `
-    ;(doc.head || doc.documentElement)?.appendChild(script)
-    script.remove()
-  } catch {
-    /* ignore */
-  }
-}
-
 function injectFirefoxMainWorld(doc: Document = document): void {
   // If the browser already ran MAIN world (Chrome native world: "MAIN"), it sets dataset.oacMainWorld
   if (doc.documentElement?.dataset?.oacMainWorld === 'true') return
@@ -1777,7 +1769,6 @@ function injectFirefoxMainWorld(doc: Document = document): void {
 }
 
 export async function boot(): Promise<void> {
-  injectPageSafeguard(document)
   injectFirefoxMainWorld(document)
   console.info(`${LOG} content agent loaded:`, location.href)
   const bridge = new SwaggerBridge()

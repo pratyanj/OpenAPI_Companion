@@ -7,10 +7,10 @@
 import { StrictMode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import '@/styles/index.css'
-import { EmptyState, SearchIcon } from '@/components'
 import { StorageService, chromeLocalArea } from '@/core/storage'
 import { EventBus } from '@/core/events'
 import { ThemeManager } from '@/services'
+import { DisconnectedPanel } from './DisconnectedPanel'
 import type { ProjectMeta } from '@/core/project'
 import { FakeDataService } from '@/modules/fake-data'
 import { SettingsService, ImportExportService } from '@/modules/settings'
@@ -71,13 +71,7 @@ async function render(root: Root): Promise<void> {
   if (!state.context) {
     root.render(
       <StrictMode>
-        <div className="flex min-h-screen flex-col justify-center bg-bg p-4 text-text">
-          <EmptyState
-            icon={<SearchIcon className="h-8 w-8 text-muted" />}
-            title="No OpenAPI page connected"
-            message="Open a Swagger / OpenAPI page in the active tab to begin."
-          />
-        </div>
+        <DisconnectedPanel />
       </StrictMode>,
     )
     // Self-heal: the agent may still be booting on this tab, or the user may
@@ -191,6 +185,10 @@ async function boot(): Promise<void> {
   const rootEl = document.getElementById('root')
   if (!rootEl) return
   connectToggle()
+  const storage = new StorageService({ area: chromeLocalArea() })
+  const bus = new EventBus()
+  const theme = new ThemeManager({ storage, root: document.documentElement, bus })
+  await theme.init()
   const root = createRoot(rootEl)
   await render(root)
 }

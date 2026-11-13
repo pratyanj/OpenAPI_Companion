@@ -386,6 +386,8 @@ export class TokenRefreshService {
     )
 
     this.note('triggered', `Signing in as ${login.username} via ${endpointId}`)
+    // Clear any expired/stale Swagger auth token before executing login
+    this.adapter.clearAuth?.()
     const replayed = this.adapter.replay(endpointId, this.buildLoginBody(endpointId, login))
     if (!replayed.ok) {
       this.note('failed', `Could not run ${endpointId}: ${replayed.error.message}`)

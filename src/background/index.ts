@@ -42,6 +42,11 @@ async function runMigrations(reason: string): Promise<void> {
 chrome.runtime.onInstalled.addListener((details) => {
   void runMigrations(details.reason)
   void initBackupScheduler()
+  if (details.reason === 'install') {
+    void chrome.tabs?.create?.({
+      url: chrome.runtime.getURL('src/sidepanel/index.html'),
+    })
+  }
 })
 
 // Handle pending update notification from Chrome Web Store / browser runtime

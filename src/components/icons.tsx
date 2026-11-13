@@ -15,7 +15,6 @@ import {
   Pencil,
   Eye,
   EyeOff,
-  Compass,
   Search,
   Construction,
   Copy,
@@ -104,7 +103,29 @@ export const EditIcon = make(Pencil)
 export const RevealIcon = make(Eye)
 export const EyeIcon = RevealIcon
 export const HideIcon = make(EyeOff)
-export const BrandIcon = make(Compass)
+export function BrandIcon({
+  className = 'h-5 w-5',
+  alt = 'OpenAPI Companion',
+  ...props
+}: {
+  className?: string
+  alt?: string
+  [key: string]: unknown
+}) {
+  const iconSrc =
+    typeof chrome !== 'undefined' && chrome?.runtime?.getURL
+      ? chrome.runtime.getURL('icons/icon-128.png')
+      : '/icons/icon-128.png'
+  return (
+    <img
+      src={iconSrc}
+      alt={alt}
+      className={`inline-block object-contain select-none pointer-events-none ${className}`}
+      {...props}
+    />
+  )
+}
+BrandIcon.displayName = 'BrandIcon'
 export const SearchIcon = make(Search)
 export const PlaceholderIcon = make(Construction)
 export const CopyIcon = make(Copy)
@@ -153,3 +174,5 @@ export const StarIcon = make(Star)
 export const ToastSuccessIcon = make(CircleCheck)
 export const ToastWarningIcon = make(TriangleAlert)
 export const ToastErrorIcon = make(CircleX)
+export const CircleCheckIcon = ToastSuccessIcon
+export const CircleXIcon = ToastErrorIcon

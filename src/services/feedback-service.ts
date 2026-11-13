@@ -22,6 +22,9 @@ export const FEEDBACK_STORAGE_KEY = 'oac_user_email'
 export const ONBOARDING_COMPLETED_KEY = 'oac_onboarding_completed'
 export const PENDING_FEEDBACK_KEY = 'oac_pending_feedback'
 
+export const GOOGLE_SHEET_FEEDBACK_ENDPOINT =
+  'https://script.google.com/macros/s/AKfycbw8dcDzROWaN1ynzHtXl6nq8fl9MfOF-rPsfNHN10BQbOyC2Pt7kGlDKCl0NHlhfJ8/exec'
+
 /**
  * Default public submission endpoint.
  * Accepts standard form post payloads or webhooks (Google Apps Script / Discord / Formspree / FormSubmit).
@@ -29,7 +32,7 @@ export const PENDING_FEEDBACK_KEY = 'oac_pending_feedback'
  */
 export const DEFAULT_FEEDBACK_ENDPOINT =
   (typeof process !== 'undefined' && process.env?.VITE_FEEDBACK_ENDPOINT) ||
-  'https://formsubmit.co/ajax/your-email-placeholder'
+  GOOGLE_SHEET_FEEDBACK_ENDPOINT
 
 /** Gathers platform & runtime metadata for diagnostics. */
 export function getRuntimeMetadata(): FeedbackMetadata {

@@ -3,7 +3,7 @@ import { Dialog } from './Dialog'
 import { Button } from './Button'
 import { Input } from './Input'
 import { Spinner } from './Spinner'
-import { SparklesIcon } from './icons'
+import { SparklesIcon, CheckIcon } from './icons'
 import { completeOnboarding, sendFeedback } from '@/services/feedback-service'
 
 export interface OnboardingModalProps {
@@ -18,11 +18,17 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = useCallback(async () => {
     const trimmed = email.trim()
-    if (trimmed && !EMAIL_REGEX.test(trimmed)) {
+    if (!trimmed) {
+      setError('Email address is required to get started.')
+      return
+    }
+
+    if (!EMAIL_REGEX.test(trimmed)) {
       setError('Please enter a valid email address.')
       return
     }
@@ -31,41 +37,63 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
     setIsSubmitting(true)
 
     try {
-      if (trimmed) {
-        await completeOnboarding(trimmed)
-        await sendFeedback({
-          type: 'install_lead',
-          email: trimmed,
-          message: subscribed
-            ? 'Install lead: subscribed to updates'
-            : 'Install lead: opted out of updates',
-        })
-        onToast?.('Welcome aboard!', 'success')
-      } else {
-        await completeOnboarding()
-      }
+      await completeOnboarding(trimmed)
+      await sendFeedback({
+        type: 'install_lead',
+        email: trimmed,
+        message: subscribed
+          ? 'Install lead: subscribed to updates'
+          : 'Install lead: opted out of updates',
+      })
+      onToast?.('Welcome aboard!', 'success')
     } catch {
-      // Even if network fails, onboarding should finish so the user is not blocked
-      await completeOnboarding(trimmed || undefined)
+      // Even if network fails, onboarding finishes locally so user is not permanently stuck
+      await completeOnboarding(trimmed)
     } finally {
       setIsSubmitting(false)
-      onClose()
+      setIsSuccess(true)
     }
-  }, [email, subscribed, onToast, onClose])
-
-  const handleSkip = useCallback(async () => {
-    try {
-      await completeOnboarding()
-    } catch {
-      // ignore
-    }
-    onClose()
-  }, [onClose])
+  }, [email, subscribed, onToast])
 
   if (!isOpen) return null
 
+  if (isSuccess) {
+    return (
+      <Dialog title="Welcome to OpenAPI Companion" onClose={onClose} size="lg">
+        <div className="flex flex-col items-center text-center gap-4 py-4">
+          <div className="h-12 w-12 rounded-full bg-success/20 text-success flex items-center justify-center shadow-lg shadow-success/20">
+            <CheckIcon className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-text">
+              Thank you! OpenAPI Companion is Activated.
+            </h3>
+            <p className="text-xs text-muted mt-1 max-w-sm">
+              Registered as{' '}
+              <span className="font-mono text-text font-semibold">{email.trim()}</span>. OpenAPI
+              Companion is ready to test endpoints directly in your sidebar!
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            onClick={onClose}
+            className="px-6 py-2 text-xs font-semibold mt-2"
+          >
+            Start Testing Endpoints
+          </Button>
+        </div>
+      </Dialog>
+    )
+  }
+
   return (
-    <Dialog title="Welcome to OpenAPI Companion" onClose={handleSkip} size="lg">
+    <Dialog
+      title="Welcome to OpenAPI Companion"
+      onClose={() => {}}
+      hideCloseButton={true}
+      disableBackdropClick={true}
+      size="lg"
+    >
       <div className="flex flex-col gap-4 py-1">
         {/* Banner */}
         <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-3.5">
@@ -76,7 +104,7 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
             <h3 className="text-sm font-semibold text-text">Thank you for installing!</h3>
             <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
               Supercharge your API testing with side-by-side Swagger docs, instant curl generation,
-              environments, and workspace history.
+              environments, and request history.
             </p>
           </div>
         </div>
@@ -97,7 +125,7 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface/20 p-3.5 mt-1">
           <div>
             <label htmlFor="onboarding-email" className="block text-xs font-medium text-text">
-              Stay in the loop <span className="text-text-muted font-normal">(optional)</span>
+              Enter your email to get started <span className="text-primary font-bold">*</span>
             </label>
             <p className="text-[11px] text-text-muted mt-0.5">
               Enter your email to receive major feature announcements, Swagger tips, and fast
@@ -117,7 +145,7 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
-                handleSubmit()
+                void handleSubmit()
               }
             }}
             error={error}
@@ -136,25 +164,17 @@ export function OnboardingModal({ isOpen, onClose, onToast }: OnboardingModalPro
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            onClick={handleSkip}
-            className="text-xs text-text-muted hover:text-text hover:underline transition-colors focus:outline-none"
-          >
-            Skip for now
-          </button>
-
+        <div className="flex items-center justify-end pt-2">
           <Button
             variant="primary"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold"
+            className="w-full sm:w-auto px-5 py-2 text-xs font-semibold"
           >
             {isSubmitting ? (
               <>
                 <Spinner className="h-3.5 w-3.5 border-white border-t-transparent" />
-                <span>Saving...</span>
+                <span>Activating...</span>
               </>
             ) : (
               <span>Get Started</span>
