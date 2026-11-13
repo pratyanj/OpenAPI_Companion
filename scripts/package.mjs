@@ -54,7 +54,9 @@ Fake Data, Settings). Press Cmd+K / Ctrl+K to search endpoints.
 `
 
 console.log(`Packaging ${folderName}…`)
-rmSync(shareDir, { recursive: true, force: true })
+mkdirSync(shareDir, { recursive: true })
+rmSync(stageDir, { recursive: true, force: true })
+rmSync(zipPath, { force: true })
 mkdirSync(stageDir, { recursive: true })
 
 // Stage the built extension, excluding source maps (smaller, cleaner share).

@@ -1,3 +1,26 @@
+## 🌟 What's New in v1.4.0
+
+### 🚀 1. Developer Welcome & Quick-Start Landing Experience
+- **Interactive Welcome View**: Replaces disconnected empty states with an ambient dark landing view featuring live terminal preview with styled cURL execution and core value highlights.
+- **Celebratory Thank You Flow**: Guides developers through extension pinning, Swagger detection, and provides a 1-click live demo link to Swagger Petstore (`https://petstore.swagger.io/`).
+- **Official Brand Icon**: High-resolution official brand logo integration across the welcome view, collapsed floating launcher, and store listings.
+
+### 🎨 2. Enhanced Navigation Button Affordance
+- **Tangible Button Geometry**: Solid slate surface backgrounds (`bg-surface`) and crisp outlines (`border border-border`) on all navigation tabs.
+- **Interactive Hover Feedback**: Navigation buttons smoothly brighten and lift on hover, making interactive controls instantly recognizable at first glance.
+
+### 🔑 3. In-Page Paste cURL Token & Global Headers Extraction
+- **Automatic Token Authorization**: Pasting cURL commands with Bearer, Basic, or API Key headers automatically authorizes Swagger UI and binds tokens to active test sessions.
+- **Global Headers Extraction**: Detects custom enterprise headers (`X-Tenant-ID`, `X-App-Version`, `X-Custom-*`) with 1-click addition to OpenAPI Companion's Global Headers system.
+
+### 🔒 4. Pre-Execution Auth Clearing on Login APIs
+- **Stale Token Protection**: Automatically logs out of Swagger Authorize before dispatching login endpoints, preventing expired or invalid JWTs from triggering 401/403 errors from backend authentication guards.
+
+### 🛡️ 5. Content Security Policy (CSP) Hardening
+- **Zero Inline Scripts**: Completely eliminated inline script injection to ensure seamless, error-free operation on sites enforcing strict Content Security Policies.
+
+---
+
 ## 🌟 What's New in v1.3.1
 
 ### 🕒 1. In-Page Swagger Endpoint History Button & Config Toggle
@@ -43,13 +66,13 @@
 ## 📥 Installation & Downloads
 
 ### Chrome / Edge / Brave / Chromium
-1. Download **[`openapi-companion-1.3.1.zip`](https://github.com/pratyanj/OpenAPI_Companion/releases/download/v1.3.1/openapi-companion-1.3.1.zip)**.
+1. Download **[`openapi-companion-1.4.0.zip`](https://github.com/pratyanj/OpenAPI_Companion/releases/download/v1.4.0/openapi-companion-1.4.0.zip)**.
 2. Unzip into a permanent folder.
 3. Open `chrome://extensions` (or `edge://extensions` / `brave://extensions`).
 4. Enable **Developer mode** toggle in the top right.
 5. Click **Load unpacked** and select the unzipped directory containing `manifest.json`.
 
 ### Firefox (Experimental / Developer Preview)
-1. Download **[`openapi-companion-1.3.1-firefox.zip`](https://github.com/pratyanj/OpenAPI_Companion/releases/download/v1.3.1/openapi-companion-1.3.1-firefox.zip)**.
+1. Download **[`openapi-companion-1.4.0-firefox.zip`](https://github.com/pratyanj/OpenAPI_Companion/releases/download/v1.4.0/openapi-companion-1.4.0-firefox.zip)**.
 2. Open `about:debugging` → **This Firefox** → **Load Temporary Add-on…**.
 3. Select the `manifest.json` inside the extracted directory.

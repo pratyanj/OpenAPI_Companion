@@ -5,6 +5,16 @@ Tired of re-entering authentication tokens after every page refresh, manually cr
 OpenAPI Companion integrates seamlessly with Swagger UI and the native browser Side Panel, giving developers a persistent, powerful workspace directly alongside their API documentation.
 
 ========================================
+WHAT’S NEW IN VERSION 1.4.0
+========================================
+• Developer Welcome & Quick-Start Landing View: New interactive welcome experience with instant terminal preview, value highlights, and a celebratory 1-click live demo link to Swagger Petstore.
+• Enhanced Navigation Affordance: Navigation tab buttons feature distinct slate surface fills and crisp outlines for clear visual interactive affordance.
+• In-Page Paste cURL Token & Global Headers Extraction: Automatically detects Bearer, Basic, and API Key credentials from pasted cURL commands with 1-click custom header extraction to Global Headers.
+• Pre-Execution Auth Clearing on Login Endpoints: Automatically clears expired or stale authorization before dispatching login API calls, preventing backend middleware rejection.
+• Official Brand Logo Integration: Official OpenAPI Companion brand icon integrated across the welcome view, collapsed floating launcher, and store previews.
+• Strict CSP Safeguards: Eliminated inline scripts to ensure error-free operation on API documentation sites enforcing strict Content Security Policies.
+
+========================================
 WHAT’S NEW IN VERSION 1.3.1
 ========================================
 • In-Page Swagger Endpoint History Button: View past executions directly on each Swagger endpoint block header, conditionally rendered only when history exists, with a configurable toggle in Settings.

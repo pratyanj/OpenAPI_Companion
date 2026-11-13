@@ -2,7 +2,7 @@
 
 > **A browser extension that turns Swagger UI into a persistent, productivity-focused API testing workspace.**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/pratyanj/OpenAPI_Companion/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox_Add--ons-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/openapi-companion/)
@@ -58,7 +58,7 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 👉 **[Install OpenAPI Companion from the Chrome Web Store](https://chromewebstore.google.com/detail/openapi-companion/ckainjdbpdblamklkmeimpfmpeeennfg?hl=en-GB&authuser=0)**
 
 #### Option 2 — Load Unpacked ZIP (Manual / Testing)
-1. Download **`openapi-companion-1.3.0.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases).
+1. Download **`openapi-companion-1.4.0.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases).
 2. Unzip the file anywhere on your machine.
 3. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
 4. Enable **Developer mode** (top-right toggle).
@@ -71,10 +71,10 @@ OpenAPI Companion removes all of that. Install it, open your Swagger page, and i
 👉 **[Install OpenAPI Companion from Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/openapi-companion/)**
 
 #### Option 2 — Load Release ZIP in Firefox (Testing / Unpacked)
-1. Download **`openapi-companion-1.3.0-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases).
+1. Download **`openapi-companion-1.4.0-firefox.zip`** from the [latest release](https://github.com/pratyanj/OpenAPI_Companion/releases).
 2. Open Firefox and navigate to **`about:debugging#/runtime/this-firefox`** (or menu: *Tools* → *Browser Tools* → *about:debugging*).
 3. Click **Load Temporary Add-on…**.
-4. Select the downloaded `openapi-companion-1.3.0-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
+4. Select the downloaded `openapi-companion-1.4.0-firefox.zip` file (or `dist-firefox/manifest.json` if building locally).
 5. OpenAPI Companion will appear in your toolbar and extensions list.
 
 #### Option 3 — Build from Source
@@ -83,7 +83,7 @@ npm install
 npm run build:firefox
 ```
 * Generates the unzipped Firefox extension in `dist-firefox/`.
-* Packages the AMO-ready archive in `share/openapi-companion-1.3.0-firefox.zip`.
+* Packages the AMO-ready archive in `share/openapi-companion-1.4.0-firefox.zip`.
 
 ---
 

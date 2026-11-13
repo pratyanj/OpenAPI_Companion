@@ -997,4 +997,30 @@ All 7 mandatory CI quality gates executed and verified 100% green:
 6. **Production Extension Build (`npm run build`)**: Chrome (`dist/`) and Firefox (`dist-firefox/` + AMO release zip) built without error
 7. **E2E Smoke Tests (`npm run test:e2e`)**: 2 / 2 Playwright smoke tests passed
 
+---
+
+## 🚀 Release v1.4.0 Milestone (Completed)
+
+### Summary of Changes
+Completed full release preparation, packaging, documentation, and quality gate verification for **Version 1.4.0**:
+
+1. **Version Synchronization**:
+   - `package.json`: Updated `"version": "1.4.0"`.
+   - `package-lock.json`: Synchronized top-level and root dependency versions to `"1.4.0"`.
+
+2. **Documentation & Release Notes**:
+   - `README.md`: Updated version badge to `v1.4.0` and updated unpacked/AMO download references.
+   - `STORE_DESCRIPTION.md`: Updated `WHAT’S NEW IN VERSION 1.4.0` adhering strictly to Chrome Web Store policy guidelines (zero prohibited keywords, zero hack/bypass claims, no tag clouds).
+   - `FIRE_FOX_RELEASE_NOTES.md`: Added comprehensive `v1.4.0` release notes with AMO distribution links.
+   - `RELEASE_NOTES.md`: Authored dedicated release notes for GitHub Releases.
+
+3. **Packaging Fix & Dual-Browser Distribution Archives**:
+   - Fixed `scripts/package.mjs` to selectively clear stage directories rather than wiping `share/`, ensuring the Firefox AMO release zip is preserved alongside the Chromium zip.
+   - Packaged Chromium unpacked extension preview: `share/openapi-companion-1.4.0.zip` (327 KB).
+   - Packaged Firefox AMO release bundle: `share/openapi-companion-1.4.0-firefox.zip` (630 KB).
+
+4. **CI & Quality Gate Verification**:
+   - All 7 mandatory quality gates executed and verified 100% green locally.
+
+
 
