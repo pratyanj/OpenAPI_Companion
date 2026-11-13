@@ -903,7 +903,6 @@ All 7 mandatory CI quality gates executed and verified 100% green:
 6. **Production Extension Build (`npm run build`)**: Chrome (`dist/`) and Firefox (`dist-firefox/` + AMO release zip) built without error
 7. **E2E Smoke Tests (`npm run test:e2e`)**: 2 / 2 Playwright smoke tests passed
 
-
 ---
 
 ## 🔄 Reversion: Restored Clean, Focused Welcome & Activation View
@@ -963,4 +962,39 @@ All 7 mandatory CI quality gates executed and verified 100% green:
 5. **Dependency Audit (`npm audit --omit=dev --audit-level=high`)**: 0 high/critical vulnerabilities
 6. **Production Extension Build (`npm run build`)**: Chrome (`dist/`) and Firefox (`dist-firefox/` + AMO release zip) built without error
 7. **E2E Smoke Tests (`npm run test:e2e`)**: 2 / 2 Playwright smoke tests passed
+
+---
+
+## 🎨 Phase: Navigation Button Styling — Visible Background & Border Affordance
+
+### Summary of Changes
+Enhanced the visual affordance of the horizontal navigation tab buttons in [Tabs.tsx](file:///p:/React%20native/OpenAPI_Companion/src/components/Tabs.tsx) across the sidebar and in-page companion. Added a visible surface background tint and crisp border outline to all inactive tab buttons, ensuring every tab is immediately recognizable as an interactive, clickable button at first glance.
+
+### Visual Styling Details
+1. **Inactive Navigation Buttons (`src/components/Tabs.tsx`)**:
+   - **Background**: `bg-surface` (`background-color: var(--oac-surface)` — rich `#1f2937` in dark mode, `#f3f4f6` in light mode).
+   - **Border**: `border border-border` (`border: 1px solid var(--oac-border)` — crisp `#374151` in dark mode, `#e5e7eb` in light mode).
+   - **Padding & Shape**: `rounded-lg px-2.5 py-1 text-xs font-medium gap-1.5` for comfortable click target and modern pill aesthetics.
+   - **Hover Effect**: `hover:text-text hover:border-muted hover:shadow-sm transition-all` (border lights up to `#9ca3af` and text to `#e5e7eb` on hover).
+   - **Tailwind CSS Variable Optimization**: Discovered that Tailwind v3 drops slash-opacity modifiers (`bg-surface/60`, `border-border/80`) when CSS variables contain raw hex strings (`#1f2937`) instead of RGB tuples. Using `bg-surface` and `border-border` directly ensures 100% valid CSS generation and strong visual button contrast against the dark background.
+2. **Active Navigation Button (`src/components/Tabs.tsx`)**:
+   - **Background & Border**: `bg-primary text-white border border-primary shadow-sm font-semibold`.
+   - Distinct, glowing primary button styling making the active view immediately obvious.
+
+### Files Modified
+1. `src/components/Tabs.tsx`: Upgraded button classes with `bg-surface border border-border text-muted hover:text-text hover:border-muted hover:shadow-sm` and active `bg-primary text-white border border-primary shadow-sm font-semibold`.
+2. `src/sidebar/tabs.tsx`: Preserved `ICON_CLASS = 'h-3.5 w-3.5'` for balanced horizontal proportions.
+3. `src/components/Tabs.test.tsx`: All unit tests verified and green.
+4. `docs/plan/2026-11-13_navigation_button_border_and_background_plan.md`: Formulated and archived plan.
+
+### Final Pipeline Gate Verification
+All 7 mandatory CI quality gates executed and verified 100% green:
+1. **ESLint (`npm run lint`)**: 0 errors, 0 warnings
+2. **Prettier Format Check (`npm run format:check`)**: 100% conforming Prettier code style
+3. **TypeScript Typecheck (`npm run typecheck`)**: 0 errors (`tsc --noEmit`)
+4. **Unit & Component Tests (`npm test`)**: 126 test suites passed, 1,159 tests passed (100% green)
+5. **Dependency Audit (`npm audit --omit=dev --audit-level=high`)**: 0 high/critical vulnerabilities
+6. **Production Extension Build (`npm run build`)**: Chrome (`dist/`) and Firefox (`dist-firefox/` + AMO release zip) built without error
+7. **E2E Smoke Tests (`npm run test:e2e`)**: 2 / 2 Playwright smoke tests passed
+
 

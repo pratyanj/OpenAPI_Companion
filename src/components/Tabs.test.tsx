@@ -8,6 +8,12 @@ const tabs: TabDef[] = [
   { id: 'c', label: 'Gamma' },
 ]
 
+const verticalTabs: TabDef[] = [
+  { id: 'a', label: 'Alpha' },
+  { id: 'b', label: 'Beta' },
+  { id: 'settings', label: 'Settings', placement: 'bottom' },
+]
+
 describe('Tabs', () => {
   it('renders an ARIA tablist with the active tab selected', () => {
     render(<Tabs tabs={tabs} activeId="b" onChange={() => {}} />)
@@ -30,5 +36,20 @@ describe('Tabs', () => {
     expect(onChange).toHaveBeenCalledWith('b')
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Alpha' }), { key: 'ArrowLeft' })
     expect(onChange).toHaveBeenCalledWith('c') // wraps around
+  })
+
+  it('renders vertical activity rail with top and bottom groups', () => {
+    const onChange = vi.fn()
+    render(<Tabs tabs={verticalTabs} activeId="a" onChange={onChange} orientation="vertical" />)
+    const tablist = screen.getByRole('tablist')
+    expect(tablist).toHaveAttribute('aria-orientation', 'vertical')
+    expect(screen.getByRole('tab', { name: 'Settings' })).toBeInTheDocument()
+
+    // Test ArrowDown and ArrowUp in vertical mode
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Alpha' }), { key: 'ArrowDown' })
+    expect(onChange).toHaveBeenCalledWith('b')
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Alpha' }), { key: 'ArrowUp' })
+    expect(onChange).toHaveBeenCalledWith('settings')
   })
 })
